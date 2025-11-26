@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - '**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Test client i server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Zainstaluj zależności i uruchom testy backendu (server)
+        working-directory: server
+        run: |
+          npm ci || npm install
+          npm test
+
+      - name: Zainstaluj zależności i uruchom testy klienta (client)
+        working-directory: client
+        run: |
+          npm ci || npm install
+          npm test
