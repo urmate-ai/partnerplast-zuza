@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "📦 updating dependencies after merge..."
+
+if [ -d "client" ] && [ -f "client/package.json" ]; then
+  echo "📦 updating client dependencies..."
+  cd client && npm install
+  cd ..
+fi
+
+echo "✅ dependencies updated"
+
