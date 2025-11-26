@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
 import * as fs from 'node:fs';
 import type { Multer } from 'multer';
 
@@ -41,10 +41,14 @@ export class AiService {
     const { language, context } = options;
 
     try {
-      const audioStream = fs.createReadStream(file.path);
+      const audioBuffer = fs.readFileSync(file.path);
+      const openAiFile = await toFile(
+        audioBuffer,
+        file.originalname || 'audio.m4a',
+      );
 
       const transcription = await this.openai.audio.transcriptions.create({
-        file: audioStream as any,
+        file: openAiFile,
         model: 'whisper-1',
         language,
         response_format: 'text',
