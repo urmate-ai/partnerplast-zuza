@@ -6,12 +6,14 @@ type UseVoiceListenerOptions = {
   autoStart?: boolean;
   silenceThreshold?: number;
   silenceDurationMs?: number;
+  onStop?: (uri: string | null) => void;
 };
 
 export type UseVoiceListenerState = {
   isListening: boolean;
   hasPermission: boolean;
   level: number | null;
+  audioUri: string | null;
 };
 
 export const useVoiceListener = (
@@ -21,12 +23,14 @@ export const useVoiceListener = (
     autoStart = true,
     silenceThreshold = -55,
     silenceDurationMs = 1500,
+    onStop,
   } = options;
 
   const [state, setState] = useState<UseVoiceListenerState>({
     isListening: false,
     hasPermission: false,
     level: null,
+    audioUri: null,
   });
 
   const recordingRef = useRef<Audio.Recording | null>(null);
@@ -50,14 +54,28 @@ export const useVoiceListener = (
 
   const stopListening = async () => {
     stopPolling();
+
+    let uri: string | null = null;
     if (recordingRef.current) {
       try {
         await recordingRef.current.stopAndUnloadAsync();
+        uri = recordingRef.current.getURI() ?? null;
       } catch {
+        uri = null;
       }
       recordingRef.current = null;
     }
-    setState((prev) => ({ ...prev, isListening: false, level: null }));
+
+    setState((prev) => ({
+      ...prev,
+      isListening: false,
+      level: null,
+      audioUri: uri,
+    }));
+
+    if (onStop) {
+      onStop(uri);
+    }
   };
 
   const startListening = async () => {
