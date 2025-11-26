@@ -9,7 +9,7 @@ export const MenuButton: React.FC<MenuButtonProps> = ({ onPress }) => {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Open menu"
+      accessibilityLabel="Otwórz menu"
       onPress={onPress}
       style={styles.button}
     >

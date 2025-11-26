@@ -16,8 +16,8 @@ export const HomeScreen: React.FC = () => {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.subtitle}>Your AI voice companion</Text>
-        <Text style={styles.title}>I&apos;m ready to help.</Text>
+        <Text style={styles.subtitle}>Cześć ! Jestem Zuza, Twój asystent AI</Text>
+        <Text style={styles.title}>Jestem gotowa do działania.</Text>
       </View>
 
       <View style={styles.bottomArea}>
@@ -25,9 +25,18 @@ export const HomeScreen: React.FC = () => {
           <ListeningIndicator isListening={voiceState.isListening} />
           <Text style={styles.listeningLabel}>
             {voiceState.isListening
-              ? 'Listening... just speak'
-              : 'Tap to speak (coming soon)'}
+              ? 'Słucham... mów śmiało'
+              : 'Dotknij, aby mówić (wkrótce)'}
           </Text>
+        </View>
+
+        <View style={styles.transcriptContainer}>
+          <Text style={styles.transcriptLabel}>Co właśnie mówisz</Text>
+          <View style={styles.transcriptBox}>
+            <Text style={styles.transcriptText}>
+              Transkrypcja Twojej wypowiedzi pojawi się tutaj.
+            </Text>
+          </View>
         </View>
       </View>
     </View>
@@ -66,6 +75,7 @@ const styles = StyleSheet.create({
   },
   bottomArea: {
     alignItems: 'center',
+    gap: 16,
   },
   listeningContainer: {
     flexDirection: 'row',
@@ -82,6 +92,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#4B5563',
   },
+  transcriptContainer: {
+    width: '100%',
+  },
+  transcriptLabel: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginBottom: 4,
+  },
+  transcriptBox: {
+    minHeight: 56,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    justifyContent: 'center',
+  },
+  transcriptText: {
+    fontSize: 15,
+    color: '#4B5563',
+  },
 });
-
 
