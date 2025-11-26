@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as Speech from 'expo-speech';
+import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 
 export type UseTextToSpeechState = {
   isSpeaking: boolean;
@@ -23,8 +24,21 @@ export const useTextToSpeech = () => {
 
       stop();
 
+      void Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+        interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
+      });
+
       Speech.speak(text, {
         language: lang,
+        pitch: 1.0,
+        rate: 0.95,
+        volume: 1.0,
         onStart: () => {
           setState({ isSpeaking: true, lastText: text });
         },
