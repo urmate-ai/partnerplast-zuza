@@ -5,8 +5,10 @@ import { ListeningIndicator } from '../components/ListeningIndicator.component';
 import { useVoiceListener } from '../hooks/useVoiceListener.hook';
 import { useTextToSpeech } from '../hooks/useTextToSpeech.hook';
 import { sendVoiceToAi } from '../services/ai.service';
+import { useAuthStore } from '../stores/authStore';
 
 export const HomeScreen: React.FC = () => {
+  const { user, clearAuth } = useAuthStore();
   const [voiceState, startListening, stopListening] = useVoiceListener({
     autoStart: false,
     onStop: async (uri) => {
@@ -35,14 +37,21 @@ export const HomeScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const handleLogout = async () => {
+    await clearAuth();
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <MenuButton />
+        <Pressable onPress={handleLogout} style={styles.logoutButton}>
+          <Text style={styles.logoutText}>Wyloguj</Text>
+        </Pressable>
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.subtitle}>Cześć ! Jestem Zuza, Twój asystent AI</Text>
+        <Text style={styles.subtitle}>Cześć {user?.name}! Jestem Zuza, Twój asystent AI</Text>
         <Text style={styles.title}>Jestem gotowa do działania.</Text>
       </View>
 
@@ -122,7 +131,18 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  logoutButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  logoutText: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '500',
   },
   content: {
     flex: 1,
