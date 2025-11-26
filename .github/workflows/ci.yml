@@ -27,13 +27,13 @@ jobs:
             server/package-lock.json
             client/package-lock.json
 
-      - name: Zainstaluj zależności i uruchom testy backendu (server)
+      - name: Install server dependencies and run tests
         working-directory: server
         run: |
           npm ci || npm install
           npm test
 
-      - name: Zainstaluj zależności i uruchom testy klienta (client)
+      - name: Install client dependencies and run tests
         working-directory: client
         run: |
           npm ci || npm install
