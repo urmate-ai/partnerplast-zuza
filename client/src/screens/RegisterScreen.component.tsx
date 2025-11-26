@@ -152,7 +152,7 @@ export const RegisterScreen: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Wróć</Text>
+          <Text style={styles.backButtonText}>Wróć</Text>
         </Pressable>
         <Text style={styles.stepIndicator}>
           Krok {currentStep === 'name' ? 1 : currentStep === 'email' ? 2 : 3} z 3
