@@ -6,6 +6,12 @@ export type VoiceAiResponse = {
   reply: string;
 };
 
+export type ChatHistoryItem = {
+  id: string;
+  title: string;
+  timestamp: string;
+};
+
 export async function sendVoiceToAi(
   uri: string,
   options?: { language?: string; context?: string },
@@ -43,6 +49,22 @@ export async function sendVoiceToAi(
   }
 
   const data = (await response.json()) as VoiceAiResponse;
+  return data;
+}
+
+export async function getChatHistory(): Promise<ChatHistoryItem[]> {
+  const response = await fetch(`${API_URL}/ai/chat-history`, {
+    method: 'GET',
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(
+      `Błąd API (${response.status}): ${text || response.statusText}`,
+    );
+  }
+
+  const data = (await response.json()) as ChatHistoryItem[];
   return data;
 }
 

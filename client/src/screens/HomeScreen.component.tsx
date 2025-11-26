@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { MenuButton } from '../components/MenuButton.component';
+import { DrawerMenu } from '../components/DrawerMenu.component';
 import { ListeningIndicator } from '../components/ListeningIndicator.component';
 import { useVoiceListener } from '../hooks/useVoiceListener.hook';
 import { useTextToSpeech } from '../hooks/useTextToSpeech.hook';
@@ -9,6 +10,7 @@ import { useAuthStore } from '../stores/authStore';
 
 export const HomeScreen: React.FC = () => {
   const { user, clearAuth } = useAuthStore();
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [voiceState, startListening, stopListening] = useVoiceListener({
     autoStart: false,
     onStop: async (uri) => {
@@ -43,8 +45,14 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      <DrawerMenu
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        userName={user?.name}
+      />
+      
       <View style={styles.headerRow}>
-        <MenuButton />
+        <MenuButton onPress={() => setIsDrawerOpen(true)} />
         <Pressable onPress={handleLogout} style={styles.logoutButton}>
           <Text style={styles.logoutText}>Wyloguj</Text>
         </Pressable>
