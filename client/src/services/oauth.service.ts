@@ -17,7 +17,6 @@ export async function loginWithGoogle(): Promise<{ accessToken: string; user: an
     const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
     if (result.type === 'success' && result.url) {
-      // Parse token from URL
       const url = new URL(result.url);
       const token = url.searchParams.get('token');
       const userJson = url.searchParams.get('user');
@@ -38,8 +37,6 @@ export async function loginWithGoogle(): Promise<{ accessToken: string; user: an
 }
 
 export async function loginWithApple(): Promise<{ accessToken: string; user: any }> {
-  // Apple OAuth wymaga Apple Developer Account i konfiguracji
-  // Placeholder implementation
   throw new Error('Apple OAuth not yet configured - requires Apple Developer setup');
 }
 
