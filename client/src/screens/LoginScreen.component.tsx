@@ -6,13 +6,13 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
-  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Ionicons, AntDesign } from '@expo/vector-icons';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
 const loginSchema = z.object({
@@ -20,7 +20,7 @@ const loginSchema = z.object({
     .string()
     .min(1, 'Email jest wymagany')
     .email('Nieprawidłowy format email'),
-  password: z.string().min(6, 'Hasło musi mieć minimum 6 znaków'),
+  password: z.string().min(1, 'Hasło jest wymagane'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -38,7 +38,6 @@ export const LoginScreen: React.FC = () => {
 
   const {
     control,
-    handleSubmit,
     formState: { errors },
     trigger,
     getValues,
@@ -177,9 +176,11 @@ export const LoginScreen: React.FC = () => {
                       style={styles.eyeButton}
                       onPress={() => setShowPassword(!showPassword)}
                     >
-                      <Text style={styles.eyeButtonText}>
-                        {showPassword ? '🙈' : '👁️'}
-                      </Text>
+                      <Ionicons
+                        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                        size={22}
+                        color="#6B7280"
+                      />
                     </Pressable>
                   </View>
                   {errors.password && (
@@ -236,11 +237,7 @@ export const LoginScreen: React.FC = () => {
             ]}
             onPress={handleGoogleLogin}
           >
-            <View style={styles.googleIconContainer}>
-              <View style={styles.googleIcon}>
-                <Text style={styles.googleIconText}>G</Text>
-              </View>
-            </View>
+            <AntDesign name="google" size={20} color="#DB4437" />
             <Text style={styles.socialButtonText}>Kontynuuj z Google</Text>
           </Pressable>
 
@@ -251,11 +248,7 @@ export const LoginScreen: React.FC = () => {
             ]}
             onPress={handleAppleLogin}
           >
-            <View style={styles.appleIconContainer}>
-              <View style={styles.appleIconBox}>
-                <Text style={styles.appleIconText}>🍎</Text>
-              </View>
-            </View>
+            <AntDesign name="apple" size={20} color="#000000" />
             <Text style={styles.socialButtonText}>Kontynuuj z Apple</Text>
           </Pressable>
         </View>
@@ -315,9 +308,8 @@ const styles = StyleSheet.create({
   eyeButton: {
     paddingHorizontal: 16,
     paddingVertical: 14,
-  },
-  eyeButtonText: {
-    fontSize: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   inputError: {
     borderColor: '#EF4444',
@@ -359,7 +351,7 @@ const styles = StyleSheet.create({
   },
   signupLink: {
     fontSize: 14,
-    color: '#14B8A6',
+    color: '#000',
     fontWeight: '600',
   },
   separatorContainer: {
@@ -393,40 +385,6 @@ const styles = StyleSheet.create({
   },
   socialButtonPressed: {
     backgroundColor: '#F9FAFB',
-  },
-  googleIconContainer: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  googleIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-    backgroundColor: '#4285F4',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  googleIconText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  appleIconContainer: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  appleIconBox: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  appleIconText: {
-    fontSize: 20,
   },
   socialButtonText: {
     fontSize: 15,
