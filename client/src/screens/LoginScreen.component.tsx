@@ -32,9 +32,10 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<
 
 export const LoginScreen: React.FC = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const [showPassword, setShowPassword] = useState(false);
-  const [emailSubmitted, setEmailSubmitted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const {
     control,
@@ -59,6 +60,7 @@ export const LoginScreen: React.FC = () => {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
+    setLoginError(null);
     try {
       const { login } = await import('../services/auth.service');
       const { useAuthStore } = await import('../stores/authStore');
@@ -69,13 +71,21 @@ export const LoginScreen: React.FC = () => {
       navigation.replace('Home');
     } catch (error) {
       console.error('Login error:', error);
-      alert('Błąd logowania: ' + (error instanceof Error ? error.message : 'Nieznany błąd'));
+      const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
+      if (errorMessage.includes('Invalid credentials') || errorMessage.includes('401')) {
+        setLoginError('Nieprawidłowy email lub hasło');
+      } else if (errorMessage.includes('fetch') || errorMessage.includes('Network')) {
+        setLoginError('Nie można połączyć się z serwerem. Sprawdź połączenie internetowe.');
+      } else {
+        setLoginError('Błąd logowania: ' + errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
+    setLoginError(null);
     try {
       const { loginWithGoogle } = await import('../services/oauth.service');
       const { useAuthStore } = await import('../stores/authStore');
@@ -85,11 +95,17 @@ export const LoginScreen: React.FC = () => {
       navigation.replace('Home');
     } catch (error) {
       console.error('Google login error:', error);
-      alert('Błąd logowania Google: ' + (error instanceof Error ? error.message : 'Nieznany błąd'));
+      const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
+      if (errorMessage.includes('cancelled')) {
+        setLoginError('Logowanie Google zostało anulowane');
+      } else {
+        setLoginError('Błąd logowania Google: ' + errorMessage);
+      }
     }
   };
 
   const handleAppleLogin = async () => {
+    setLoginError(null);
     try {
       const { loginWithApple } = await import('../services/oauth.service');
       const { useAuthStore } = await import('../stores/authStore');
@@ -99,7 +115,8 @@ export const LoginScreen: React.FC = () => {
       navigation.replace('Home');
     } catch (error) {
       console.error('Apple login error:', error);
-      alert('Błąd logowania Apple: ' + (error instanceof Error ? error.message : 'Nieznany błąd'));
+      const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
+      setLoginError('Błąd logowania Apple: ' + errorMessage);
     }
   };
 
@@ -123,7 +140,10 @@ export const LoginScreen: React.FC = () => {
                     placeholder="Adres email"
                     placeholderTextColor="#9CA3AF"
                     value={value}
-                    onChangeText={onChange}
+                    onChangeText={(text) => {
+                      onChange(text);
+                      if (loginError) setLoginError(null);
+                    }}
                     onBlur={onBlur}
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -151,11 +171,25 @@ export const LoginScreen: React.FC = () => {
           </View>
         ) : (
           <View style={styles.formSection}>
+            <View style={styles.emailDisplayContainer}>
+              <Text style={styles.emailDisplayLabel}>Email</Text>
+              <View style={styles.emailDisplayBox}>
+                <Text style={styles.emailDisplayText}>{getValues('email')}</Text>
+                <Pressable
+                  onPress={() => setEmailSubmitted(false)}
+                  style={styles.changeEmailButton}
+                >
+                  <Text style={styles.changeEmailText}>Zmień</Text>
+                </Pressable>
+              </View>
+            </View>
+
             <Controller
               control={control}
               name="password"
               render={({ field: { onChange, onBlur, value } }) => (
                 <View style={styles.inputWrapper}>
+                  <Text style={styles.passwordLabel}>Hasło</Text>
                   <View style={styles.passwordInputContainer}>
                     <TextInput
                       style={[
@@ -164,10 +198,13 @@ export const LoginScreen: React.FC = () => {
                       ]}
                       placeholder="Hasło"
                       placeholderTextColor="#9CA3AF"
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      secureTextEntry={!showPassword}
+                    value={value}
+                    onChangeText={(text) => {
+                      onChange(text);
+                      if (loginError) setLoginError(null);
+                    }}
+                    onBlur={onBlur}
+                    secureTextEntry={!showPassword}
                       autoCapitalize="none"
                       autoComplete="password"
                       autoCorrect={false}
@@ -188,6 +225,11 @@ export const LoginScreen: React.FC = () => {
                       {errors.password.message}
                     </Text>
                   )}
+                  {errors.email && (
+                    <Text style={styles.errorText}>
+                      {errors.email.message}
+                    </Text>
+                  )}
                 </View>
               )}
             />
@@ -199,10 +241,30 @@ export const LoginScreen: React.FC = () => {
                 isLoading && styles.continueButtonDisabled,
               ]}
               onPress={async () => {
-                const isValid = await trigger();
-                if (isValid) {
+                console.log('=== ZALOGUJ SIĘ CLICKED ===');
+                console.log('isLoading:', isLoading);
+                const formValues = getValues();
+                console.log('Current form values:', formValues);
+                console.log('Form errors:', errors);
+                
+                setLoginError(null);
+                
+                // Waliduj tylko hasło, email już został zwalidowany
+                const isPasswordValid = await trigger('password');
+                const isEmailValid = formValues.email && formValues.email.length > 0;
+                
+                console.log('Password validation:', isPasswordValid);
+                console.log('Email exists:', isEmailValid);
+                
+                if (isPasswordValid && isEmailValid) {
                   const data = getValues();
+                  console.log('Calling onSubmit with:', data);
                   await onSubmit(data);
+                } else {
+                  console.log('Validation failed, not submitting');
+                  console.log('Errors:', errors);
+                  // Trigger re-render to show errors
+                  await trigger('password');
                 }
               }}
               disabled={isLoading}
@@ -213,6 +275,12 @@ export const LoginScreen: React.FC = () => {
                 <Text style={styles.continueButtonText}>Zaloguj się</Text>
               )}
             </Pressable>
+
+            {loginError && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorMessage}>{loginError}</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -289,6 +357,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#111827',
     backgroundColor: '#FFFFFF',
+  },
+  passwordLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+    fontWeight: '500',
   },
   passwordInputContainer: {
     flexDirection: 'row',
@@ -391,5 +465,53 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '500',
     marginLeft: 12,
+  },
+  emailDisplayContainer: {
+    marginBottom: 16,
+  },
+  emailDisplayLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  emailDisplayBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#F9FAFB',
+  },
+  emailDisplayText: {
+    fontSize: 16,
+    color: '#111827',
+    flex: 1,
+  },
+  changeEmailButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  changeEmailText: {
+    fontSize: 14,
+    color: '#000',
+    fontWeight: '600',
+  },
+  errorContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: '#DC2626',
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });
