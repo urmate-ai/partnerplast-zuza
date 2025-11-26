@@ -54,7 +54,6 @@ export const useVoiceListener = (
       try {
         await recordingRef.current.stopAndUnloadAsync();
       } catch {
-        // ignore
       }
       recordingRef.current = null;
     }
@@ -121,8 +120,6 @@ export const useVoiceListener = (
             await stopListening();
           }
         } catch {
-          // if polling fails, stop listening gracefully
-          // if polling fails, stop listening gracefully
           await stopListening();
         }
       }, 200);
@@ -133,7 +130,6 @@ export const useVoiceListener = (
 
   useEffect(() => {
     if (autoStart) {
-      // fire and forget
       void startListening();
     }
 
@@ -141,7 +137,6 @@ export const useVoiceListener = (
       stopPolling();
       void stopListening();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return [state, startListening, stopListening];
