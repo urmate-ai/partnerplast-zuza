@@ -1,7 +1,7 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: urmate-ai-postgres
+  postgres-zuza:
+    image: postgres:17-alpine
+    container_name: urmate-ai-postgres-zuza 
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-urmate_ai}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
@@ -19,20 +19,20 @@ services:
     networks:
       - urmate-ai-network
 
-  backend:
+  backend-zuza:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: urmate-ai-backend
+    container_name: urmate-ai-backend-zuza
     ports:
       - "${PORT:-3000}:3000"
     depends_on:
-      postgres:
+      postgres-zuza:
         condition: service_healthy
     environment:
       - NODE_ENV=production
       - PORT=${PORT:-3000}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-urmate_ai}?schema=public
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres-zuza:5432/${POSTGRES_DB:-urmate_ai}?schema=public
       - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-this-in-production-minimum-256-bits-long-secret-key}
       - JWT_EXPIRATION=${JWT_EXPIRATION:-7d}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
@@ -50,20 +50,20 @@ services:
     networks:
       - urmate-ai-network
 
-  backend-dev:
+  backend-dev-zuza:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: urmate-ai-backend-dev
+    container_name: urmate-ai-backend-dev-zuza
     ports:
       - "${PORT:-3000}:3000"
     depends_on:
-      postgres:
+      postgres-zuza:
         condition: service_healthy
     environment:
       - NODE_ENV=development
       - PORT=${PORT:-3000}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-urmate_ai}?schema=public
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres-zuza:5432/${POSTGRES_DB:-urmate_ai}?schema=public
       - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-this-in-production-minimum-256-bits-long-secret-key}
       - JWT_EXPIRATION=${JWT_EXPIRATION:-7d}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
