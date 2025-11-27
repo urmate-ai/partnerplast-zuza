@@ -4,7 +4,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLogin } from './useAuth.hook';
 import { useAuthStore } from '../../stores/authStore';
-import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 
@@ -19,8 +18,11 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
-export const useLoginScreen = () => {
-  const navigation = useNavigation<NavigationProp>();
+type UseLoginScreenProps = {
+  navigation: NavigationProp;
+};
+
+export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
   const loginMutation = useLogin();

@@ -3,7 +3,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRegister } from './useAuth.hook';
-import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 
@@ -32,8 +31,11 @@ type RegisterFormData = {
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Register'>;
 
-export const useRegisterScreen = () => {
-  const navigation = useNavigation<NavigationProp>();
+type UseRegisterScreenProps = {
+  navigation: NavigationProp;
+};
+
+export const useRegisterScreen = ({ navigation }: UseRegisterScreenProps) => {
   const [currentStep, setCurrentStep] = useState<RegisterStep>('name');
   const [formData, setFormData] = useState<Partial<RegisterFormData>>({});
   const registerMutation = useRegister();
