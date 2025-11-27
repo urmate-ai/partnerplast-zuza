@@ -1,12 +1,12 @@
 import React from 'react';
-import { Pressable } from 'react-native';
-import { cn } from '../utils/cn';
+import { TouchableOpacity } from 'react-native';
 import { View } from './View.component';
 import { Text } from './Text.component';
+import { cn } from '../utils/cn';
 
 type ButtonProps = {
   children: React.ReactNode;
-  onPress: () => void;
+  onPress: () => void | Promise<void>;
   variant?: 'primary' | 'secondary' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
@@ -21,12 +21,12 @@ export const Button: React.FC<ButtonProps> = ({
   className,
   disabled = false,
 }) => {
-  const baseClasses = 'rounded-lg items-center justify-center';
+  const baseClasses = 'rounded-lg items-center justify-center flex-row';
 
   const variantClasses = {
-    primary: 'bg-gray-900 active:opacity-85',
-    secondary: 'bg-gray-100 active:opacity-85',
-    outline: 'bg-transparent border border-gray-300 active:opacity-85',
+    primary: 'bg-gray-900',
+    secondary: 'bg-gray-100',
+    outline: 'bg-transparent border border-gray-300',
   };
 
   const sizeClasses = {
@@ -47,14 +47,24 @@ export const Button: React.FC<ButtonProps> = ({
     lg: 'text-lg',
   };
 
+  const handlePress = () => {
+    if (!disabled && onPress) {
+      onPress();
+    }
+  };
+
   return (
-    <Pressable onPress={onPress} disabled={disabled}>
+    <TouchableOpacity
+      onPress={handlePress}
+      disabled={disabled}
+      activeOpacity={0.85}
+      style={disabled && { opacity: 0.5 }}
+    >
       <View
         className={cn(
           baseClasses,
           variantClasses[variant],
           sizeClasses[size],
-          disabled && 'opacity-50',
           className,
         )}
       >
@@ -62,7 +72,7 @@ export const Button: React.FC<ButtonProps> = ({
           {children}
         </Text>
       </View>
-    </Pressable>
+    </TouchableOpacity>
   );
 };
 

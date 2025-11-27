@@ -43,9 +43,13 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
   });
 
   const onEmailSubmit = async () => {
-    const isValid = await trigger('email');
-    if (isValid) {
-      setEmailSubmitted(true);
+    try {
+      const isValid = await trigger('email');
+      if (isValid) {
+        setEmailSubmitted(true);
+      }
+    } catch (error) {
+      console.error('onEmailSubmit error:', error);
     }
   };
 
@@ -67,9 +71,15 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
   };
 
   const handlePasswordSubmit = async (data: LoginFormData) => {
-    const isPasswordValid = await trigger('password');
-    if (isPasswordValid) {
+    try {
+      const isPasswordValid = await trigger('password');
+      if (!isPasswordValid) {
+        console.log('Password validation failed:', errors.password);
+        return;
+      }
       await onSubmit(data);
+    } catch (error) {
+      console.error('handlePasswordSubmit error:', error);
     }
   };
 
