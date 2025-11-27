@@ -1,70 +1,43 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+import { apiClient } from '../shared/utils/api';
+import type { RegisterData, LoginData, AuthResponse } from '../shared/types';
 
-export type RegisterData = {
-  name: string;
-  email: string;
-  password: string;
-};
-
-export type LoginData = {
-  email: string;
-  password: string;
-};
-
-export type AuthResponse = {
-  accessToken: string;
-  user: {
-    id: string;
-    email: string;
-    name: string;
-  };
-};
+export type { RegisterData, LoginData, AuthResponse };
 
 export async function register(data: RegisterData): Promise<AuthResponse> {
-  const response = await fetch(`${API_URL}/auth/register`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || 'Registration failed');
+  try {
+    const response = await apiClient.post<AuthResponse>('/auth/register', data);
+    return response.data;
+  } catch (error: any) {
+    const errorMessage =
+      error.response?.data?.message ||
+      error.message ||
+      'Błąd podczas rejestracji';
+    throw new Error(errorMessage);
   }
-
-  return response.json();
 }
 
 export async function login(data: LoginData): Promise<AuthResponse> {
-  const response = await fetch(`${API_URL}/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || 'Login failed');
+  try {
+    const response = await apiClient.post<AuthResponse>('/auth/login', data);
+    return response.data;
+  } catch (error: any) {
+    const errorMessage =
+      error.response?.data?.message ||
+      error.message ||
+      'Błąd podczas logowania';
+    throw new Error(errorMessage);
   }
-
-  return response.json();
 }
 
-export async function getProfile(token: string) {
-  const response = await fetch(`${API_URL}/auth/me`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to get profile');
+export async function getProfile() {
+  try {
+    const response = await apiClient.get('/auth/me');
+    return response.data;
+  } catch (error: any) {
+    const errorMessage =
+      error.response?.data?.message ||
+      error.message ||
+      'Błąd podczas pobierania profilu';
+    throw new Error(errorMessage);
   }
-
-  return response.json();
 }
-

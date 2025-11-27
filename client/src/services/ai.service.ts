@@ -1,24 +1,19 @@
-const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+import { apiClient } from '../shared/utils/api';
+import type { VoiceAiResponse, ChatHistoryItem } from '../shared/types';
 
-export type VoiceAiResponse = {
-  transcript: string;
-  reply: string;
-};
+export type { VoiceAiResponse, ChatHistoryItem };
 
 export async function sendVoiceToAi(
   uri: string,
   options?: { language?: string; context?: string },
 ): Promise<VoiceAiResponse> {
-  const fileUri = uri;
-  if (!fileUri) {
+  if (!uri) {
     throw new Error('Brak ścieżki do nagrania audio');
   }
 
   const form = new FormData();
-
   form.append('audio', {
-    uri: fileUri,
+    uri: uri,
     name: 'voice.m4a',
     type: 'audio/m4a',
   } as unknown as Blob);
@@ -30,20 +25,31 @@ export async function sendVoiceToAi(
     form.append('context', options.context);
   }
 
-  const response = await fetch(`${API_URL}/ai/voice`, {
-    method: 'POST',
-    body: form,
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(
-      `Błąd API (${response.status}): ${text || response.statusText}`,
-    );
+  try {
+    const response = await apiClient.post<VoiceAiResponse>('/ai/voice', form, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    const errorMessage =
+      error.response?.data?.message ||
+      error.message ||
+      'Błąd podczas wysyłania głosu do AI';
+    throw new Error(errorMessage);
   }
-
-  const data = (await response.json()) as VoiceAiResponse;
-  return data;
 }
 
-
+export async function getChatHistory(): Promise<ChatHistoryItem[]> {
+  try {
+    const response = await apiClient.get<ChatHistoryItem[]>('/ai/chat-history');
+    return response.data;
+  } catch (error: any) {
+    const errorMessage =
+      error.response?.data?.message ||
+      error.message ||
+      'Błąd podczas pobierania historii czatów';
+    throw new Error(errorMessage);
+  }
+}
