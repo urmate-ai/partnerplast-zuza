@@ -30,7 +30,7 @@ export class AuthController {
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
   async getProfile(@Request() req: any) {
-    return req.user;
+    return this.authService.getProfile(req.user.id);
   }
 
   @Get('google')
@@ -52,6 +52,13 @@ export class AuthController {
   @Get('apple/callback')
   async appleAuthCallback() {
     return { message: 'Apple OAuth callback' };
+  }
+
+  @Post('logout')
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  async logout(@Request() req: any) {
+    return this.authService.logout(req.user.id);
   }
 
   @Get('users')
