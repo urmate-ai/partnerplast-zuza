@@ -68,13 +68,11 @@ export const useRegisterScreen = ({ navigation }: UseRegisterScreenProps) => {
     },
   });
 
-  // Aktualizuj formularz przy zmianie kroku
   useEffect(() => {
     const currentValue = formData[currentStep] || '';
     reset({
       [currentStep]: currentValue,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep]);
 
   const onNext = async () => {
@@ -107,7 +105,6 @@ export const useRegisterScreen = ({ navigation }: UseRegisterScreenProps) => {
       navigation.replace('Home');
     } catch (error: any) {
       console.error('Register error:', error);
-      // Błąd jest już w registerMutation.error, więc nie trzeba nic robić
     }
   };
 
@@ -116,8 +113,7 @@ export const useRegisterScreen = ({ navigation }: UseRegisterScreenProps) => {
     
     const error = registerMutation.error as any;
     const errorMessage = error?.response?.data?.message || error?.message || 'Nieznany błąd';
-    
-    // Mapowanie błędów na polskie komunikaty
+      
     if (errorMessage.includes('already exists') || errorMessage.includes('już istnieje')) {
       return 'Użytkownik z tym emailem już istnieje';
     }
