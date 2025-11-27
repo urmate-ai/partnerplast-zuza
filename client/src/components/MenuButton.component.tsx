@@ -1,23 +1,32 @@
 import React from 'react';
-import { Pressable } from 'react-native';
-import { View } from '../shared/components/View.component';
+import { TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 type MenuButtonProps = {
   onPress?: () => void;
 };
 
 export const MenuButton: React.FC<MenuButtonProps> = ({ onPress }) => {
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+    }
+  };
+
   return (
-    <Pressable
+    <TouchableOpacity
       accessibilityRole="button"
       accessibilityLabel="Otwórz menu"
-      onPress={onPress}
+      onPress={handlePress}
+      activeOpacity={0.7}
+      style={{
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
     >
-      <View className="w-9 h-9 rounded-full items-center justify-center">
-        <View className="w-4.5 h-0.5 rounded-sm bg-gray-900 mb-0.5" />
-        <View className="w-4.5 h-0.5 rounded-sm bg-gray-900 mb-0.5" />
-        <View className="w-4.5 h-0.5 rounded-sm bg-gray-900" />
-      </View>
-    </Pressable>
+      <Ionicons name="menu" size={28} color="#111827" />
+    </TouchableOpacity>
   );
 };

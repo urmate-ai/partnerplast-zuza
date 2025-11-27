@@ -4,6 +4,7 @@ import { View } from '../../shared/components/View.component';
 import { Input } from '../../shared/components/Input.component';
 import { Button } from '../../shared/components/Button.component';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner.component';
+import { ErrorText } from '../../shared/components/ErrorText.component';
 import type { Control, FieldErrors } from 'react-hook-form';
 import type { RegisterStep } from '../../shared/hooks/useRegisterScreen.hook';
 
@@ -15,6 +16,7 @@ type RegisterFormProps = {
   onNext: () => void;
   isLoading: boolean;
   getButtonText: () => string;
+  registerError?: string | null;
 };
 
 export const RegisterForm: React.FC<RegisterFormProps> = ({
@@ -25,6 +27,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   onNext,
   isLoading,
   getButtonText,
+  registerError,
 }) => {
   return (
     <View className="gap-4">
@@ -53,6 +56,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
           />
         )}
       />
+
+      {registerError && (
+        <View className="mt-2 rounded-lg border border-red-200 bg-red-50 p-3">
+          <ErrorText message={registerError} className="text-center font-medium" />
+        </View>
+      )}
 
       <Button
         onPress={onNext}
