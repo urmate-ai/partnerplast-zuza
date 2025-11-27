@@ -10,7 +10,7 @@ import { SettingsScreen } from '../screens/SettingsScreen.component';
 import { EditProfileScreen } from '../screens/EditProfileScreen.component';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen.component';
 import { useAuthStore } from '../stores/authStore';
-import Toast from 'react-native-toast-message';
+import { ToastProvider } from '../shared/components/Toast.component';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -58,22 +58,23 @@ export const RootNavigator: React.FC = () => {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer ref={navigationRef}>
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-          }}
-          initialRouteName={isAuthenticated ? 'Home' : 'Login'}
-        >
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-      <Toast />
+      <ToastProvider>
+        <NavigationContainer ref={navigationRef}>
+          <Stack.Navigator
+            screenOptions={{
+              headerShown: false,
+            }}
+            initialRouteName={isAuthenticated ? 'Home' : 'Login'}
+          >
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </ToastProvider>
     </SafeAreaProvider>
   );
 };
