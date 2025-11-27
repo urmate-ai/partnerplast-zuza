@@ -7,14 +7,14 @@ import {
   Body,
   Query,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
-import type { Multer } from 'multer';
 import { diskStorage } from 'multer';
 import { AiService } from './ai.service';
 import { VoiceRequestDto } from './dto/voice-request.dto';
+import { CurrentUser, type CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import type { AudioFile } from './types/ai.types';
 
 @Controller('ai')
 export class AiController {
@@ -33,16 +33,16 @@ export class AiController {
     }),
   )
   async handleVoice(
-    @UploadedFile() audio: Multer.File,
+    @UploadedFile() audio: AudioFile,
     @Body() body: VoiceRequestDto,
-    @Request() req: any,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
     const result = await this.aiService.transcribeAndRespond(audio, {
       language: body.language ?? 'pl',
       context: body.context,
     });
 
-    this.aiService.saveChat(req.user.id, result.transcript, result.reply).catch((error) => {
+    this.aiService.saveChat(user.id, result.transcript, result.reply).catch((error) => {
       console.error('Failed to save chat:', error);
     });
 
@@ -54,17 +54,17 @@ export class AiController {
 
   @Get('chat-history')
   @UseGuards(AuthGuard('jwt'))
-  async getChatHistory(@Request() req: any) {
-    return this.aiService.getChatHistory(req.user.id);
+  async getChatHistory(@CurrentUser() user: CurrentUserPayload) {
+    return this.aiService.getChatHistory(user.id);
   }
 
   @Get('chats')
   @UseGuards(AuthGuard('jwt'))
-  async searchChats(@Request() req: any, @Query('search') search?: string) {
+  async searchChats(@CurrentUser() user: CurrentUserPayload, @Query('search') search?: string) {
     if (search && search.trim()) {
-      return this.aiService.searchChats(req.user.id, search.trim());
+      return this.aiService.searchChats(user.id, search.trim());
     }
-    return this.aiService.getChatHistory(req.user.id);
+    return this.aiService.getChatHistory(user.id);
   }
 }
 
