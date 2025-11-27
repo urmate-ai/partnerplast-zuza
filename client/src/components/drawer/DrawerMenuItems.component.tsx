@@ -29,7 +29,14 @@ export const DrawerMenuItems: React.FC<DrawerMenuItemsProps> = ({
 
   const menuItems: MenuItem[] = [
     { icon: 'create-outline', label: 'Nowy czat' },
-    { icon: 'search-outline', label: 'Wyszukaj czaty' },
+    {
+      icon: 'search-outline',
+      label: 'Wyszukaj czaty',
+      onPress: () => {
+        onClose?.();
+        navigation.navigate('SearchChats');
+      },
+    },
     {
       icon: 'link-outline',
       label: 'Integracje',
