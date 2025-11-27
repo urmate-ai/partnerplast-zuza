@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
+import { TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
@@ -7,6 +7,7 @@ import { Text } from '../../shared/components/Text.component';
 type SettingsSecuritySectionProps = {
   onChangePassword: () => void;
   onDeleteAccount: () => void;
+  isLoading?: boolean;
 };
 
 type SecurityItemProps = {
@@ -17,12 +18,17 @@ type SecurityItemProps = {
   variant?: 'default' | 'danger';
 };
 
-const SecurityItem: React.FC<SecurityItemProps> = ({
+type SecurityItemPropsWithLoading = SecurityItemProps & {
+  isLoading?: boolean;
+};
+
+const SecurityItem: React.FC<SecurityItemPropsWithLoading> = ({
   icon,
   label,
   description,
   onPress,
   variant = 'default',
+  isLoading = false,
 }) => {
   const textColor = variant === 'danger' ? 'text-red-600' : 'text-gray-900';
   const iconColor = variant === 'danger' ? '#DC2626' : '#6B7280';
@@ -31,7 +37,9 @@ const SecurityItem: React.FC<SecurityItemProps> = ({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.7}
+      disabled={isLoading}
       className="flex-row items-center px-4 py-4 mb-2 last:mb-0"
+      style={{ opacity: isLoading ? 0.6 : 1 }}
     >
       <View className="w-10 h-10 rounded-lg bg-gray-100 items-center justify-center mr-3">
         <Ionicons name={icon} size={20} color={iconColor} />
@@ -44,7 +52,13 @@ const SecurityItem: React.FC<SecurityItemProps> = ({
         )}
       </View>
 
-      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+      {isLoading ? (
+        <View className="w-5 h-5">
+          <ActivityIndicator size="small" color="#9CA3AF" />  
+        </View>
+      ) : (
+        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+      )}
     </TouchableOpacity>
   );
 };
@@ -52,6 +66,7 @@ const SecurityItem: React.FC<SecurityItemProps> = ({
 export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = ({
   onChangePassword,
   onDeleteAccount,
+  isLoading = false,
 }) => {
   return (
     <View className="mb-8">
@@ -66,6 +81,7 @@ export const SettingsSecuritySection: React.FC<SettingsSecuritySectionProps> = (
             label="Zmień hasło"
             description="Zaktualizuj swoje hasło"
             onPress={onChangePassword}
+            isLoading={isLoading}
           />
 
           <SecurityItem

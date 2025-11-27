@@ -181,6 +181,65 @@ export class AuthService {
     return { message: 'Wylogowano pomyślnie' };
   }
 
+  async updateProfile(userId: string, updateData: { name?: string; email?: string }) {    
+    if (updateData.email) {
+      const existingUser = await this.prisma.user.findFirst({
+        where: {
+          email: updateData.email,
+          id: { not: userId },
+        },
+      });
+
+      if (existingUser) {
+        throw new ConflictException('Email jest już używany przez innego użytkownika');
+      }
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(updateData.name && { name: updateData.name }),
+        ...(updateData.email && { email: updateData.email }),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        provider: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    this.logger.log(`Profile updated for user: ${userId}`);
+    return updatedUser;
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user || !user.password) {
+      throw new UnauthorizedException('Użytkownik nie ma ustawionego hasła');
+    }
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Nieprawidłowe aktualne hasło');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    this.logger.log(`Password changed for user: ${userId}`);
+    return { message: 'Hasło zostało zmienione pomyślnie' };
+  }
+
   async getAllUsers() {
     const users = await this.prisma.user.findMany({
       select: {
