@@ -9,6 +9,7 @@ import { HomeScreen } from '../screens/HomeScreen.component';
 import { SettingsScreen } from '../screens/SettingsScreen.component';
 import { EditProfileScreen } from '../screens/EditProfileScreen.component';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen.component';
+import { IntegrationsScreen } from '../screens/IntegrationsScreen.component';
 import { useAuthStore } from '../stores/authStore';
 import { ToastProvider } from '../shared/components/Toast.component';
 
@@ -19,6 +20,7 @@ export type RootStackParamList = {
   Settings: undefined;
   EditProfile: undefined;
   ChangePassword: undefined;
+  Integrations: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -72,6 +74,7 @@ export const RootNavigator: React.FC = () => {
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="EditProfile" component={EditProfileScreen} />
             <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+            <Stack.Screen name="Integrations" component={IntegrationsScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </ToastProvider>

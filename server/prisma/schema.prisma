@@ -26,3 +26,17 @@ model User {
 
   @@map("users")
 }
+
+model Integration {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  icon        String?  // URL do ikony lub nazwa ikony
+  category    String?  // Kategoria integracji (np. 'communication', 'productivity', 'social')
+  isActive    Boolean  @default(false) // Czy integracja jest dostępna
+  config      Json?    // Konfiguracja integracji (API keys, settings, etc.)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("integrations")
+}

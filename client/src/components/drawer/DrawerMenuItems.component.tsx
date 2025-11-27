@@ -30,7 +30,14 @@ export const DrawerMenuItems: React.FC<DrawerMenuItemsProps> = ({
   const menuItems: MenuItem[] = [
     { icon: 'create-outline', label: 'Nowy czat' },
     { icon: 'search-outline', label: 'Wyszukaj czaty' },
-    { icon: 'link-outline', label: 'Integracje' },
+    {
+      icon: 'link-outline',
+      label: 'Integracje',
+      onPress: () => {
+        onClose?.();
+        navigation.navigate('Integrations');
+      },
+    },
     {
       icon: 'settings-outline',
       label: 'Ustawienia',
