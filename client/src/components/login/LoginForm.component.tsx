@@ -1,6 +1,6 @@
 import React from 'react';
 import { Controller } from 'react-hook-form';
-import { Pressable } from 'react-native';
+import { Pressable, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
@@ -106,23 +106,29 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             <Text variant="label" className="mb-2">
               Hasło
             </Text>
-            <View className="flex-row items-center justify-between rounded-xl border border-gray-200 bg-white">
-              <Input
-                placeholder="Hasło"
-                value={value}
-                onChangeText={(text) => {
-                  onChange(text);
-                  onEmailChange();
-                }}
-                onBlur={onBlur}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoComplete="password"
-                autoCorrect={false}
-                className="flex-1 border-0"
-                error={errors.password?.message}
-              />
-              <Pressable onPress={onTogglePassword} className="px-7 py-3.5">
+            <View className="flex-row items-center rounded-xl border border-gray-200 bg-white">
+              <View className="flex-1 px-4 py-3.5">
+                <TextInput
+                  placeholder="Hasło"
+                  value={value}
+                  onChangeText={(text) => {
+                    onChange(text);
+                    onEmailChange();
+                  }}
+                  onBlur={onBlur}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoComplete="password"
+                  autoCorrect={false}
+                  placeholderTextColor="#9CA3AF"
+                  style={{
+                    fontSize: 16,
+                    color: '#111827',
+                    padding: 0,
+                  }}
+                />
+              </View>
+              <Pressable onPress={onTogglePassword} className="px-4 py-3.5">
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={22}
@@ -130,6 +136,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 />
               </Pressable>
             </View>
+            {errors.password?.message && (
+              <Text className="text-xs text-red-500 mt-1 ml-1">
+                {errors.password.message}
+              </Text>
+            )}
           </View>
         )}
       />
