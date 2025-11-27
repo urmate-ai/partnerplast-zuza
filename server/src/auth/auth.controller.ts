@@ -46,11 +46,22 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthCallback(@Request() req: any, @Res() res: any) {
-    const { accessToken, user } = req.user;
-    const redirectUri = req.query.state || 'urmate-ai-zuza://auth/google/callback';
-    const redirectUrl = `${redirectUri}?token=${encodeURIComponent(accessToken)}&user=${encodeURIComponent(JSON.stringify(user))}`;
-    return res.redirect(redirectUrl);
+  async googleAuthCallback(@Request() req: any, @Res() res: any, @Query('state') state?: string) {
+    try {
+      if (!req.user) {
+        const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
+        return res.redirect(`${redirectUri}?error=authentication_failed`);
+      }
+      
+      const { accessToken, user } = req.user;
+      const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
+      const redirectUrl = `${redirectUri}?token=${encodeURIComponent(accessToken)}&user=${encodeURIComponent(JSON.stringify(user))}`;
+      return res.redirect(redirectUrl);
+    } catch (error) {
+      console.error('Google callback error:', error);
+      const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
+      return res.redirect(`${redirectUri}?error=callback_failed`);
+    }
   }
 
   @Put('profile')
