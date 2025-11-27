@@ -54,6 +54,7 @@ export const EditProfileScreen: React.FC = () => {
         type: 'success',
         text1: 'Sukces',
         text2: 'Profil został zaktualizowany',
+        visibilityTime: 3000,
       });
       navigation.goBack();
     } catch (error: any) {
@@ -61,6 +62,7 @@ export const EditProfileScreen: React.FC = () => {
         type: 'error',
         text1: 'Błąd',
         text2: error.message || 'Nie udało się zaktualizować profilu',
+        visibilityTime: 3000,
       });
     }
   };
