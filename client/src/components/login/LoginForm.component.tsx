@@ -1,6 +1,6 @@
 import React from 'react';
 import { Controller } from 'react-hook-form';
-import { Pressable } from 'react-native';
+import { Pressable, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
@@ -68,8 +68,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           )}
         />
 
-        <Button onPress={onEmailSubmit} variant="primary" size="lg">
-          Kontynuuj
+        <Button
+          onPress={onEmailSubmit}
+          variant="primary"
+          size="lg"
+          disabled={isLoading}
+        >
+          {isLoading ? <LoadingSpinner /> : 'Kontynuuj'}
         </Button>
       </View>
     );
@@ -102,21 +107,27 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               Hasło
             </Text>
             <View className="flex-row items-center rounded-xl border border-gray-200 bg-white">
-              <Input
-                placeholder="Hasło"
-                value={value}
-                onChangeText={(text) => {
-                  onChange(text);
-                  onEmailChange();
-                }}
-                onBlur={onBlur}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoComplete="password"
-                autoCorrect={false}
-                className="flex-1 border-0"
-                error={errors.password?.message || errors.email?.message}
-              />
+              <View className="flex-1 px-4 py-3.5">
+                <TextInput
+                  placeholder="Hasło"
+                  value={value}
+                  onChangeText={(text) => {
+                    onChange(text);
+                    onEmailChange();
+                  }}
+                  onBlur={onBlur}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoComplete="password"
+                  autoCorrect={false}
+                  placeholderTextColor="#9CA3AF"
+                  style={{
+                    fontSize: 16,
+                    color: '#111827',
+                    padding: 0,
+                  }}
+                />
+              </View>
               <Pressable onPress={onTogglePassword} className="px-4 py-3.5">
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -125,9 +136,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 />
               </Pressable>
             </View>
+            {errors.password?.message && (
+              <Text className="text-xs text-red-500 mt-1 ml-1">
+                {errors.password.message}
+              </Text>
+            )}
           </View>
         )}
       />
+
+      {loginError && (
+        <View className="rounded-lg border border-red-200 bg-red-50 p-3">
+          <ErrorText message={loginError} className="text-center font-medium" />
+        </View>
+      )}
 
       <Button
         onPress={() => onPasswordSubmit(getValues())}
@@ -137,12 +159,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       >
         {isLoading ? <LoadingSpinner /> : 'Zaloguj się'}
       </Button>
-
-      {loginError && (
-        <View className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
-          <ErrorText message={loginError} className="text-center font-medium" />
-        </View>
-      )}
     </View>
   );
 };
