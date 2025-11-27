@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Put,
   Body,
   UseGuards,
   Request,
@@ -11,6 +12,9 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateNotificationsDto } from './dto/update-notifications.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -54,11 +58,34 @@ export class AuthController {
     return { message: 'Apple OAuth callback' };
   }
 
+  @Put('profile')
+  @UseGuards(AuthGuard('jwt'))
+  async updateProfile(@Request() req: any, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(req.user.id, dto);
+  }
+
+  @Post('change-password')
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  async changePassword(@Request() req: any, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(
+      req.user.id,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+  }
+
   @Post('logout')
   @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.OK)
   async logout(@Request() req: any) {
     return this.authService.logout(req.user.id);
+  }
+
+  @Put('notifications')
+  @UseGuards(AuthGuard('jwt'))
+  async updateNotifications(@Request() req: any, @Body() dto: UpdateNotificationsDto) {
+    return this.authService.updateNotifications(req.user.id, dto);
   }
 
   @Get('users')
