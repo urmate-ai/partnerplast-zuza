@@ -14,6 +14,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateNotificationsDto } from './dto/update-notifications.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -79,6 +80,12 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logout(@Request() req: any) {
     return this.authService.logout(req.user.id);
+  }
+
+  @Put('notifications')
+  @UseGuards(AuthGuard('jwt'))
+  async updateNotifications(@Request() req: any, @Body() dto: UpdateNotificationsDto) {
+    return this.authService.updateNotifications(req.user.id, dto);
   }
 
   @Get('users')

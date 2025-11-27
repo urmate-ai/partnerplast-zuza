@@ -11,15 +11,18 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  name         String
-  password     String? // Nullable for OAuth users
-  provider     String    @default("local") // 'local' | 'google' | 'apple'
-  providerId   String?
-  lastLogoutAt DateTime? // Timestamp ostatniego wylogowania - unieważnia wszystkie tokeny wydane przed tą datą
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                String    @id @default(uuid())
+  email             String    @unique
+  name              String
+  password          String? // Nullable for OAuth users
+  provider          String    @default("local") // 'local' | 'google' | 'apple'
+  providerId        String?
+  lastLogoutAt      DateTime? // Timestamp ostatniego wylogowania - unieważnia wszystkie tokeny wydane przed tą datą
+  pushNotifications Boolean   @default(true)
+  emailNotifications Boolean  @default(false)
+  soundEnabled      Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@map("users")
 }

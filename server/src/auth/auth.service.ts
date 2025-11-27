@@ -158,9 +158,12 @@ export class AuthService {
         email: true,
         name: true,
         provider: true,
+        pushNotifications: true,
+        emailNotifications: true,
+        soundEnabled: true,
         createdAt: true,
         updatedAt: true,
-      },
+      } as any, // Temporary type assertion until Prisma Client types are fully updated
     });
 
     if (!user) {
@@ -238,6 +241,40 @@ export class AuthService {
 
     this.logger.log(`Password changed for user: ${userId}`);
     return { message: 'Hasło zostało zmienione pomyślnie' };
+  }
+
+  async updateNotifications(
+    userId: string,
+    updateData: { pushNotifications?: boolean; emailNotifications?: boolean; soundEnabled?: boolean },
+  ) {
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(updateData.pushNotifications !== undefined && {
+          pushNotifications: updateData.pushNotifications,
+        }),
+        ...(updateData.emailNotifications !== undefined && {
+          emailNotifications: updateData.emailNotifications,
+        }),
+        ...(updateData.soundEnabled !== undefined && {
+          soundEnabled: updateData.soundEnabled,
+        }),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        provider: true,
+        pushNotifications: true,
+        emailNotifications: true,
+        soundEnabled: true,
+        createdAt: true,
+        updatedAt: true,
+      } as any,
+    });
+
+    this.logger.log(`Notifications updated for user: ${userId}`);
+    return updatedUser;
   }
 
   async getAllUsers() {
