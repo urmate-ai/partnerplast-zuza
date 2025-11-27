@@ -4,7 +4,7 @@ import { apiClient } from '../shared/utils/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
-export async function loginWithGoogle(): Promise<{ accessToken: string; user: any }> {
+export const loginWithGoogle = async (): Promise<{ accessToken: string; user: any }> => {
   try {
     const redirectUri = AuthSession.makeRedirectUri({
       scheme: 'urmate-ai-zuza',
@@ -34,5 +34,5 @@ export async function loginWithGoogle(): Promise<{ accessToken: string; user: an
     console.error('Google OAuth error:', error);
     throw error;
   }
-}
+};
 
