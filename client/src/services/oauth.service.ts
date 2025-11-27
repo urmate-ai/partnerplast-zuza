@@ -12,7 +12,7 @@ export async function loginWithGoogle(): Promise<{ accessToken: string; user: an
     });
 
     const baseURL = apiClient.defaults.baseURL || 'http://localhost:3000';
-    const authUrl = `${baseURL}/auth/google?redirect_uri=${encodeURIComponent(redirectUri)}`;
+    const authUrl = `${baseURL}/auth/google?state=${encodeURIComponent(redirectUri)}`;
     
     const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
@@ -36,6 +36,3 @@ export async function loginWithGoogle(): Promise<{ accessToken: string; user: an
   }
 }
 
-export async function loginWithApple(): Promise<{ accessToken: string; user: any }> {
-  throw new Error('Apple OAuth not yet configured - requires Apple Developer setup');
-}

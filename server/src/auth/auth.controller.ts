@@ -6,6 +6,8 @@ import {
   Body,
   UseGuards,
   Request,
+  Res,
+  Query,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -39,23 +41,16 @@ export class AuthController {
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
-  async googleAuth() {
+  async googleAuth() {  
   }
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthCallback(@Request() req: any) {
-    return req.user;
-  }
-
-  @Get('apple')
-  async appleAuth() {
-    return { message: 'Apple OAuth not fully implemented - requires Apple Developer setup' };
-  }
-
-  @Get('apple/callback')
-  async appleAuthCallback() {
-    return { message: 'Apple OAuth callback' };
+  async googleAuthCallback(@Request() req: any, @Res() res: any) {
+    const { accessToken, user } = req.user;
+    const redirectUri = req.query.state || 'urmate-ai-zuza://auth/google/callback';
+    const redirectUrl = `${redirectUri}?token=${encodeURIComponent(accessToken)}&user=${encodeURIComponent(JSON.stringify(user))}`;
+    return res.redirect(redirectUrl);
   }
 
   @Put('profile')

@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLogin } from './useAuth.hook';
 import { useAuthStore } from '../../stores/authStore';
+import { loginWithGoogle } from '../../services/oauth.service';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 
@@ -25,6 +26,7 @@ type UseLoginScreenProps = {
 export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
   const loginMutation = useLogin();
 
   const {
@@ -95,7 +97,7 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
 
   const handleGoogleLogin = async () => {
     try {
-      const { loginWithGoogle } = await import('../../services/oauth.service');
+      setGoogleError(null); // Wyczyść poprzedni błąd
       const response = await loginWithGoogle();
       await useAuthStore.getState().setAuth(response.user, response.accessToken);
       navigation.replace('Home');
@@ -106,27 +108,11 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
         // User cancelled, don't show error
         return;
       }
-      setError('email', { type: 'manual', message: 'Błąd logowania Google: ' + errorMessage });
+      setGoogleError('Błąd logowania Google: ' + errorMessage);
     }
   };
 
-  const handleAppleLogin = async () => {
-    try {
-      const { loginWithApple } = await import('../../services/oauth.service');
-      const response = await loginWithApple();
-      await useAuthStore.getState().setAuth(response.user, response.accessToken);
-      navigation.replace('Home');
-    } catch (error) {
-      console.error('Apple login error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
-      setError('email', { type: 'manual', message: 'Błąd logowania Apple: ' + errorMessage });
-    }
-  };
-
-  // loginError powinien zawierać tylko błędy z serwera (ustawione ręcznie), nie błędy walidacji
-  // Błędy walidacji są już w errors.email?.message i errors.password?.message
   const getServerError = (): string | null => {
-    // Sprawdź, czy błąd został ustawiony ręcznie (z serwera)
     const emailError = errors.email;
     const passwordError = errors.password;
     
@@ -143,7 +129,7 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
   return {
     control,
     errors,
-    showPassword,
+    showPassword, 
     onTogglePassword: () => setShowPassword((prev) => !prev),
     emailSubmitted,
     setEmailSubmitted,
@@ -154,7 +140,7 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
     getValues,
     onEmailChange,
     handleGoogleLogin,
-    handleAppleLogin,
+    googleError,
   };
 };
 
