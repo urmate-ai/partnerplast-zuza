@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import type { IntegrationResponse } from './types/integrations.types';
 
 @Injectable()
 export class IntegrationsService {
@@ -7,7 +8,7 @@ export class IntegrationsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async getAllIntegrations() {
+  async getAllIntegrations(): Promise<IntegrationResponse[]> {
     try {
       const integrations = await this.prisma.integration.findMany({
         orderBy: {
@@ -33,7 +34,7 @@ export class IntegrationsService {
     }
   }
 
-  async searchIntegrations(query: string) {
+  async searchIntegrations(query: string): Promise<IntegrationResponse[]> {
     try {
       const integrations = await this.prisma.integration.findMany({
         where: {

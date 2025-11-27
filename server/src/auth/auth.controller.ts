@@ -17,6 +17,9 @@ import { RegisterDto, LoginDto } from './dto/auth.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateNotificationsDto } from './dto/update-notifications.dto';
+import { CurrentUser, type CurrentUserPayload } from './decorators/current-user.decorator';
+import type { ExpressResponse } from '../common/types/express.types';
+import type { GoogleAuthResult } from './types/oauth.types';
 
 @Controller('auth')
 export class AuthController {
@@ -35,8 +38,8 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
-  async getProfile(@Request() req: any) {
-    return this.authService.getProfile(req.user.id);
+  async getProfile(@CurrentUser() user: CurrentUserPayload) {
+    return this.authService.getProfile(user.id);
   }
 
   @Get('google')
@@ -46,16 +49,20 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthCallback(@Request() req: any, @Res() res: any, @Query('state') state?: string) {
+  async googleAuthCallback(
+    @Request() req: { user?: GoogleAuthResult },
+    @Res() res: ExpressResponse,
+    @Query('state') state?: string,
+  ) {
     try {
       if (!req.user) {
         const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
         return res.redirect(`${redirectUri}?error=authentication_failed`);
       }
       
-      const { accessToken, user } = req.user;
+      const { accessToken, user: userData } = req.user;
       const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
-      const redirectUrl = `${redirectUri}?token=${encodeURIComponent(accessToken)}&user=${encodeURIComponent(JSON.stringify(user))}`;
+      const redirectUrl = `${redirectUri}?token=${encodeURIComponent(accessToken)}&user=${encodeURIComponent(JSON.stringify(userData))}`;
       return res.redirect(redirectUrl);
     } catch (error) {
       console.error('Google callback error:', error);
@@ -66,16 +73,16 @@ export class AuthController {
 
   @Put('profile')
   @UseGuards(AuthGuard('jwt'))
-  async updateProfile(@Request() req: any, @Body() dto: UpdateProfileDto) {
-    return this.authService.updateProfile(req.user.id, dto);
+  async updateProfile(@CurrentUser() user: CurrentUserPayload, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(user.id, dto);
   }
 
   @Post('change-password')
   @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.OK)
-  async changePassword(@Request() req: any, @Body() dto: ChangePasswordDto) {
+  async changePassword(@CurrentUser() user: CurrentUserPayload, @Body() dto: ChangePasswordDto) {
     return this.authService.changePassword(
-      req.user.id,
+      user.id,
       dto.currentPassword,
       dto.newPassword,
     );
@@ -84,14 +91,14 @@ export class AuthController {
   @Post('logout')
   @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.OK)
-  async logout(@Request() req: any) {
-    return this.authService.logout(req.user.id);
+  async logout(@CurrentUser() user: CurrentUserPayload) {
+    return this.authService.logout(user.id);
   }
 
   @Put('notifications')
   @UseGuards(AuthGuard('jwt'))
-  async updateNotifications(@Request() req: any, @Body() dto: UpdateNotificationsDto) {
-    return this.authService.updateNotifications(req.user.id, dto);
+  async updateNotifications(@CurrentUser() user: CurrentUserPayload, @Body() dto: UpdateNotificationsDto) {
+    return this.authService.updateNotifications(user.id, dto);
   }
 
   @Get('users')
