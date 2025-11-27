@@ -25,7 +25,7 @@ export const RegisterScreen: React.FC = () => {
     getStepTitle,
     getStepPlaceholder,
     getButtonText,
-  } = useRegisterScreen();
+  } = useRegisterScreen({ navigation });
 
   return (
     <View className="flex-1 bg-white pt-14 px-6">

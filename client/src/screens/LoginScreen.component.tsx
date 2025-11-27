@@ -31,7 +31,7 @@ export const LoginScreen: React.FC = () => {
     onEmailChange,
     handleGoogleLogin,
     handleAppleLogin,
-  } = useLoginScreen();
+  } = useLoginScreen({ navigation });
 
   return (
     <View className="flex-1 bg-white pt-20 px-6">
