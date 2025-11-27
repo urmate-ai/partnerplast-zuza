@@ -15,3 +15,4 @@ export async function getChats(search?: string): Promise<ChatHistoryItem[]> {
   }
 }
 
+
