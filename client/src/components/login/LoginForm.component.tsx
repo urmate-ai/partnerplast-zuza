@@ -120,7 +120,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 autoComplete="password"
                 autoCorrect={false}
                 className="flex-1 border-0"
-                error={errors.password?.message || errors.email?.message}
+                error={errors.password?.message}
               />
               <Pressable onPress={onTogglePassword} className="px-7 py-3.5">
                 <Ionicons
@@ -134,6 +134,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         )}
       />
 
+      {loginError && (
+        <View className="rounded-lg border border-red-200 bg-red-50 p-3">
+          <ErrorText message={loginError} className="text-center font-medium" />
+        </View>
+      )}
+
       <Button
         onPress={() => onPasswordSubmit(getValues())}
         variant="primary"
@@ -142,12 +148,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       >
         {isLoading ? <LoadingSpinner /> : 'Zaloguj się'}
       </Button>
-
-      {loginError && (
-        <View className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
-          <ErrorText message={loginError} className="text-center font-medium" />
-        </View>
-      )}
     </View>
   );
 };

@@ -39,7 +39,8 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
       email: '',
       password: '',
     },
-    mode: 'onChange',
+    mode: 'onBlur',
+    reValidateMode: 'onBlur',
   });
 
   const onEmailSubmit = async () => {
@@ -122,6 +123,23 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
     }
   };
 
+  // loginError powinien zawierać tylko błędy z serwera (ustawione ręcznie), nie błędy walidacji
+  // Błędy walidacji są już w errors.email?.message i errors.password?.message
+  const getServerError = (): string | null => {
+    // Sprawdź, czy błąd został ustawiony ręcznie (z serwera)
+    const emailError = errors.email;
+    const passwordError = errors.password;
+    
+    if (emailError?.type === 'manual' && emailError.message) {
+      return emailError.message;
+    }
+    if (passwordError?.type === 'manual' && passwordError.message) {
+      return passwordError.message;
+    }
+    
+    return null;
+  };
+
   return {
     control,
     errors,
@@ -132,7 +150,7 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
     onEmailSubmit,
     handlePasswordSubmit,
     isLoading: loginMutation.isPending,
-    loginError: errors.email?.message || errors.password?.message || null,
+    loginError: getServerError(),
     getValues,
     onEmailChange,
     handleGoogleLogin,
