@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -51,6 +51,8 @@ export const useRegisterScreen = ({ navigation }: UseRegisterScreenProps) => {
     }
   };
 
+  const currentSchema = useMemo(() => getCurrentSchema(), [currentStep]);
+
   const {
     control,
     formState: { errors },
@@ -58,28 +60,43 @@ export const useRegisterScreen = ({ navigation }: UseRegisterScreenProps) => {
     getValues,
     reset,
   } = useForm({
-    resolver: zodResolver(getCurrentSchema()),
+    resolver: zodResolver(currentSchema),
+    mode: 'onChange',
     defaultValues: {
       [currentStep]: formData[currentStep] || '',
     },
   });
 
+  // Aktualizuj formularz przy zmianie kroku
+  useEffect(() => {
+    const currentValue = formData[currentStep] || '';
+    reset({
+      [currentStep]: currentValue,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep]);
+
   const onNext = async () => {
-    const isValid = await trigger();
-    if (!isValid) return;
+    try {
+      const isValid = await trigger(currentStep);
+      if (!isValid) {
+        console.log('Validation failed:', errors);
+        return;
+      }
 
-    const value = getValues()[currentStep];
-    const newFormData = { ...formData, [currentStep]: value };
-    setFormData(newFormData);
+      const value = getValues()[currentStep];
+      const newFormData = { ...formData, [currentStep]: value };
+      setFormData(newFormData);
 
-    if (currentStep === 'name') {
-      setCurrentStep('email');
-      reset({ email: newFormData.email || '' });
-    } else if (currentStep === 'email') {
-      setCurrentStep('password');
-      reset({ password: newFormData.password || '' });
-    } else if (currentStep === 'password') {
-      await onSubmit(newFormData as RegisterFormData);
+      if (currentStep === 'name') {
+        setCurrentStep('email');
+      } else if (currentStep === 'email') {
+        setCurrentStep('password');
+      } else if (currentStep === 'password') {
+        await onSubmit(newFormData as RegisterFormData);
+      }
+    } catch (error) {
+      console.error('onNext error:', error);
     }
   };
 

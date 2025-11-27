@@ -68,8 +68,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           )}
         />
 
-        <Button onPress={onEmailSubmit} variant="primary" size="lg">
-          Kontynuuj
+        <Button
+          onPress={onEmailSubmit}
+          variant="primary"
+          size="lg"
+          disabled={isLoading}
+        >
+          {isLoading ? <LoadingSpinner /> : 'Kontynuuj'}
         </Button>
       </View>
     );
@@ -101,7 +106,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             <Text variant="label" className="mb-2">
               Hasło
             </Text>
-            <View className="flex-row items-center rounded-xl border border-gray-200 bg-white">
+            <View className="flex-row items-center justify-between rounded-xl border border-gray-200 bg-white">
               <Input
                 placeholder="Hasło"
                 value={value}
@@ -117,7 +122,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 className="flex-1 border-0"
                 error={errors.password?.message || errors.email?.message}
               />
-              <Pressable onPress={onTogglePassword} className="px-4 py-3.5">
+              <Pressable onPress={onTogglePassword} className="px-7 py-3.5">
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={22}
