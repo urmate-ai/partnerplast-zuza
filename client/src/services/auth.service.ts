@@ -41,3 +41,13 @@ export async function getProfile() {
     throw new Error(errorMessage);
   }
 }
+
+export async function logout() {
+  try {
+    const response = await apiClient.post('/auth/logout');
+    return response.data;
+  } catch (error: any) {
+    console.error('Logout error:', error);
+    return { message: 'Wylogowano' };
+  }
+}
