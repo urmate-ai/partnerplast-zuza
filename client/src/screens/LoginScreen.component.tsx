@@ -30,7 +30,7 @@ export const LoginScreen: React.FC = () => {
     getValues,
     onEmailChange,
     handleGoogleLogin,
-    handleAppleLogin,
+    googleError,
   } = useLoginScreen({ navigation });
 
   return (
@@ -38,7 +38,7 @@ export const LoginScreen: React.FC = () => {
       <View className="flex-1 justify-center items-center">
         <View className="w-full max-w-md">
           <Text variant="h1" className="text-center mb-8">
-            Witaj ponownie
+            Cześć, Witaj ponownie !
           </Text>
 
           <LoginForm
@@ -77,7 +77,7 @@ export const LoginScreen: React.FC = () => {
 
           <SocialLogin
             onGoogleLogin={handleGoogleLogin}
-            onAppleLogin={handleAppleLogin}
+            googleError={googleError}
           />
         </View>
       </View>

@@ -99,35 +99,6 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
-  async validateAppleUser(profile: any) {
-    const email = profile.email;
-    let user = await this.prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          email,
-          name: profile.name || 'Apple User',
-          provider: 'apple',
-          providerId: profile.sub,
-        },
-      });
-      this.logger.log(`New Apple user created: ${email}`);
-    } else if (user.provider !== 'apple') {
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: {
-          provider: 'apple',
-          providerId: profile.sub,
-        },
-      });
-    }
-
-    return this.generateTokens(user);
-  }
-
   async validateUser(payload: JwtPayload): Promise<User | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
@@ -163,7 +134,7 @@ export class AuthService {
         soundEnabled: true,
         createdAt: true,
         updatedAt: true,
-      } as any, // Temporary type assertion until Prisma Client types are fully updated
+      } as any, 
     });
 
     if (!user) {
