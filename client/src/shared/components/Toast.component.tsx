@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, TouchableOpacity, Dimensions } from 'react-native';
+import { Animated, TouchableOpacity, Dimensions, Platform, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View } from './View.component';
 import { Text } from './Text.component';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,12 +21,12 @@ type ToastState = {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Global toast ref
 let toastRef: { showToast: (config: ToastConfig) => void } | null = null;
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const insets = useSafeAreaInsets();
   const [toastState, setToastState] = useState<ToastState>({
     visible: false,
     config: null,
@@ -34,39 +35,10 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const showToast = React.useCallback((config: ToastConfig) => {
-    // Clear existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    setToastState({ visible: true, config });
-
-    // Reset animations
-    slideAnim.setValue(-100);
-    opacityAnim.setValue(0);
-
-    // Animate in
-    Animated.parallel([
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 50,
-        friction: 7,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Auto hide after visibilityTime
-    const visibilityTime = config.visibilityTime || 3000;
-    timeoutRef.current = setTimeout(() => {
-      hideToast();
-    }, visibilityTime);
-  }, [slideAnim, opacityAnim, hideToast]);
+  const topOffset = Math.max(
+    insets.top + 8,
+    Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 8 : 60
+  );
 
   const hideToast = React.useCallback(() => {
     if (timeoutRef.current) {
@@ -90,7 +62,36 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   }, [slideAnim, opacityAnim]);
 
-  // Set global ref
+  const showToast = React.useCallback((config: ToastConfig) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    setToastState({ visible: true, config });
+
+    slideAnim.setValue(-100);
+    opacityAnim.setValue(0);
+
+    Animated.parallel([
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 7,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    const visibilityTime = config.visibilityTime || 3000;
+    timeoutRef.current = setTimeout(() => {
+      hideToast();
+    }, visibilityTime);
+  }, [slideAnim, opacityAnim, hideToast]);
+
   useEffect(() => {
     toastRef = { showToast };
     return () => {
@@ -136,12 +137,13 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
         <Animated.View
           style={{
             position: 'absolute',
-            top: 60,
+            top: topOffset,
             left: 16,
             right: 16,
             transform: [{ translateY: slideAnim }],
             opacity: opacityAnim,
-            zIndex: 9999,
+            zIndex: 99999,
+            elevation: Platform.OS === 'android' ? 50 : 0,
           }}
           pointerEvents="box-none"
         >
@@ -185,14 +187,12 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
-// Export helper function
 export const showToast = (config: ToastConfig) => {
   if (toastRef) {
     toastRef.showToast(config);
   }
 };
 
-// Export hook for convenience
 export const useToast = () => {
   return {
     showToast,
