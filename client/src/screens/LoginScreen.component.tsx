@@ -34,50 +34,52 @@ export const LoginScreen: React.FC = () => {
   } = useLoginScreen({ navigation });
 
   return (
-    <View className="flex-1 bg-white pt-20 px-6">
-      <View className="flex-1">
-        <Text variant="h1" className="text-center mb-8">
-          Witaj ponownie
-        </Text>
-
-        <LoginForm
-          control={control}
-          errors={errors}
-          showPassword={showPassword}
-          onTogglePassword={onTogglePassword}
-          emailSubmitted={emailSubmitted}
-          onEmailSubmit={onEmailSubmit}
-          onPasswordSubmit={handlePasswordSubmit}
-          isLoading={isLoading}
-          loginError={loginError}
-          getValues={getValues}
-          onEmailChange={onEmailChange}
-          onEmailChangeRequest={() => setEmailSubmitted(false)}
-        />
-
-        <View className="flex-row justify-center items-center mt-6">
-          <Text variant="caption" className="text-gray-500">
-            Nie masz konta?{' '}
+    <View className="flex-1 bg-white px-6">
+      <View className="flex-1 justify-center items-center">
+        <View className="w-full max-w-md">
+          <Text variant="h1" className="text-center mb-8">
+            Witaj ponownie
           </Text>
-          <Pressable onPress={() => navigation.navigate('Register')}>
-            <Text variant="caption" className="text-gray-900 font-semibold">
-              Zarejestruj się
+
+          <LoginForm
+            control={control}
+            errors={errors}
+            showPassword={showPassword}
+            onTogglePassword={onTogglePassword}
+            emailSubmitted={emailSubmitted}
+            onEmailSubmit={onEmailSubmit}
+            onPasswordSubmit={handlePasswordSubmit}
+            isLoading={isLoading}
+            loginError={loginError}
+            getValues={getValues}
+            onEmailChange={onEmailChange}
+            onEmailChangeRequest={() => setEmailSubmitted(false)}
+          />
+
+          <View className="flex-row justify-center items-center mt-6">
+            <Text variant="caption" className="text-gray-500">
+              Nie masz konta?{' '}
             </Text>
-          </Pressable>
-        </View>
+            <Pressable onPress={() => navigation.navigate('Register')}>
+              <Text variant="caption" className="text-gray-900 font-semibold">
+                Zarejestruj się
+              </Text>
+            </Pressable>
+          </View>
 
-        <View className="flex-row items-center my-8">
-          <View className="flex-1 h-px bg-gray-200" />
-          <Text variant="caption" className="mx-4 text-gray-400 font-medium">
-            LUB
-          </Text>
-          <View className="flex-1 h-px bg-gray-200" />
-        </View>
+          <View className="flex-row items-center my-8">
+            <View className="flex-1 h-px bg-gray-200" />
+            <Text variant="caption" className="mx-4 text-gray-400 font-medium">
+              LUB
+            </Text>
+            <View className="flex-1 h-px bg-gray-200" />
+          </View>
 
-        <SocialLogin
-          onGoogleLogin={handleGoogleLogin}
-          onAppleLogin={handleAppleLogin}
-        />
+          <SocialLogin
+            onGoogleLogin={handleGoogleLogin}
+            onAppleLogin={handleAppleLogin}
+          />
+        </View>
       </View>
     </View>
   );
