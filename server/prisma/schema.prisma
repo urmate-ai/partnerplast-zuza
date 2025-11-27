@@ -23,6 +23,7 @@ model User {
   soundEnabled      Boolean   @default(true)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+  chats             Chat[]
 
   @@map("users")
 }
@@ -39,4 +40,20 @@ model Integration {
   updatedAt   DateTime @updatedAt
 
   @@map("integrations")
+}
+
+model Chat {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String   // Tytuł czatu (pierwsze 50 znaków transkrypcji)
+  transcript String  // Pełna transkrypcja wiadomości użytkownika
+  reply     String   // Odpowiedź AI
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([title])
+  @@map("chats")
 }
