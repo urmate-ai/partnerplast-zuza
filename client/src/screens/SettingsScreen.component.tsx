@@ -29,8 +29,6 @@ export const SettingsScreen: React.FC = () => {
     handleDeleteAccount,
     handleLogout,
     isLoading,
-    updateProfileMutation,
-    changePasswordMutation,
   } = useSettingsScreen({ navigation });
 
   const user = profile || authUser;
@@ -70,13 +68,13 @@ export const SettingsScreen: React.FC = () => {
           <SettingsProfileSection
             user={user}
             onEditProfile={handleEditProfile}
-            isLoading={isLoading || updateProfileMutation.isPending}
+            isLoading={isLoading}
           />
 
           <SettingsSecuritySection
             onChangePassword={handleChangePassword}
             onDeleteAccount={handleDeleteAccount}
-            isLoading={isLoading || changePasswordMutation.isPending}
+            isLoading={isLoading}
           />
 
           <SettingsNotificationsSection />

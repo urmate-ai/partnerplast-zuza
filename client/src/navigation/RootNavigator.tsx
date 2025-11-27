@@ -7,13 +7,18 @@ import { LoginScreen } from '../screens/LoginScreen.component';
 import { RegisterScreen } from '../screens/RegisterScreen.component';
 import { HomeScreen } from '../screens/HomeScreen.component';
 import { SettingsScreen } from '../screens/SettingsScreen.component';
+import { EditProfileScreen } from '../screens/EditProfileScreen.component';
+import { ChangePasswordScreen } from '../screens/ChangePasswordScreen.component';
 import { useAuthStore } from '../stores/authStore';
+import Toast from 'react-native-toast-message';
 
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Home: undefined;
   Settings: undefined;
+  EditProfile: undefined;
+  ChangePassword: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -64,8 +69,11 @@ export const RootNavigator: React.FC = () => {
           <Stack.Screen name="Register" component={RegisterScreen} />
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         </Stack.Navigator>
       </NavigationContainer>
+      <Toast />
     </SafeAreaProvider>
   );
 };
