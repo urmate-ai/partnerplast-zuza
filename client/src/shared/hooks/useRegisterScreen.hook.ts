@@ -148,7 +148,8 @@ export const useRegisterScreen = ({ navigation }: UseRegisterScreenProps) => {
       case 'name':
         return 'Jak masz na imię?';
       case 'email':
-        return 'Jaki jest Twój email?';
+        const name = formData.name || '';
+        return name ? `Cześć ${name}, jaki jest Twój email?` : 'Jaki jest Twój email?';
       case 'password':
         return 'Utwórz hasło';
     }
