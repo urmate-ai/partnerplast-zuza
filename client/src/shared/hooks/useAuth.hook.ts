@@ -37,9 +37,13 @@ export const useLogout = () => {
   const clearAuth = useAuthStore((state) => state.clearAuth);
   return useMutation({
     mutationFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const { logout } = await import('../../services/auth.service');
+      return await logout();
     },
     onSuccess: () => {
+      clearAuth();
+    },
+    onError: () => {
       clearAuth();
     },
   });
