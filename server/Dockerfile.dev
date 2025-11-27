@@ -9,7 +9,12 @@ COPY prisma ./prisma
 
 RUN npx prisma generate
 
-COPY . .
+# Copy source files
+COPY tsconfig.json nest-cli.json ./
+COPY src ./src
+
+# Create dist directory to avoid EBUSY errors
+RUN mkdir -p dist
 
 EXPOSE 3000
 
