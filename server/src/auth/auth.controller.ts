@@ -30,7 +30,7 @@ export class AuthController {
   @Get('me')
   @UseGuards(AuthGuard('jwt'))
   async getProfile(@Request() req: any) {
-    return req.user;
+    return this.authService.getProfile(req.user.id);
   }
 
   @Get('google')
