@@ -64,7 +64,7 @@ export const DrawerMenu: React.FC<DrawerMenuProps> = ({
         <View className="flex-1 flex-col">
           <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
             <DrawerHeader onClose={onClose} />
-            <DrawerMenuItems />
+            <DrawerMenuItems onClose={onClose} />
             <DrawerChatHistory />
           </ScrollView>
 
