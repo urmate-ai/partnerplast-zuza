@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Get,
   UploadedFile,
   UseInterceptors,
   Body,
@@ -39,6 +40,11 @@ export class AiController {
       transcript: result.transcript,
       reply: result.reply,
     };
+  }
+
+  @Get('chat-history')
+  async getChatHistory() {
+    return this.aiService.getChatHistory();
   }
 }
 
