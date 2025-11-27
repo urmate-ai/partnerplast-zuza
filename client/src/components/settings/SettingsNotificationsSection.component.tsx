@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Switch } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
 
@@ -41,6 +42,42 @@ export const SettingsNotificationsSection: React.FC = () => {
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
+  const handlePushNotificationsChange = (value: boolean) => {
+    setPushNotifications(value);
+    Toast.show({
+      type: 'success',
+      text1: value ? 'Powiadomienia push włączone' : 'Powiadomienia push wyłączone',
+      text2: value
+        ? 'Będziesz otrzymywać powiadomienia na urządzeniu'
+        : 'Nie będziesz otrzymywać powiadomień push',
+      visibilityTime: 3000,
+    });
+  };
+
+  const handleEmailNotificationsChange = (value: boolean) => {
+    setEmailNotifications(value);
+    Toast.show({
+      type: 'success',
+      text1: value ? 'Powiadomienia email włączone' : 'Powiadomienia email wyłączone',
+      text2: value
+        ? 'Będziesz otrzymywać powiadomienia na email'
+        : 'Nie będziesz otrzymywać powiadomień email',
+      visibilityTime: 3000,
+    });
+  };
+
+  const handleSoundChange = (value: boolean) => {
+    setSoundEnabled(value);
+    Toast.show({
+      type: 'success',
+      text1: value ? 'Dźwięk włączony' : 'Dźwięk wyłączony',
+      text2: value
+        ? 'Dźwięk będzie odtwarzany przy powiadomieniach'
+        : 'Powiadomienia będą bez dźwięku',
+      visibilityTime: 3000,
+    });
+  };
+
   return (
     <View className="mb-8">
       <Text variant="h3" className="mb-4 text-gray-900 font-semibold">
@@ -53,21 +90,21 @@ export const SettingsNotificationsSection: React.FC = () => {
             label="Powiadomienia push"
             description="Otrzymuj powiadomienia na urządzeniu"
             value={pushNotifications}
-            onValueChange={setPushNotifications}
+            onValueChange={handlePushNotificationsChange}
           />
 
           <NotificationItem
             label="Powiadomienia email"
             description="Otrzymuj powiadomienia na email"
             value={emailNotifications}
-            onValueChange={setEmailNotifications}
+            onValueChange={handleEmailNotificationsChange}
           />
 
           <NotificationItem
             label="Dźwięk"
             description="Odtwarzaj dźwięk przy powiadomieniach"
             value={soundEnabled}
-            onValueChange={setSoundEnabled}
+            onValueChange={handleSoundChange}
           />
         </View>
       </View>

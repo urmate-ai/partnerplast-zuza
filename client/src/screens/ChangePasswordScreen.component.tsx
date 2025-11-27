@@ -60,6 +60,7 @@ export const ChangePasswordScreen: React.FC = () => {
         type: 'success',
         text1: 'Sukces',
         text2: 'Hasło zostało zmienione pomyślnie',
+        visibilityTime: 3000,
       });
       navigation.goBack();
     } catch (error: any) {
@@ -67,6 +68,7 @@ export const ChangePasswordScreen: React.FC = () => {
         type: 'error',
         text1: 'Błąd',
         text2: error.message || 'Nie udało się zmienić hasła',
+        visibilityTime: 3000,
       });
     }
   };
