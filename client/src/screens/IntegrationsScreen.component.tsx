@@ -175,3 +175,4 @@ const IntegrationCard: React.FC<IntegrationCardProps> = ({ integration }) => {
   );
 };
 
+
