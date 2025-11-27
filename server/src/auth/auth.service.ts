@@ -8,22 +8,13 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
-
-type User = {
-  id: string;
-  email: string;
-  name: string;
-  password: string | null;
-  provider: string;
-  providerId: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
+import { User } from '@prisma/client';
 
 export type JwtPayload = {
   sub: string;
   email: string;
   name: string;
+  iat?: number;
 };
 
 @Injectable()
@@ -146,6 +137,16 @@ export class AuthService {
       return null;
     }
 
+
+    const userWithLogout = user as User & { lastLogoutAt: Date | null };
+    if (userWithLogout.lastLogoutAt && payload.iat !== undefined) {
+      const tokenIssuedAt = new Date(payload.iat * 1000);
+      if (tokenIssuedAt < userWithLogout.lastLogoutAt) {
+        this.logger.warn(`Token invalidated for user ${user.id} - token issued before last logout`);
+        return null;
+      }
+    }
+
     return user;
   }
 
@@ -169,6 +170,17 @@ export class AuthService {
     return user;
   }
 
+  async logout(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { 
+        lastLogoutAt: new Date(),
+      } as any,
+    });
+    this.logger.log(`User logged out: ${userId}`);
+    return { message: 'Wylogowano pomyślnie' };
+  }
+
   async getAllUsers() {
     const users = await this.prisma.user.findMany({
       select: {
@@ -188,6 +200,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       name: user.name,
+      iat: Math.floor(Date.now() / 1000),
     };
 
     const accessToken = this.jwtService.sign(payload);

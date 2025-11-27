@@ -54,6 +54,13 @@ export class AuthController {
     return { message: 'Apple OAuth callback' };
   }
 
+  @Post('logout')
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  async logout(@Request() req: any) {
+    return this.authService.logout(req.user.id);
+  }
+
   @Get('users')
   getAllUsers() {
     return this.authService.getAllUsers();
