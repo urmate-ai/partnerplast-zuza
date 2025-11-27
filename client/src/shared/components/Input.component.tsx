@@ -17,8 +17,10 @@ export const Input: React.FC<InputProps> = ({
   className,
   containerClassName,
   secureTextEntry,
-  ...props
+  ...textInputProps
 }) => {
+  const isSecure = Boolean(secureTextEntry);
+
   return (
     <View className={cn('mb-1', containerClassName)}>
       {label && (
@@ -34,10 +36,10 @@ export const Input: React.FC<InputProps> = ({
         )}
       >
         <TextInput
-          {...props}
+          {...textInputProps}
           style={styles.textInput}
           placeholderTextColor="#9CA3AF"
-          secureTextEntry={secureTextEntry}
+          secureTextEntry={isSecure}
         />
       </View>
       {error && (
