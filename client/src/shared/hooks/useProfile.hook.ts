@@ -54,36 +54,55 @@ export const useUpdateNotifications = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: UpdateNotificationsData) => updateNotifications(data),
+    mutationFn: async (data: UpdateNotificationsData) => {
+      const result = await updateNotifications(data);
+      return result;
+    },
     onMutate: async (newData) => {
-      // Cancel any outgoing refetches
+      
       await queryClient.cancelQueries({ queryKey: ['profile'] });
 
-      // Snapshot the previous value
-      const previousProfile = queryClient.getQueryData(['profile']);
+      const previousProfile = queryClient.getQueryData(['profile']);  
 
-      // Optimistically update to the new value
       queryClient.setQueryData(['profile'], (old: any) => {
-        if (!old) return old;
-        return {
+        if (!old) {
+          return old;
+        }
+        const updated = {
           ...old,
           ...newData,
         };
+        return updated;
       });
 
-      // Return a context object with the snapshotted value
+      const currentCache = queryClient.getQueryData(['profile']);
+
       return { previousProfile };
     },
     onError: (err, newData, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousProfile) {
         queryClient.setQueryData(['profile'], context.previousProfile);
       }
     },
-    onSuccess: (updatedProfile) => {
-      // Update query cache with full updated profile from server
+    onSuccess: (updatedProfile, variables) => {
+      console.log('✅ [ON_SUCCESS] Mutation succeeded');
+      console.log('✅ [ON_SUCCESS] Server data:', JSON.stringify(updatedProfile));
+      console.log('✅ [ON_SUCCESS] Variables:', JSON.stringify(variables));
+      
       queryClient.setQueryData(['profile'], updatedProfile);
+      console.log('💾 [ON_SUCCESS] Cache updated with server data');
+      
+      const currentCache = queryClient.getQueryData(['profile']);
+      console.log('💾 [ON_SUCCESS] Current cache:', JSON.stringify(currentCache));
+    },
+    onSettled: (data, error, variables) => {
+      console.log('🏁 [ON_SETTLED] Mutation settled');
+      console.log('🏁 [ON_SETTLED] Data:', JSON.stringify(data));
+      console.log('🏁 [ON_SETTLED] Error:', error);
+      console.log('🏁 [ON_SETTLED] Variables:', JSON.stringify(variables));
+
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      console.log('🔄 [ON_SETTLED] Profile query invalidated');
     },
   });
 };
-

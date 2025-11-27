@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Switch } from 'react-native';
 import { showToast } from '../../shared/components/Toast.component';
 import { View } from '../../shared/components/View.component';
@@ -12,11 +12,16 @@ type NotificationItemProps = {
   onValueChange: (value: boolean) => void;
 };
 
-const NotificationItem: React.FC<NotificationItemProps> = ({
+type NotificationItemPropsWithDisabled = NotificationItemProps & {
+  disabled?: boolean;
+};
+
+const NotificationItem: React.FC<NotificationItemPropsWithDisabled> = ({
   label,
   description,
   value,
   onValueChange,
+  disabled = false,
 }) => {
   return (
     <View className="flex-row items-center justify-between px-4 py-4 mb-2 last:mb-0">
@@ -30,6 +35,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
       <Switch
         value={value}
         onValueChange={onValueChange}
+        disabled={disabled}
         trackColor={{ false: '#E5E7EB', true: '#111827' }}
         thumbColor="#FFFFFF"
         ios_backgroundColor="#E5E7EB"
@@ -41,73 +47,142 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
 export const SettingsNotificationsSection: React.FC = () => {
   const { data: profile } = useProfile();
   const updateNotificationsMutation = useUpdateNotifications();
+  
+  // Ref to prevent multiple simultaneous mutations
+  const isUpdatingRef = useRef(false);
 
   // Use profile data directly, with fallback defaults
   const pushNotifications = profile?.pushNotifications ?? true;
   const emailNotifications = profile?.emailNotifications ?? false;
   const soundEnabled = profile?.soundEnabled ?? true;
 
-  const handlePushNotificationsChange = async (value: boolean) => {
-    try {
-      await updateNotificationsMutation.mutateAsync({ pushNotifications: value });
-      showToast({
-        type: 'success',
-        text1: value ? 'Powiadomienia push włączone' : 'Powiadomienia push wyłączone',
-        text2: value
-          ? 'Będziesz otrzymywać powiadomienia na urządzeniu'
-          : 'Nie będziesz otrzymywać powiadomień push',
-        visibilityTime: 3000,
-      });
-    } catch (error: any) {
-      showToast({
-        type: 'error',
-        text1: 'Błąd',
-        text2: error.message || 'Nie udało się zaktualizować ustawień',
-        visibilityTime: 3000,
-      });
+  console.log('🎨 [COMPONENT] Render - Profile data:', JSON.stringify({
+    pushNotifications,
+    emailNotifications,
+    soundEnabled,
+    isUpdating: isUpdatingRef.current,
+    isPending: updateNotificationsMutation.isPending,
+  }));
+
+  const handlePushNotificationsChange = (value: boolean) => {
+    console.log('👆 [PUSH] Switch clicked, new value:', value);
+    console.log('👆 [PUSH] Current isUpdating:', isUpdatingRef.current);
+    console.log('👆 [PUSH] Current profile value:', pushNotifications);
+    
+    // Prevent multiple simultaneous updates
+    if (isUpdatingRef.current) {
+      console.log('🚫 [PUSH] Blocked - already updating');
+      return;
     }
+    
+    console.log('✅ [PUSH] Proceeding with mutation');
+    isUpdatingRef.current = true;
+    updateNotificationsMutation.mutate(
+      { pushNotifications: value },
+      {
+        onSuccess: () => {
+          console.log('✅ [PUSH] Component onSuccess callback');
+          showToast({
+            type: 'success',
+            text1: value ? 'Powiadomienia push włączone' : 'Powiadomienia push wyłączone',
+            visibilityTime: 2000,
+          });
+        },
+        onError: (error: any) => {
+          console.log('❌ [PUSH] Component onError callback:', error);
+          showToast({
+            type: 'error',
+            text1: 'Błąd',
+            text2: error.message || 'Nie udało się zaktualizować ustawień',
+            visibilityTime: 3000,
+          });
+        },
+        onSettled: () => {
+          console.log('🏁 [PUSH] Component onSettled - releasing lock');
+          isUpdatingRef.current = false;
+        },
+      },
+    );
   };
 
-  const handleEmailNotificationsChange = async (value: boolean) => {
-    try {
-      await updateNotificationsMutation.mutateAsync({ emailNotifications: value });
-      showToast({
-        type: 'success',
-        text1: value ? 'Powiadomienia email włączone' : 'Powiadomienia email wyłączone',
-        text2: value
-          ? 'Będziesz otrzymywać powiadomienia na email'
-          : 'Nie będziesz otrzymywać powiadomień email',
-        visibilityTime: 3000,
-      });
-    } catch (error: any) {
-      showToast({
-        type: 'error',
-        text1: 'Błąd',
-        text2: error.message || 'Nie udało się zaktualizować ustawień',
-        visibilityTime: 3000,
-      });
+  const handleEmailNotificationsChange = (value: boolean) => {
+    console.log('👆 [EMAIL] Switch clicked, new value:', value);
+    console.log('👆 [EMAIL] Current isUpdating:', isUpdatingRef.current);
+    console.log('👆 [EMAIL] Current profile value:', emailNotifications);
+    
+    if (isUpdatingRef.current) {
+      console.log('🚫 [EMAIL] Blocked - already updating');
+      return;
     }
+    
+    console.log('✅ [EMAIL] Proceeding with mutation');
+    isUpdatingRef.current = true;
+    updateNotificationsMutation.mutate(
+      { emailNotifications: value },
+      {
+        onSuccess: () => {
+          console.log('✅ [EMAIL] Component onSuccess callback');
+          showToast({
+            type: 'success',
+            text1: value ? 'Powiadomienia email włączone' : 'Powiadomienia email wyłączone',
+            visibilityTime: 2000,
+          });
+        },
+        onError: (error: any) => {
+          console.log('❌ [EMAIL] Component onError callback:', error);
+          showToast({
+            type: 'error',
+            text1: 'Błąd',
+            text2: error.message || 'Nie udało się zaktualizować ustawień',
+            visibilityTime: 3000,
+          });
+        },
+        onSettled: () => {
+          console.log('🏁 [EMAIL] Component onSettled - releasing lock');
+          isUpdatingRef.current = false;
+        },
+      },
+    );
   };
 
-  const handleSoundChange = async (value: boolean) => {
-    try {
-      await updateNotificationsMutation.mutateAsync({ soundEnabled: value });
-      showToast({
-        type: 'success',
-        text1: value ? 'Dźwięk włączony' : 'Dźwięk wyłączony',
-        text2: value
-          ? 'Dźwięk będzie odtwarzany przy powiadomieniach'
-          : 'Powiadomienia będą bez dźwięku',
-        visibilityTime: 3000,
-      });
-    } catch (error: any) {
-      showToast({
-        type: 'error',
-        text1: 'Błąd',
-        text2: error.message || 'Nie udało się zaktualizować ustawień',
-        visibilityTime: 3000,
-      });
+  const handleSoundChange = (value: boolean) => {
+    console.log('👆 [SOUND] Switch clicked, new value:', value);
+    console.log('👆 [SOUND] Current isUpdating:', isUpdatingRef.current);
+    console.log('👆 [SOUND] Current profile value:', soundEnabled);
+    
+    if (isUpdatingRef.current) {
+      console.log('🚫 [SOUND] Blocked - already updating');
+      return;
     }
+    
+    console.log('✅ [SOUND] Proceeding with mutation');
+    isUpdatingRef.current = true;
+    updateNotificationsMutation.mutate(
+      { soundEnabled: value },
+      {
+        onSuccess: () => {
+          console.log('✅ [SOUND] Component onSuccess callback');
+          showToast({
+            type: 'success',
+            text1: value ? 'Dźwięk włączony' : 'Dźwięk wyłączony',
+            visibilityTime: 2000,
+          });
+        },
+        onError: (error: any) => {
+          console.log('❌ [SOUND] Component onError callback:', error);
+          showToast({
+            type: 'error',
+            text1: 'Błąd',
+            text2: error.message || 'Nie udało się zaktualizować ustawień',
+            visibilityTime: 3000,
+          });
+        },
+        onSettled: () => {
+          console.log('🏁 [SOUND] Component onSettled - releasing lock');
+          isUpdatingRef.current = false;
+        },
+      },
+    );
   };
 
   return (
@@ -143,4 +218,3 @@ export const SettingsNotificationsSection: React.FC = () => {
     </View>
   );
 };
-
