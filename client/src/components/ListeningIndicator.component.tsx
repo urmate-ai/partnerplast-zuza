@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { Animated } from 'react-native';
+import { View } from '../shared/components/View.component';
 
 type ListeningIndicatorProps = {
   isListening: boolean;
@@ -26,13 +27,11 @@ export const ListeningIndicator: React.FC<ListeningIndicatorProps> = ({
           Animated.timing(scale, {
             toValue: 1.15,
             duration: 600,
-            easing: Easing.out(Easing.ease),
             useNativeDriver: true,
           }),
           Animated.timing(opacity, {
             toValue: 1,
             duration: 600,
-            easing: Easing.out(Easing.ease),
             useNativeDriver: true,
           }),
         ]),
@@ -40,13 +39,11 @@ export const ListeningIndicator: React.FC<ListeningIndicatorProps> = ({
           Animated.timing(scale, {
             toValue: 1,
             duration: 600,
-            easing: Easing.in(Easing.ease),
             useNativeDriver: true,
           }),
           Animated.timing(opacity, {
             toValue: 0.5,
             duration: 600,
-            easing: Easing.in(Easing.ease),
             useNativeDriver: true,
           }),
         ]),
@@ -61,40 +58,15 @@ export const ListeningIndicator: React.FC<ListeningIndicatorProps> = ({
   }, [isListening, opacity, scale]);
 
   return (
-    <View style={styles.container}>
+    <View className="items-center justify-center py-2">
       <Animated.View
-        style={[
-          styles.pulse,
-          {
-            transform: [{ scale }],
-            opacity,
-          },
-        ]}
+        className="absolute w-[52px] h-[52px] rounded-[26px] bg-blue-500/20"
+        style={{
+          transform: [{ scale }],
+          opacity,
+        }}
       />
-      <View style={styles.core} />
+      <View className="w-10 h-10 rounded-full bg-blue-600" />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-  },
-  pulse: {
-    position: 'absolute',
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#2563EB20',
-  },
-  core: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2563EB',
-  },
-});
-
-

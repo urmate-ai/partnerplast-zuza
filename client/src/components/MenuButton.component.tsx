@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable } from 'react-native';
+import { View } from '../shared/components/View.component';
 
 type MenuButtonProps = {
   onPress?: () => void;
@@ -11,30 +12,12 @@ export const MenuButton: React.FC<MenuButtonProps> = ({ onPress }) => {
       accessibilityRole="button"
       accessibilityLabel="Otwórz menu"
       onPress={onPress}
-      style={styles.button}
     >
-      <View style={styles.line} />
-      <View style={styles.line} />
-      <View style={styles.line} />
+      <View className="w-9 h-9 rounded-full items-center justify-center">
+        <View className="w-4.5 h-0.5 rounded-sm bg-gray-900 mb-0.5" />
+        <View className="w-4.5 h-0.5 rounded-sm bg-gray-900 mb-0.5" />
+        <View className="w-4.5 h-0.5 rounded-sm bg-gray-900" />
+      </View>
     </Pressable>
   );
 };
-
-const styles = StyleSheet.create({
-  button: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  line: {
-    width: 18,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: '#111827',
-    marginVertical: 1.5,
-  },
-});
-
-
