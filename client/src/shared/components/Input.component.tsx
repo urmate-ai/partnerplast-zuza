@@ -16,6 +16,7 @@ export const Input: React.FC<InputProps> = ({
   error,
   className,
   containerClassName,
+  secureTextEntry,
   ...props
 }) => {
   return (
@@ -33,9 +34,10 @@ export const Input: React.FC<InputProps> = ({
         )}
       >
         <TextInput
+          {...props}
           style={styles.textInput}
           placeholderTextColor="#9CA3AF"
-          {...props}
+          secureTextEntry={secureTextEntry}
         />
       </View>
       {error && (

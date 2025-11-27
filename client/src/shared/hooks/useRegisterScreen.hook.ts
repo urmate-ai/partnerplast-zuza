@@ -104,9 +104,30 @@ export const useRegisterScreen = ({ navigation }: UseRegisterScreenProps) => {
     try {
       await registerMutation.mutateAsync(data);
       navigation.replace('Home');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Register error:', error);
+      // Błąd jest już w registerMutation.error, więc nie trzeba nic robić
     }
+  };
+
+  const getErrorMessage = (): string | null => {
+    if (!registerMutation.error) return null;
+    
+    const error = registerMutation.error as any;
+    const errorMessage = error?.response?.data?.message || error?.message || 'Nieznany błąd';
+    
+    // Mapowanie błędów na polskie komunikaty
+    if (errorMessage.includes('already exists') || errorMessage.includes('już istnieje')) {
+      return 'Użytkownik z tym emailem już istnieje';
+    }
+    if (errorMessage.includes('Network Error') || errorMessage.includes('ECONNREFUSED')) {
+      return 'Nie można połączyć się z serwerem. Sprawdź połączenie internetowe.';
+    }
+    if (errorMessage.includes('table') && errorMessage.includes('does not exist')) {
+      return 'Błąd bazy danych. Skontaktuj się z administratorem.';
+    }
+    
+    return errorMessage;
   };
 
   const onBack = () => {
@@ -154,7 +175,7 @@ export const useRegisterScreen = ({ navigation }: UseRegisterScreenProps) => {
     currentStep,
     formData,
     isLoading: registerMutation.isPending,
-    registerError: registerMutation.error,
+    registerError: getErrorMessage(),
     getValues,
     onNext,
     onBack,

@@ -20,6 +20,7 @@ export const RegisterScreen: React.FC = () => {
     errors,
     currentStep,
     isLoading,
+    registerError,
     onNext,
     onBack,
     getStepTitle,
@@ -51,6 +52,7 @@ export const RegisterScreen: React.FC = () => {
           onNext={onNext}
           isLoading={isLoading}
           getButtonText={getButtonText}
+          registerError={registerError}
         />
 
         <View className="flex-row justify-center items-center mt-6">
