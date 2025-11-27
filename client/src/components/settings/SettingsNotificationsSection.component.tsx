@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Switch } from 'react-native';
 import { showToast } from '../../shared/components/Toast.component';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
+import { useProfile, useUpdateNotifications } from '../../shared/hooks/useProfile.hook';
 
 type NotificationItemProps = {
   label: string;
@@ -38,44 +39,75 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
 };
 
 export const SettingsNotificationsSection: React.FC = () => {
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const { data: profile } = useProfile();
+  const updateNotificationsMutation = useUpdateNotifications();
 
-  const handlePushNotificationsChange = (value: boolean) => {
-    setPushNotifications(value);
-    showToast({
-      type: 'success',
-      text1: value ? 'Powiadomienia push włączone' : 'Powiadomienia push wyłączone',
-      text2: value
-        ? 'Będziesz otrzymywać powiadomienia na urządzeniu'
-        : 'Nie będziesz otrzymywać powiadomień push',
-      visibilityTime: 3000,
-    });
+  // Use profile data directly, with fallback defaults
+  const pushNotifications = profile?.pushNotifications ?? true;
+  const emailNotifications = profile?.emailNotifications ?? false;
+  const soundEnabled = profile?.soundEnabled ?? true;
+
+  const handlePushNotificationsChange = async (value: boolean) => {
+    try {
+      await updateNotificationsMutation.mutateAsync({ pushNotifications: value });
+      showToast({
+        type: 'success',
+        text1: value ? 'Powiadomienia push włączone' : 'Powiadomienia push wyłączone',
+        text2: value
+          ? 'Będziesz otrzymywać powiadomienia na urządzeniu'
+          : 'Nie będziesz otrzymywać powiadomień push',
+        visibilityTime: 3000,
+      });
+    } catch (error: any) {
+      showToast({
+        type: 'error',
+        text1: 'Błąd',
+        text2: error.message || 'Nie udało się zaktualizować ustawień',
+        visibilityTime: 3000,
+      });
+    }
   };
 
-  const handleEmailNotificationsChange = (value: boolean) => {
-    setEmailNotifications(value);
-    showToast({
-      type: 'success',
-      text1: value ? 'Powiadomienia email włączone' : 'Powiadomienia email wyłączone',
-      text2: value
-        ? 'Będziesz otrzymywać powiadomienia na email'
-        : 'Nie będziesz otrzymywać powiadomień email',
-      visibilityTime: 3000,
-    });
+  const handleEmailNotificationsChange = async (value: boolean) => {
+    try {
+      await updateNotificationsMutation.mutateAsync({ emailNotifications: value });
+      showToast({
+        type: 'success',
+        text1: value ? 'Powiadomienia email włączone' : 'Powiadomienia email wyłączone',
+        text2: value
+          ? 'Będziesz otrzymywać powiadomienia na email'
+          : 'Nie będziesz otrzymywać powiadomień email',
+        visibilityTime: 3000,
+      });
+    } catch (error: any) {
+      showToast({
+        type: 'error',
+        text1: 'Błąd',
+        text2: error.message || 'Nie udało się zaktualizować ustawień',
+        visibilityTime: 3000,
+      });
+    }
   };
 
-  const handleSoundChange = (value: boolean) => {
-    setSoundEnabled(value);
-    showToast({
-      type: 'success',
-      text1: value ? 'Dźwięk włączony' : 'Dźwięk wyłączony',
-      text2: value
-        ? 'Dźwięk będzie odtwarzany przy powiadomieniach'
-        : 'Powiadomienia będą bez dźwięku',
-      visibilityTime: 3000,
-    });
+  const handleSoundChange = async (value: boolean) => {
+    try {
+      await updateNotificationsMutation.mutateAsync({ soundEnabled: value });
+      showToast({
+        type: 'success',
+        text1: value ? 'Dźwięk włączony' : 'Dźwięk wyłączony',
+        text2: value
+          ? 'Dźwięk będzie odtwarzany przy powiadomieniach'
+          : 'Powiadomienia będą bez dźwięku',
+        visibilityTime: 3000,
+      });
+    } catch (error: any) {
+      showToast({
+        type: 'error',
+        text1: 'Błąd',
+        text2: error.message || 'Nie udało się zaktualizować ustawień',
+        visibilityTime: 3000,
+      });
+    }
   };
 
   return (
