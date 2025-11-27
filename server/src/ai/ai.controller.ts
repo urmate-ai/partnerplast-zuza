@@ -42,9 +42,7 @@ export class AiController {
       context: body.context,
     });
 
-    // Zapisz chat do bazy danych w tle (nie blokujemy odpowiedzi)
     this.aiService.saveChat(req.user.id, result.transcript, result.reply).catch((error) => {
-      // Log error but don't fail the request
       console.error('Failed to save chat:', error);
     });
 
