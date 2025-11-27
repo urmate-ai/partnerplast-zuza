@@ -6,12 +6,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LoginScreen } from '../screens/LoginScreen.component';
 import { RegisterScreen } from '../screens/RegisterScreen.component';
 import { HomeScreen } from '../screens/HomeScreen.component';
+import { SettingsScreen } from '../screens/SettingsScreen.component';
 import { useAuthStore } from '../stores/authStore';
 
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Home: undefined;
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -61,6 +63,7 @@ export const RootNavigator: React.FC = () => {
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
           <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
