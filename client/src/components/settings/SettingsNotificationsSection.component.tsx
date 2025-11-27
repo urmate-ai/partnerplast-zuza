@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Switch } from 'react-native';
-import Toast from 'react-native-toast-message';
+import { showToast } from '../../shared/components/Toast.component';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
 
@@ -44,7 +44,7 @@ export const SettingsNotificationsSection: React.FC = () => {
 
   const handlePushNotificationsChange = (value: boolean) => {
     setPushNotifications(value);
-    Toast.show({
+    showToast({
       type: 'success',
       text1: value ? 'Powiadomienia push włączone' : 'Powiadomienia push wyłączone',
       text2: value
@@ -56,7 +56,7 @@ export const SettingsNotificationsSection: React.FC = () => {
 
   const handleEmailNotificationsChange = (value: boolean) => {
     setEmailNotifications(value);
-    Toast.show({
+    showToast({
       type: 'success',
       text1: value ? 'Powiadomienia email włączone' : 'Powiadomienia email wyłączone',
       text2: value
@@ -68,7 +68,7 @@ export const SettingsNotificationsSection: React.FC = () => {
 
   const handleSoundChange = (value: boolean) => {
     setSoundEnabled(value);
-    Toast.show({
+    showToast({
       type: 'success',
       text1: value ? 'Dźwięk włączony' : 'Dźwięk wyłączony',
       text2: value

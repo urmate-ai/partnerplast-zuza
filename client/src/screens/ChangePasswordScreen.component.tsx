@@ -11,7 +11,7 @@ import { PasswordInput } from '../shared/components/PasswordInput.component';
 import { Button } from '../shared/components/Button.component';
 import { LoadingSpinner } from '../shared/components/LoadingSpinner.component';
 import { useChangePassword } from '../shared/hooks/useProfile.hook';
-import Toast from 'react-native-toast-message';
+import { showToast } from '../shared/components/Toast.component';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
@@ -56,7 +56,7 @@ export const ChangePasswordScreen: React.FC = () => {
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       });
-      Toast.show({
+      showToast({
         type: 'success',
         text1: 'Sukces',
         text2: 'Hasło zostało zmienione pomyślnie',
@@ -64,7 +64,7 @@ export const ChangePasswordScreen: React.FC = () => {
       });
       navigation.goBack();
     } catch (error: any) {
-      Toast.show({
+      showToast({
         type: 'error',
         text1: 'Błąd',
         text2: error.message || 'Nie udało się zmienić hasła',
