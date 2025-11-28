@@ -29,16 +29,7 @@ export const useHomeScreen = () => {
       if (!uri || !user?.id) return;
       setError(null);
       
-      try { 
-        let userMessageId = `user-${Date.now()}`;
-        const userMessage: Message = {
-          id: userMessageId,
-          role: 'user',
-          content: '',  
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, userMessage]);
-
+      try {
         setIsTyping(true);
 
         const result = await voiceAiMutation.mutateAsync({
@@ -46,13 +37,15 @@ export const useHomeScreen = () => {
           options: { language: 'pl' },
         });
 
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === userMessageId
-              ? { ...msg, content: result.transcript }
-              : msg
-          )
-        );
+        // Add user message immediately with transcript
+        const userMessageId = `user-${Date.now()}`;
+        const userMessage: Message = {
+          id: userMessageId,
+          role: 'user',
+          content: result.transcript,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, userMessage]);
 
         const assistantMessageId = `assistant-${Date.now()}`;
         const assistantMessage: Message = {
@@ -63,10 +56,8 @@ export const useHomeScreen = () => {
         };
         setMessages((prev) => [...prev, assistantMessage]);
 
-        const typingDuration = result.reply.length * 20 + 500; 
-        setTimeout(() => {
-          speak(result.reply);
-        }, typingDuration);
+        // Start TTS immediately (will play while typing animation)
+        speak(result.reply);
 
         queryClient.invalidateQueries({ queryKey: ['chats'] });
       } catch (err) {
