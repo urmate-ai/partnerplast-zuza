@@ -24,7 +24,6 @@ export const RegisterScreen: React.FC = () => {
     onNext,
     onBack,
     getStepTitle,
-    getStepPlaceholder,
     getButtonText,
   } = useRegisterScreen({ navigation });
 
@@ -83,7 +82,7 @@ export const RegisterScreen: React.FC = () => {
             transform: [{ translateX: slideAnim }],
           }}
         >
-          <Text variant="h1" className="mb-8">
+          <Text variant="h1" className="mb-4">
             {getStepTitle()}
           </Text>
 
@@ -91,14 +90,13 @@ export const RegisterScreen: React.FC = () => {
             control={control}
             errors={errors}
             currentStep={currentStep}
-            getStepPlaceholder={getStepPlaceholder}
             onNext={onNext}
             isLoading={isLoading}
             getButtonText={getButtonText}
             registerError={registerError}
           />
 
-          <View className="flex-row justify-center items-center mt-6">
+          <View className="flex-row justify-center items-center mt-10">
             <Text variant="caption" className="text-gray-500">
               Masz już konto?{' '}
             </Text>
