@@ -34,3 +34,9 @@ global.console = {
   warn: jest.fn(),
   error: jest.fn(),
 };
+
+// Cleanup after each test
+afterEach(() => {
+  jest.clearAllTimers();
+  jest.useRealTimers();
+});
