@@ -40,12 +40,13 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <View className="flex-1 bg-white">
-      <DrawerMenu
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        userName={user?.name}
-        onNewChat={handleNewChat}
-      />
+      {isDrawerOpen && (
+        <DrawerMenu
+          onClose={() => setIsDrawerOpen(false)}
+          userName={user?.name}
+          onNewChat={handleNewChat}
+        />
+      )}
 
       <View className="pt-14 px-4">
         <HomeHeader
@@ -54,7 +55,6 @@ export const HomeScreen: React.FC = () => {
         />
       </View>
 
-      {/* Chat Messages Area */}
       <View className="flex-1 px-4 py-4">
         <ChatMessages
           messages={messages}
@@ -63,7 +63,6 @@ export const HomeScreen: React.FC = () => {
         />
       </View>
 
-      {/* Error Display */}
       {error && (
         <View className="px-4 pb-2">
           <View className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -72,7 +71,6 @@ export const HomeScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Voice Control */}
       <View className="items-center pb-4 pt-4">
         <VoiceControl
           isListening={voiceState.isListening}
@@ -82,7 +80,6 @@ export const HomeScreen: React.FC = () => {
         />
       </View>
 
-      {/* TTS Control */}
       {messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && (
         <View className="px-4 pb-4">
           <Button
