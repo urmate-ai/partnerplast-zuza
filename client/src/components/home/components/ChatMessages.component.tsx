@@ -31,30 +31,41 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   const lastAssistantMessage = messages.filter((m) => m.role === 'assistant').pop();
   const isLastMessageTyping = isTyping && lastAssistantMessage?.content;
   
-  // Track which message is currently being typed
+  // Track which message is currently being typed - reset when new message arrives
   React.useEffect(() => {
     if (isTyping && lastAssistantMessage) {
-      typingMessageIdRef.current = lastAssistantMessage.id || null;
+      const currentMessageId = lastAssistantMessage.id;
+      // If this is a new message (different ID), reset animation
+      if (typingMessageIdRef.current !== currentMessageId) {
+        typingMessageIdRef.current = currentMessageId || null;
+        setDisplayedReply(''); // Reset displayed text for new message
+      }
     } else if (!isTyping) {
       typingMessageIdRef.current = null;
     }
   }, [isTyping, lastAssistantMessage?.id]);
 
   useEffect(() => {
-    // Reset displayed reply when a new assistant message starts typing
     if (isLastMessageTyping && lastAssistantMessage && lastAssistantMessage.content) {
-      setDisplayedReply('');
-    }
-  }, [lastAssistantMessage?.id]); // Reset when message ID changes
-
-  useEffect(() => {
-    if (isLastMessageTyping && lastAssistantMessage && lastAssistantMessage.content) {
-      // Simulate typing animation
       const fullText = lastAssistantMessage.content;
+      const messageId = lastAssistantMessage.id;
+      
+      // Only animate if this is the current message being typed
+      if (typingMessageIdRef.current !== messageId) {
+        return; // Don't animate old messages
+      }
+
+      // Reset and start typing animation
       let currentIndex = 0;
       setDisplayedReply('');
 
       const typingInterval = setInterval(() => {
+        // Check if this is still the current message
+        if (typingMessageIdRef.current !== messageId) {
+          clearInterval(typingInterval);
+          return;
+        }
+
         if (currentIndex < fullText.length) {
           // Variable speed: faster for spaces, slower for punctuation
           const charIndex = Math.floor(currentIndex);
@@ -67,7 +78,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
         } else {
           clearInterval(typingInterval);
           setDisplayedReply(fullText);
-          if (onTypingComplete) {
+          if (onTypingComplete && typingMessageIdRef.current === messageId) {
             setTimeout(() => onTypingComplete(), 100);
           }
         }
@@ -107,7 +118,9 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       <View className="gap-4 px-2">
         {messages.map((message, index) => {
           const isUser = message.role === 'user';
-          const isThisMessageTyping = !isUser && message.id === typingMessageIdRef.current && isTyping;
+
+          const isLastMessage = index === messages.length - 1;
+          const isThisMessageTyping = !isUser && isLastMessage && message.id === typingMessageIdRef.current && isTyping;
           const messageContent = message.content || '';
 
           return (
@@ -122,7 +135,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
                     : 'bg-gray-100 rounded-bl-sm'
                 }`}
               >
-                {isThisMessageTyping && lastAssistantMessage?.content ? (
+                {isThisMessageTyping && lastAssistantMessage?.content && message.id === lastAssistantMessage.id ? (
                   <Text
                     className={`text-base ${
                       isUser ? 'text-white' : 'text-gray-900'

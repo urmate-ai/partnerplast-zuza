@@ -22,11 +22,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
   return (
     <View className="flex-row items-center justify-between mb-8">
       <MenuButton onPress={onMenuPress} />
-      <TouchableOpacity onPress={handleLogout} activeOpacity={0.7}>
-        <View className="px-4 py-2 rounded-lg bg-gray-100">
-          <Text className="text-sm text-gray-900 font-medium">Wyloguj</Text>
-        </View>
-      </TouchableOpacity>
+      <Text className="text-sm text-gray-900 font-medium">Zuza</Text>
     </View>
   );
 };
