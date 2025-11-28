@@ -14,7 +14,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// Configure React Query for React Native - refetch on app focus
 function onAppStateChange(status: AppStateStatus) {
   if (Platform.OS !== 'web') {
     focusManager.setFocused(status === 'active');

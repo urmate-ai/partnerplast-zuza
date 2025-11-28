@@ -56,16 +56,19 @@ export const LoginScreen: React.FC = () => {
             onEmailChangeRequest={() => setEmailSubmitted(false)}
           />
 
-          <View className="flex-row justify-center items-center mt-6">
-            <Text variant="caption" className="text-gray-500">
-              Nie masz konta?{' '}
-            </Text>
-            <Pressable onPress={() => navigation.navigate('Register')}>
-              <Text variant="caption" className="text-gray-900 font-semibold">
-                Zarejestruj się
+          <Pressable
+            onPress={() => navigation.navigate('ForgotPassword')}
+            className="mt-4"
+          >
+            <View className="flex-row justify-center items-center">
+              <Text variant="caption" className="text-center text-gray-600">
+                Nie pamiętasz hasła?{' '}
               </Text>
-            </Pressable>
-          </View>
+              <Text variant="caption" className="text-left text-gray-900 font-semibold">
+                Zresetuj hasło
+              </Text>
+            </View>
+          </Pressable>
 
           <View className="flex-row items-center my-8">
             <View className="flex-1 h-px bg-gray-200" />
@@ -79,6 +82,17 @@ export const LoginScreen: React.FC = () => {
             onGoogleLogin={handleGoogleLogin}
             googleError={googleError}
           />
+
+          <View className="flex-row justify-center items-center mt-6">
+            <Text variant="caption" className="text-gray-500">
+              Nie masz konta?{' '}
+            </Text>
+            <Pressable onPress={() => navigation.navigate('Register')}>
+              <Text variant="caption" className="text-gray-900 font-semibold">
+                Zarejestruj się
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </View>

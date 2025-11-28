@@ -48,10 +48,8 @@ export const SettingsNotificationsSection: React.FC = () => {
   const { data: profile } = useProfile();
   const updateNotificationsMutation = useUpdateNotifications();
   
-  // Ref to prevent multiple simultaneous mutations
   const isUpdatingRef = useRef(false);
 
-  // Use profile data directly, with fallback defaults
   const pushNotifications = profile?.pushNotifications ?? true;
   const emailNotifications = profile?.emailNotifications ?? false;
   const soundEnabled = profile?.soundEnabled ?? true;
@@ -69,7 +67,6 @@ export const SettingsNotificationsSection: React.FC = () => {
     console.log('👆 [PUSH] Current isUpdating:', isUpdatingRef.current);
     console.log('👆 [PUSH] Current profile value:', pushNotifications);
     
-    // Prevent multiple simultaneous updates
     if (isUpdatingRef.current) {
       console.log('🚫 [PUSH] Blocked - already updating');
       return;
