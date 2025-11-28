@@ -7,6 +7,7 @@ import type {
   AuthResponse,
   UpdateProfileData,
   UpdateNotificationsData,
+  UserProfile,
 } from './types/auth.types';
 import type { GoogleProfile } from './types/oauth.types';
 
