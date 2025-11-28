@@ -35,17 +35,13 @@ export class LocalAuthService {
 
   async login(email: string, password: string): Promise<AuthResponse> {
     const user = await this.findUserByEmail(email);
-    this.validateUserForLogin(user, password);
-
-    if (!user) {
-      throw new UnauthorizedException('Nieprawidłowy email lub hasło');
-    }
+    await this.validateUserForLogin(user, password);
 
     this.logger.log(`User logged in: ${email}`);
 
-    await this.ensureUserHasChat(user.id);
+    await this.ensureUserHasChat(user!.id);
 
-    return this.tokenService.generateTokenResult(user);
+    return this.tokenService.generateTokenResult(user!);
   }
 
   async forgotPassword(email: string): Promise<{ message: string }> {
