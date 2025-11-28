@@ -15,6 +15,10 @@ Przed każdym pushem automatycznie:
 - Uruchamia testy jednostkowe w katalogu `server/`
 - Blokuje push jeśli testy nie przejdą
 
+### Post-merge Hook
+Po każdym merge automatycznie:
+- Aktualizuje zależności w `client/` i `server/`
+
 ## Jak to działa
 
 1. **Pre-commit**: Gdy próbujesz zrobić commit, Husky uruchamia `lint-staged`, który:
