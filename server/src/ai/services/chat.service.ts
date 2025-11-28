@@ -22,7 +22,9 @@ export class ChatService {
 
       await this.prisma.user.update({
         where: { id: userId },
-        data: { currentChatId: chat.id },
+        data: {
+          currentChatId: chat.id,
+        },
       });
 
       this.logger.log(`New chat created for user: ${userId}, chatId: ${chat.id}`);
@@ -76,18 +78,26 @@ export class ChatService {
         },
       });
 
-      const chat = await this.prisma.chat.findUnique({
-        where: { id: chatId },
-        include: { messages: { orderBy: { createdAt: 'asc' }, take: 1 } },
-      });
-
-      if (!chat?.title && chat?.messages && chat.messages.length === 1 && role === 'user') {
-        const title = await this.generateChatTitle(content);
-        await this.prisma.chat.update({
+      if (role === 'user') {
+        const chat = await this.prisma.chat.findUnique({
           where: { id: chatId },
-          data: { title },
+          select: { title: true },
         });
-        this.logger.log(`Chat title generated: ${title} for chatId: ${chatId}`);
+
+        if (!chat?.title) {
+          const messageCount = await this.prisma.message.count({
+            where: { chatId },
+          });
+
+          if (messageCount === 1) {
+            const title = await this.generateChatTitle(content);
+            await this.prisma.chat.update({
+              where: { id: chatId },
+              data: { title },
+            });
+            this.logger.log(`Chat title generated: ${title} for chatId: ${chatId}`);
+          }
+        }
       }
 
       await this.prisma.chat.update({
