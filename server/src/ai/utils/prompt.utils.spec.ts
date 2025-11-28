@@ -41,7 +41,11 @@ describe('PromptUtils', () => {
       ];
       const userMessage = 'How are you?';
 
-      const result = PromptUtils.buildMessages(systemPrompt, chatHistory, userMessage);
+      const result = PromptUtils.buildMessages(
+        systemPrompt,
+        chatHistory,
+        userMessage,
+      );
 
       expect(result).toHaveLength(4);
       expect(result[0]).toEqual({ role: 'system', content: systemPrompt });
@@ -58,12 +62,18 @@ describe('PromptUtils', () => {
       ];
       const userMessage = 'Test';
 
-      const result = PromptUtils.buildMessages(systemPrompt, chatHistory, userMessage);
+      const result = PromptUtils.buildMessages(
+        systemPrompt,
+        chatHistory,
+        userMessage,
+      );
 
       expect(result).toHaveLength(3);
       expect(result[0].role).toBe('system');
       expect(result[0].content).toBe(systemPrompt);
-      expect(result.find((msg) => msg.content === 'Old system')).toBeUndefined();
+      expect(
+        result.find((msg) => msg.content === 'Old system'),
+      ).toBeUndefined();
     });
 
     it('powinien obsłużyć pustą historię', () => {
@@ -78,4 +88,3 @@ describe('PromptUtils', () => {
     });
   });
 });
-

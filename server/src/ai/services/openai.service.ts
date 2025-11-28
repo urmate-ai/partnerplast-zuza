@@ -1,10 +1,17 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI, { toFile } from 'openai';
 import * as fs from 'node:fs';
 import { PromptUtils } from '../utils/prompt.utils';
 import type { AudioFile } from '../types/ai.types';
-import type { VoiceProcessOptions, VoiceProcessResult } from '../types/ai.types';
+import type {
+  VoiceProcessOptions,
+  VoiceProcessResult,
+} from '../types/ai.types';
 
 interface OpenAIConfig {
   model: string;
@@ -21,7 +28,9 @@ export class OpenAIService {
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     if (!apiKey) {
-      this.logger.warn('OPENAI_API_KEY is not set – AI features will not work.');
+      this.logger.warn(
+        'OPENAI_API_KEY is not set – AI features will not work.',
+      );
     }
 
     this.openai = new OpenAI({ apiKey });
@@ -37,9 +46,13 @@ export class OpenAIService {
       throw new InternalServerErrorException('Audio file path is missing');
     }
 
+    const filePath: string = file.path as string;
+    const originalName: string =
+      (file.originalname as string | undefined) || 'audio.m4a';
+
     try {
-      const audioBuffer = fs.readFileSync(file.path);
-      const openAiFile = await toFile(audioBuffer, file.originalname || 'audio.m4a');
+      const audioBuffer = fs.readFileSync(filePath);
+      const openAiFile = await toFile(audioBuffer, originalName);
 
       const transcription = await this.openai.audio.transcriptions.create({
         file: openAiFile,
@@ -48,7 +61,10 @@ export class OpenAIService {
         response_format: 'text',
       });
 
-      const transcript = typeof transcription === 'string' ? transcription : String(transcription);
+      const transcript =
+        typeof transcription === 'string'
+          ? transcription
+          : String(transcription);
 
       if (!transcript) {
         throw new InternalServerErrorException('Empty transcription result');
@@ -56,17 +72,26 @@ export class OpenAIService {
 
       return transcript;
     } finally {
-      this.cleanupFile(file.path);
+      if (file?.path) {
+        this.cleanupFile(String(file.path));
+      }
     }
   }
 
   async generateResponse(
     transcript: string,
-    chatHistory: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [],
+    chatHistory: Array<{
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+    }> = [],
     context?: string,
   ): Promise<string> {
     const systemPrompt = context ?? PromptUtils.DEFAULT_SYSTEM_PROMPT;
-    const messages = PromptUtils.buildMessages(systemPrompt, chatHistory, transcript);
+    const messages = PromptUtils.buildMessages(
+      systemPrompt,
+      chatHistory,
+      transcript,
+    );
 
     const completion = await this.openai.chat.completions.create({
       model: this.config.model,
@@ -89,7 +114,11 @@ export class OpenAIService {
   ): Promise<VoiceProcessResult> {
     try {
       const transcript = await this.transcribeAudio(file, options.language);
-      const reply = await this.generateResponse(transcript, [], options.context);
+      const reply = await this.generateResponse(
+        transcript,
+        [],
+        options.context,
+      );
       return { transcript, reply };
     } catch (error) {
       this.logger.error('Failed to process voice input', error as Error);
@@ -104,10 +133,17 @@ export class OpenAIService {
   ): Promise<VoiceProcessResult> {
     try {
       const transcript = await this.transcribeAudio(file, options.language);
-      const reply = await this.generateResponse(transcript, chatHistory, options.context);
+      const reply = await this.generateResponse(
+        transcript,
+        chatHistory,
+        options.context,
+      );
       return { transcript, reply };
     } catch (error) {
-      this.logger.error('Failed to process voice input with history', error as Error);
+      this.logger.error(
+        'Failed to process voice input with history',
+        error as Error,
+      );
       throw new InternalServerErrorException('Failed to process voice input');
     }
   }
@@ -119,14 +155,18 @@ export class OpenAIService {
       const completion = await this.openai.chat.completions.create({
         model: this.config.model,
         messages: [
-          { role: 'system', content: PromptUtils.TITLE_GENERATION_SYSTEM_PROMPT },
+          {
+            role: 'system',
+            content: PromptUtils.TITLE_GENERATION_SYSTEM_PROMPT,
+          },
           { role: 'user', content: prompt },
         ],
         max_tokens: 30,
         temperature: this.config.temperature,
       });
 
-      const title = completion.choices[0]?.message?.content?.trim() ?? 'Nowa rozmowa';
+      const title =
+        completion.choices[0]?.message?.content?.trim() ?? 'Nowa rozmowa';
       return title.length > 60 ? title.substring(0, 60) : title;
     } catch (error) {
       this.logger.error('Error generating chat title:', error);

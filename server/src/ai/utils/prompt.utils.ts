@@ -11,7 +11,10 @@ export class PromptUtils {
 
   static buildMessages(
     systemPrompt: string,
-    chatHistory: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>,
+    chatHistory: Array<{
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+    }>,
     userMessage: string,
   ): Array<{ role: 'user' | 'assistant' | 'system'; content: string }> {
     return [
@@ -21,4 +24,3 @@ export class PromptUtils {
     ];
   }
 }
-

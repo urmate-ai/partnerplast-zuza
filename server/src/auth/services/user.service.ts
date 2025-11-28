@@ -1,6 +1,15 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { UserProfile, UpdateProfileData, UpdateNotificationsData } from '../types/auth.types';
+import type {
+  UserProfile,
+  UpdateProfileData,
+  UpdateNotificationsData,
+} from '../types/auth.types';
 
 @Injectable()
 export class UserService {
@@ -31,7 +40,15 @@ export class UserService {
     return user;
   }
 
-  async updateProfile(userId: string, updateData: UpdateProfileData): Promise<Omit<UserProfile, 'pushNotifications' | 'emailNotifications' | 'soundEnabled'>> {
+  async updateProfile(
+    userId: string,
+    updateData: UpdateProfileData,
+  ): Promise<
+    Omit<
+      UserProfile,
+      'pushNotifications' | 'emailNotifications' | 'soundEnabled'
+    >
+  > {
     if (updateData.email) {
       const existingUser = await this.prisma.user.findFirst({
         where: {
@@ -41,7 +58,9 @@ export class UserService {
       });
 
       if (existingUser) {
-        throw new ConflictException('Email jest już używany przez innego użytkownika');
+        throw new ConflictException(
+          'Email jest już używany przez innego użytkownika',
+        );
       }
     }
 
@@ -65,7 +84,10 @@ export class UserService {
     return updatedUser;
   }
 
-  async updateNotifications(userId: string, updateData: UpdateNotificationsData): Promise<UserProfile> {
+  async updateNotifications(
+    userId: string,
+    updateData: UpdateNotificationsData,
+  ): Promise<UserProfile> {
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -107,7 +129,14 @@ export class UserService {
     return { message: 'Wylogowano pomyślnie' };
   }
 
-  async getAllUsers(): Promise<Array<Pick<UserProfile, 'id' | 'email' | 'name' | 'provider' | 'createdAt' | 'updatedAt'>>> {
+  async getAllUsers(): Promise<
+    Array<
+      Pick<
+        UserProfile,
+        'id' | 'email' | 'name' | 'provider' | 'createdAt' | 'updatedAt'
+      >
+    >
+  > {
     const users = await this.prisma.user.findMany({
       select: {
         id: true,
@@ -121,7 +150,12 @@ export class UserService {
     return users;
   }
 
-  async validateUser(payload: { sub: string; iat?: number }): Promise<{ id: string; email: string; name: string; lastLogoutAt: Date | null } | null> {
+  async validateUser(payload: { sub: string; iat?: number }): Promise<{
+    id: string;
+    email: string;
+    name: string;
+    lastLogoutAt: Date | null;
+  } | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       select: {
@@ -139,7 +173,9 @@ export class UserService {
     if (user.lastLogoutAt && payload.iat !== undefined) {
       const tokenIssuedAt = new Date(payload.iat * 1000);
       if (tokenIssuedAt < user.lastLogoutAt) {
-        this.logger.warn(`Token invalidated for user ${user.id} - token issued before last logout`);
+        this.logger.warn(
+          `Token invalidated for user ${user.id} - token issued before last logout`,
+        );
         return null;
       }
     }
@@ -147,4 +183,3 @@ export class UserService {
     return user;
   }
 }
-

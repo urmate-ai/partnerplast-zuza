@@ -5,4 +5,3 @@ export class ForgotPasswordDto {
   @IsEmail({}, { message: 'Nieprawidłowy format email' })
   email: string;
 }
-

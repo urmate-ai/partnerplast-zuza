@@ -11,4 +11,3 @@ export class ChangePasswordDto {
   @MaxLength(100, { message: 'Nowe hasło może mieć maksimum 100 znaków' })
   newPassword: string;
 }
-

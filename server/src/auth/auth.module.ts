@@ -24,7 +24,9 @@ import { AiModule } from '../ai/ai.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET') || 'your-secret-key-change-in-production',
+        secret:
+          config.get<string>('JWT_SECRET') ||
+          'your-secret-key-change-in-production',
         signOptions: {
           expiresIn: '7d',
         },
@@ -44,4 +46,3 @@ import { AiModule } from '../ai/ai.module';
   exports: [AuthService],
 })
 export class AuthModule {}
-

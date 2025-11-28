@@ -11,7 +11,7 @@ export interface TokenResult {
     name: string;
   };
 }
-    
+
 @Injectable()
 export class TokenService {
   constructor(private readonly jwtService: JwtService) {}
@@ -36,4 +36,3 @@ export class TokenService {
     };
   }
 }
-

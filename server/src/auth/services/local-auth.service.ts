@@ -1,12 +1,17 @@
-import { Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../common/services/email.service';
 import { ChatService } from '../../ai/services/chat.service';
 import { TokenService } from '../../common/services/token.service';
 import { PasswordResetService } from './password-reset.service';
 import { PasswordUtils } from '../../common/utils/password.utils';
-import { UserUtils } from '../utils/user.utils';
-import type { AuthResponse } from '../types/auth.types';
+import type { User } from '@prisma/client';
+import type { AuthResponse, UserWithPassword } from '../types/auth.types';
 
 @Injectable()
 export class LocalAuthService {
@@ -20,7 +25,11 @@ export class LocalAuthService {
     private readonly passwordResetService: PasswordResetService,
   ) {}
 
-  async register(name: string, email: string, password: string): Promise<AuthResponse> {
+  async register(
+    name: string,
+    email: string,
+    password: string,
+  ): Promise<AuthResponse> {
     await this.validateEmailNotExists(email);
 
     const hashedPassword = await PasswordUtils.hash(password);
@@ -48,7 +57,10 @@ export class LocalAuthService {
     return this.passwordResetService.requestPasswordReset(email);
   }
 
-  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+  async resetPassword(
+    token: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
     return this.passwordResetService.resetPassword(token, newPassword);
   }
 
@@ -78,7 +90,11 @@ export class LocalAuthService {
     }
   }
 
-  private async createLocalUser(email: string, name: string, hashedPassword: string) {
+  private async createLocalUser(
+    email: string,
+    name: string,
+    hashedPassword: string,
+  ) {
     return this.prisma.user.create({
       data: {
         email,
@@ -89,11 +105,17 @@ export class LocalAuthService {
     });
   }
 
-  private async sendWelcomeEmailSafely(email: string, name: string): Promise<void> {
+  private async sendWelcomeEmailSafely(
+    email: string,
+    name: string,
+  ): Promise<void> {
     try {
       await this.emailService.sendWelcomeEmail(email, name);
     } catch (error) {
-      this.logger.warn(`Failed to send welcome email to ${email}, but user registration succeeded:`, error);
+      this.logger.warn(
+        `Failed to send welcome email to ${email}, but user registration succeeded:`,
+        error,
+      );
     }
   }
 
@@ -109,31 +131,49 @@ export class LocalAuthService {
     });
   }
 
-  private async validateUserForLogin(user: any, password: string): Promise<void> {
+  private async validateUserForLogin(
+    user: User | null,
+    password: string,
+  ): Promise<void> {
     if (!user || !user.password) {
       throw new UnauthorizedException('Nieprawidłowy email lub hasło');
     }
 
-    const isPasswordValid = await PasswordUtils.compare(password, user.password);
+    const userWithPassword = user as UserWithPassword;
+    const isPasswordValid = await PasswordUtils.compare(
+      password,
+      userWithPassword.password,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException('Nieprawidłowy email lub hasło');
     }
   }
 
-  private validateUserHasPassword(user: any): void {
+  private validateUserHasPassword(
+    user: User | null,
+  ): asserts user is UserWithPassword {
     if (!user || !user.password) {
       throw new UnauthorizedException('Użytkownik nie ma ustawionego hasła');
     }
   }
 
-  private async validateCurrentPassword(user: any, currentPassword: string): Promise<void> {
-    const isPasswordValid = await PasswordUtils.compare(currentPassword, user.password);
+  private async validateCurrentPassword(
+    user: UserWithPassword,
+    currentPassword: string,
+  ): Promise<void> {
+    const isPasswordValid = await PasswordUtils.compare(
+      currentPassword,
+      user.password,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException('Nieprawidłowe aktualne hasło');
     }
   }
 
-  private async updateUserPassword(userId: string, hashedPassword: string): Promise<void> {
+  private async updateUserPassword(
+    userId: string,
+    hashedPassword: string,
+  ): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
       data: { password: hashedPassword },
@@ -144,8 +184,10 @@ export class LocalAuthService {
     try {
       await this.chatService.createNewChat(userId);
     } catch (error) {
-      this.logger.warn(`Failed to create new chat for user ${userId}, but login succeeded:`, error);
+      this.logger.warn(
+        `Failed to create new chat for user ${userId}, but login succeeded:`,
+        error,
+      );
     }
   }
-
 }

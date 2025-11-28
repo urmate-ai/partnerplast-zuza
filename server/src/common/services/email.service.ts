@@ -40,7 +40,9 @@ export class EmailService {
 
     const smtpHost = this.configService.get<string>('SMTP_HOST') || 'urmate.ai';
     const smtpPortRaw =
-      this.configService.get<string>('SMTP_PORT') || this.configService.get<number>('SMTP_PORT') || '465';
+      this.configService.get<string>('SMTP_PORT') ||
+      this.configService.get<number>('SMTP_PORT') ||
+      '465';
     const smtpPort = Number(smtpPortRaw);
     const isSecurePort = smtpPort === 465;
     const smtpFrom = this.configService.get<string>('SMTP_FROM') || smtpUser;
@@ -72,7 +74,9 @@ export class EmailService {
       socketTimeout: 10000,
     });
 
-    this.logger.log(`SMTP transporter configured for ${config.host}:${config.port} (secure: ${config.secure})`);
+    this.logger.log(
+      `SMTP transporter configured for ${config.host}:${config.port} (secure: ${config.secure})`,
+    );
     return transporter;
   }
 
@@ -81,12 +85,17 @@ export class EmailService {
       const errorMessage =
         'SMTP transporter not configured. Please set SMTP_USER and SMTP_PASS environment variables.';
       this.logger.error(`Cannot send email: ${errorMessage}`);
-      throw new Error('Konfiguracja SMTP nie jest ustawiona. Skontaktuj się z administratorem.');
+      throw new Error(
+        'Konfiguracja SMTP nie jest ustawiona. Skontaktuj się z administratorem.',
+      );
     }
     return this.transporter;
   }
 
-  async sendPasswordResetEmail(email: string, resetToken: string): Promise<void> {
+  async sendPasswordResetEmail(
+    email: string,
+    resetToken: string,
+  ): Promise<void> {
     const transporter = this.ensureTransporter();
     const resetUrl = `urmate-ai-zuza://reset-password?token=${resetToken}`;
 
@@ -102,7 +111,10 @@ export class EmailService {
       await transporter.sendMail(mailOptions);
       this.logger.log(`Password reset email sent to: ${email}`);
     } catch (error) {
-      this.logger.error(`Failed to send password reset email to ${email}:`, error);
+      this.logger.error(
+        `Failed to send password reset email to ${email}:`,
+        error,
+      );
       throw new Error('Nie udało się wysłać emaila z resetem hasła');
     }
   }
@@ -116,7 +128,8 @@ export class EmailService {
       return;
     }
 
-    const appUrl = this.configService.get<string>('FRONTEND_URL') || 'urmate-ai-zuza://';
+    const appUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'urmate-ai-zuza://';
 
     const mailOptions = {
       from: this.config.from,

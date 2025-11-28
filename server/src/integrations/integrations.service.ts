@@ -59,7 +59,9 @@ export class IntegrationsService {
         },
       });
 
-      this.logger.log(`Found ${integrations.length} integrations matching query: ${query}`);
+      this.logger.log(
+        `Found ${integrations.length} integrations matching query: ${query}`,
+      );
       return integrations;
     } catch (error) {
       this.logger.error('Error searching integrations:', error);
@@ -67,4 +69,3 @@ export class IntegrationsService {
     }
   }
 }
-

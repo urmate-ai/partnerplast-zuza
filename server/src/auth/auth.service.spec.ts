@@ -3,7 +3,11 @@ import { AuthService } from './auth.service';
 import { LocalAuthService } from './services/local-auth.service';
 import { OAuthService } from './services/oauth.service';
 import { UserService } from './services/user.service';
-import type { AuthResponse, UpdateProfileData, UpdateNotificationsData } from './types/auth.types';
+import type {
+  AuthResponse,
+  UpdateProfileData,
+  UpdateNotificationsData,
+} from './types/auth.types';
 import type { GoogleProfile } from './types/oauth.types';
 
 describe('AuthService', () => {
@@ -70,9 +74,17 @@ describe('AuthService', () => {
     it('powinien przekazać wywołanie do LocalAuthService', async () => {
       localAuthService.register.mockResolvedValue(mockAuthResponse);
 
-      const result = await service.register('Test User', 'test@example.com', 'password123');
+      const result = await service.register(
+        'Test User',
+        'test@example.com',
+        'password123',
+      );
 
-      expect(localAuthService.register).toHaveBeenCalledWith('Test User', 'test@example.com', 'password123');
+      expect(localAuthService.register).toHaveBeenCalledWith(
+        'Test User',
+        'test@example.com',
+        'password123',
+      );
       expect(result).toEqual(mockAuthResponse);
     });
   });
@@ -83,7 +95,10 @@ describe('AuthService', () => {
 
       const result = await service.login('test@example.com', 'password123');
 
-      expect(localAuthService.login).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(localAuthService.login).toHaveBeenCalledWith(
+        'test@example.com',
+        'password123',
+      );
       expect(result).toEqual(mockAuthResponse);
     });
   });
@@ -95,7 +110,11 @@ describe('AuthService', () => {
 
       const response = await service.changePassword('user-123', 'old', 'new');
 
-      expect(localAuthService.changePassword).toHaveBeenCalledWith('user-123', 'old', 'new');
+      expect(localAuthService.changePassword).toHaveBeenCalledWith(
+        'user-123',
+        'old',
+        'new',
+      );
       expect(response).toEqual(result);
     });
   });
@@ -124,7 +143,9 @@ describe('AuthService', () => {
 
       const result = await service.verifyGoogleToken('google-token');
 
-      expect(oauthService.verifyGoogleToken).toHaveBeenCalledWith('google-token');
+      expect(oauthService.verifyGoogleToken).toHaveBeenCalledWith(
+        'google-token',
+      );
       expect(result).toEqual(mockAuthResponse);
     });
   });
@@ -137,7 +158,7 @@ describe('AuthService', () => {
         name: 'Test User',
       };
 
-      userService.getProfile.mockResolvedValue(mockProfile as any);
+      userService.getProfile.mockResolvedValue(mockProfile as UserProfile);
 
       const result = await service.getProfile('user-123');
 
@@ -151,11 +172,16 @@ describe('AuthService', () => {
       const updateData: UpdateProfileData = { name: 'New Name' };
       const updatedProfile = { id: 'user-123', name: 'New Name' };
 
-      userService.updateProfile.mockResolvedValue(updatedProfile as any);
+      userService.updateProfile.mockResolvedValue(
+        updatedProfile as UserProfile,
+      );
 
       const result = await service.updateProfile('user-123', updateData);
 
-      expect(userService.updateProfile).toHaveBeenCalledWith('user-123', updateData);
+      expect(userService.updateProfile).toHaveBeenCalledWith(
+        'user-123',
+        updateData,
+      );
       expect(result).toEqual(updatedProfile);
     });
   });
@@ -165,11 +191,16 @@ describe('AuthService', () => {
       const updateData: UpdateNotificationsData = { pushNotifications: false };
       const updatedProfile = { id: 'user-123', pushNotifications: false };
 
-      userService.updateNotifications.mockResolvedValue(updatedProfile as any);
+      userService.updateNotifications.mockResolvedValue(
+        updatedProfile as UserProfile,
+      );
 
       const result = await service.updateNotifications('user-123', updateData);
 
-      expect(userService.updateNotifications).toHaveBeenCalledWith('user-123', updateData);
+      expect(userService.updateNotifications).toHaveBeenCalledWith(
+        'user-123',
+        updateData,
+      );
       expect(result).toEqual(updatedProfile);
     });
   });
@@ -189,7 +220,14 @@ describe('AuthService', () => {
   describe('getAllUsers', () => {
     it('powinien przekazać wywołanie do UserService', async () => {
       const mockUsers = [{ id: 'user-1' }, { id: 'user-2' }];
-      userService.getAllUsers.mockResolvedValue(mockUsers as any);
+      userService.getAllUsers.mockResolvedValue(
+        mockUsers as Array<
+          Pick<
+            UserProfile,
+            'id' | 'email' | 'name' | 'provider' | 'createdAt' | 'updatedAt'
+          >
+        >,
+      );
 
       const result = await service.getAllUsers();
 
@@ -198,4 +236,3 @@ describe('AuthService', () => {
     });
   });
 });
-

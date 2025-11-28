@@ -14,14 +14,23 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     private readonly oauthService: OAuthService,
   ) {
     const publicUrl = configService.get<string>('PUBLIC_URL');
-    const explicitCallbackUrl = configService.get<string>('GOOGLE_CALLBACK_URL');
-    
-    const callbackURL = explicitCallbackUrl || 
-      (publicUrl ? `${publicUrl}/auth/google/callback` : 'http://localhost:3000/auth/google/callback');
+    const explicitCallbackUrl = configService.get<string>(
+      'GOOGLE_CALLBACK_URL',
+    );
+
+    const callbackURL =
+      explicitCallbackUrl ||
+      (publicUrl
+        ? `${publicUrl}/auth/google/callback`
+        : 'http://localhost:3000/auth/google/callback');
 
     super({
-      clientID: configService.get<string>('GOOGLE_CLIENT_ID') || 'your-google-client-id',
-      clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET') || 'your-google-client-secret',
+      clientID:
+        configService.get<string>('GOOGLE_CLIENT_ID') ||
+        'your-google-client-id',
+      clientSecret:
+        configService.get<string>('GOOGLE_CLIENT_SECRET') ||
+        'your-google-client-secret',
       callbackURL,
       scope: ['email', 'profile'],
       passReqToCallback: false,
@@ -44,4 +53,3 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     }
   }
 }
-

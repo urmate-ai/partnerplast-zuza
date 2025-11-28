@@ -27,4 +27,3 @@ export class DateUtils {
     return new Date(Date.now() + hours * 3600000);
   }
 }
-

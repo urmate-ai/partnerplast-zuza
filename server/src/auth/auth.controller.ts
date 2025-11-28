@@ -20,7 +20,10 @@ import { UpdateNotificationsDto } from './dto/update-notifications.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { GoogleVerifyDto } from './dto/google-verify.dto';
-import { CurrentUser, type CurrentUserPayload } from './decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type CurrentUserPayload,
+} from './decorators/current-user.decorator';
 import type { ExpressResponse } from '../common/types/express.types';
 import type { GoogleAuthResult } from './types/oauth.types';
 
@@ -59,12 +62,11 @@ export class AuthController {
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
-  async googleAuth() {  
-  }
+  async googleAuth() {}
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthCallback(
+  googleAuthCallback(
     @Request() req: { user?: GoogleAuthResult },
     @Res() res: ExpressResponse,
     @Query('state') state?: string,
@@ -74,7 +76,7 @@ export class AuthController {
         const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
         return res.redirect(`${redirectUri}?error=authentication_failed`);
       }
-      
+
       const { accessToken, user: userData } = req.user;
       const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
       const redirectUrl = `${redirectUri}?token=${encodeURIComponent(accessToken)}&user=${encodeURIComponent(JSON.stringify(userData))}`;
@@ -94,14 +96,20 @@ export class AuthController {
 
   @Put('profile')
   @UseGuards(AuthGuard('jwt'))
-  async updateProfile(@CurrentUser() user: CurrentUserPayload, @Body() dto: UpdateProfileDto) {
+  async updateProfile(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: UpdateProfileDto,
+  ) {
     return this.authService.updateProfile(user.id, dto);
   }
 
   @Post('change-password')
   @UseGuards(AuthGuard('jwt'))
   @HttpCode(HttpStatus.OK)
-  async changePassword(@CurrentUser() user: CurrentUserPayload, @Body() dto: ChangePasswordDto) {
+  async changePassword(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: ChangePasswordDto,
+  ) {
     return this.authService.changePassword(
       user.id,
       dto.currentPassword,
@@ -118,7 +126,10 @@ export class AuthController {
 
   @Put('notifications')
   @UseGuards(AuthGuard('jwt'))
-  async updateNotifications(@CurrentUser() user: CurrentUserPayload, @Body() dto: UpdateNotificationsDto) {
+  async updateNotifications(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: UpdateNotificationsDto,
+  ) {
     return this.authService.updateNotifications(user.id, dto);
   }
 
@@ -127,4 +138,3 @@ export class AuthController {
     return this.authService.getAllUsers();
   }
 }
-

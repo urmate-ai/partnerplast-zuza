@@ -32,4 +32,3 @@ export interface ChatWithMessages {
 }
 
 export type AudioFile = Multer.File;
-

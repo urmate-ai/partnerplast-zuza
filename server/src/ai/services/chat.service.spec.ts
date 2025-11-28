@@ -3,6 +3,8 @@ import { NotFoundException } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OpenAIService } from './openai.service';
+import type { Chat, Message, User } from '@prisma/client';
+import type { PrismaUpdateResult } from '../../common/types/test.types';
 
 describe('ChatService', () => {
   let service: ChatService;
@@ -60,15 +62,20 @@ describe('ChatService', () => {
 
   describe('createNewChat', () => {
     it('powinien utworzyć nowy chat i zaktualizować currentChatId użytkownika', async () => {
-      (prismaService.chat.create as jest.Mock).mockResolvedValue({
+      const mockChat: Chat = {
         id: mockChatId,
         userId: mockUserId,
         title: null,
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as any);
+      } as Chat;
 
-      (prismaService.user.update as jest.Mock).mockResolvedValue({} as any);
+      (prismaService.chat.create as jest.Mock).mockResolvedValue(mockChat);
+
+      const mockUpdateResult: PrismaUpdateResult = { id: mockUserId };
+      (prismaService.user.update as jest.Mock).mockResolvedValue(
+        mockUpdateResult as User,
+      );
 
       const result = await service.createNewChat(mockUserId);
 
@@ -83,21 +90,31 @@ describe('ChatService', () => {
     });
 
     it('powinien rzucić błąd gdy tworzenie chatu się nie powiedzie', async () => {
-      (prismaService.chat.create as jest.Mock).mockRejectedValue(new Error('Database error'));
+      (prismaService.chat.create as jest.Mock).mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.createNewChat(mockUserId)).rejects.toThrow('Database error');
+      await expect(service.createNewChat(mockUserId)).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
   describe('getOrCreateCurrentChat', () => {
     it('powinien zwrócić istniejący chat gdy currentChatId jest ustawiony', async () => {
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue({
+      const mockUser: Partial<User> = {
         currentChatId: mockChatId,
-      } as any);
+      };
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(
+        mockUser as User | null,
+      );
 
-      (prismaService.chat.findUnique as jest.Mock).mockResolvedValue({
+      const mockChatPartial: Partial<Chat> = {
         id: mockChatId,
-      } as any);
+      };
+      (prismaService.chat.findUnique as jest.Mock).mockResolvedValue(
+        mockChatPartial as Chat | null,
+      );
 
       const result = await service.getOrCreateCurrentChat(mockUserId);
 
@@ -106,19 +123,26 @@ describe('ChatService', () => {
     });
 
     it('powinien utworzyć nowy chat gdy currentChatId nie istnieje', async () => {
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue({
+      const mockUserNull: Partial<User> = {
         currentChatId: null,
-      } as any);
+      };
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(
+        mockUserNull as User | null,
+      );
 
-      (prismaService.chat.create as jest.Mock).mockResolvedValue({
+      const mockNewChat: Chat = {
         id: mockChatId,
         userId: mockUserId,
         title: null,
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as any);
+      } as Chat;
+      (prismaService.chat.create as jest.Mock).mockResolvedValue(mockNewChat);
 
-      (prismaService.user.update as jest.Mock).mockResolvedValue({} as any);
+      const mockUpdateResult: PrismaUpdateResult = { id: mockUserId };
+      (prismaService.user.update as jest.Mock).mockResolvedValue(
+        mockUpdateResult as User,
+      );
 
       const result = await service.getOrCreateCurrentChat(mockUserId);
 
@@ -129,12 +153,28 @@ describe('ChatService', () => {
 
   describe('addMessage', () => {
     it('powinien dodać wiadomość do chatu', async () => {
-      (prismaService.message.create as jest.Mock).mockResolvedValue({} as any);
-      (prismaService.chat.findUnique as jest.Mock).mockResolvedValue({
+      const mockMessage: Partial<Message> = {
+        id: 'msg-1',
+        chatId: mockChatId,
+        role: 'user',
+        content: 'Test message',
+        createdAt: new Date(),
+      };
+      (prismaService.message.create as jest.Mock).mockResolvedValue(
+        mockMessage as Message,
+      );
+
+      const mockChatWithTitle: Partial<Chat> = {
         title: 'Test Chat',
-      } as any);
+      };
+      (prismaService.chat.findUnique as jest.Mock).mockResolvedValue(
+        mockChatWithTitle as Chat | null,
+      );
       (prismaService.message.count as jest.Mock).mockResolvedValue(2);
-      (prismaService.chat.update as jest.Mock).mockResolvedValue({} as any);
+      const mockChatUpdate: PrismaUpdateResult = { id: mockChatId };
+      (prismaService.chat.update as jest.Mock).mockResolvedValue(
+        mockChatUpdate as Chat,
+      );
 
       await service.addMessage(mockChatId, 'user', 'Test message');
 
@@ -148,17 +188,38 @@ describe('ChatService', () => {
     });
 
     it('powinien wygenerować tytuł dla pierwszej wiadomości użytkownika', async () => {
-      (prismaService.message.create as jest.Mock).mockResolvedValue({} as any);
-      (prismaService.chat.findUnique as jest.Mock).mockResolvedValue({
+      const mockMessage2: Partial<Message> = {
+        id: 'msg-2',
+        chatId: mockChatId,
+        role: 'user',
+        content: 'Pierwsza wiadomość',
+        createdAt: new Date(),
+      };
+      (prismaService.message.create as jest.Mock).mockResolvedValue(
+        mockMessage2 as Message,
+      );
+
+      const mockChatNullTitle: Partial<Chat> = {
         title: null,
-      } as any);
+      };
+      (prismaService.chat.findUnique as jest.Mock).mockResolvedValue(
+        mockChatNullTitle as Chat | null,
+      );
       (prismaService.message.count as jest.Mock).mockResolvedValue(1);
       openaiService.generateChatTitle.mockResolvedValue('Nowy tytuł');
-      (prismaService.chat.update as jest.Mock).mockResolvedValue({} as any);
+      const mockChatUpdate2: PrismaUpdateResult = {
+        id: mockChatId,
+        title: 'Nowy tytuł',
+      };
+      (prismaService.chat.update as jest.Mock).mockResolvedValue(
+        mockChatUpdate2 as Chat,
+      );
 
       await service.addMessage(mockChatId, 'user', 'Pierwsza wiadomość');
 
-      expect(openaiService.generateChatTitle as jest.Mock).toHaveBeenCalledWith('Pierwsza wiadomość');
+      expect(openaiService.generateChatTitle as jest.Mock).toHaveBeenCalledWith(
+        'Pierwsza wiadomość',
+      );
       expect(prismaService.chat.update as jest.Mock).toHaveBeenCalledWith({
         where: { id: mockChatId },
         data: { title: 'Nowy tytuł' },
@@ -183,7 +244,20 @@ describe('ChatService', () => {
         ],
       };
 
-      (prismaService.chat.findFirst as jest.Mock).mockResolvedValue(mockChat as any);
+      (prismaService.chat.findFirst as jest.Mock).mockResolvedValue(
+        mockChat as
+          | (Chat & {
+              messages: Array<
+                Partial<Message> & {
+                  id: string;
+                  role: string;
+                  content: string;
+                  createdAt: Date;
+                }
+              >;
+            })
+          | null,
+      );
 
       const result = await service.getChatById(mockChatId, mockUserId);
 
@@ -219,7 +293,9 @@ describe('ChatService', () => {
         },
       ];
 
-      (prismaService.chat.findMany as jest.Mock).mockResolvedValue(mockChats as any);
+      (prismaService.chat.findMany as jest.Mock).mockResolvedValue(
+        mockChats as Array<Pick<Chat, 'id' | 'title' | 'updatedAt'>>,
+      );
 
       const result = await service.getChatHistory(mockUserId);
 
@@ -233,7 +309,9 @@ describe('ChatService', () => {
     });
 
     it('powinien zwrócić pustą tablicę w przypadku błędu', async () => {
-      (prismaService.chat.findMany as jest.Mock).mockRejectedValue(new Error('Database error'));
+      (prismaService.chat.findMany as jest.Mock).mockRejectedValue(
+        new Error('Database error'),
+      );
 
       const result = await service.getChatHistory(mockUserId);
 
@@ -251,16 +329,22 @@ describe('ChatService', () => {
         },
       ];
 
-      (prismaService.chat.findMany as jest.Mock).mockResolvedValue(mockChats as any);
+      (prismaService.chat.findMany as jest.Mock).mockResolvedValue(
+        mockChats as Array<Pick<Chat, 'id' | 'title' | 'updatedAt'>>,
+      );
 
       const result = await service.searchChats(mockUserId, 'test');
 
-      expect(prismaService.chat.findMany).toHaveBeenCalledWith({
+      expect(prismaService.chat.findMany as jest.Mock).toHaveBeenCalledWith({
         where: {
           userId: mockUserId,
           OR: [
             { title: { contains: 'test', mode: 'insensitive' } },
-            { messages: { some: { content: { contains: 'test', mode: 'insensitive' } } } },
+            {
+              messages: {
+                some: { content: { contains: 'test', mode: 'insensitive' } },
+              },
+            },
           ],
         },
         orderBy: { updatedAt: 'desc' },
@@ -271,4 +355,3 @@ describe('ChatService', () => {
     });
   });
 });
-

@@ -13,4 +13,3 @@ export class UpdateNotificationsDto {
   @IsBoolean({ message: 'soundEnabled musi być wartością boolean' })
   soundEnabled?: boolean;
 }
-

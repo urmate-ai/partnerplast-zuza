@@ -15,4 +15,3 @@ export class IntegrationsController {
     return this.integrationsService.getAllIntegrations();
   }
 }
-

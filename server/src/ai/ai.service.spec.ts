@@ -2,7 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AiService } from './ai.service';
 import { ChatService } from './services/chat.service';
 import { OpenAIService } from './services/openai.service';
-import type { AudioFile, VoiceProcessResult, ChatHistoryItem, ChatWithMessages } from './types/ai.types';
+import type {
+  AudioFile,
+  VoiceProcessResult,
+  ChatHistoryItem,
+  ChatWithMessages,
+} from './types/ai.types';
 
 describe('AiService', () => {
   let service: AiService;
@@ -55,8 +60,18 @@ describe('AiService', () => {
         id: mockChatId,
         title: 'Test Chat',
         messages: [
-          { id: 'msg-1', role: 'user', content: 'Hello', createdAt: new Date() },
-          { id: 'msg-2', role: 'assistant', content: 'Hi!', createdAt: new Date() },
+          {
+            id: 'msg-1',
+            role: 'user',
+            content: 'Hello',
+            createdAt: new Date(),
+          },
+          {
+            id: 'msg-2',
+            role: 'assistant',
+            content: 'Hi!',
+            createdAt: new Date(),
+          },
         ],
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -69,15 +84,28 @@ describe('AiService', () => {
 
       chatService.getOrCreateCurrentChat.mockResolvedValue(mockChatId);
       chatService.getChatById.mockResolvedValue(mockChat);
-      openaiService.transcribeAndRespondWithHistory.mockResolvedValue(mockResult);
+      openaiService.transcribeAndRespondWithHistory.mockResolvedValue(
+        mockResult,
+      );
 
-      const result = await service.transcribeAndRespond(mockAudioFile, mockUserId, {
-        language: 'pl',
-      });
+      const result = await service.transcribeAndRespond(
+        mockAudioFile,
+        mockUserId,
+        {
+          language: 'pl',
+        },
+      );
 
-      expect(chatService.getOrCreateCurrentChat).toHaveBeenCalledWith(mockUserId);
-      expect(chatService.getChatById).toHaveBeenCalledWith(mockChatId, mockUserId);
-      expect(openaiService.transcribeAndRespondWithHistory).toHaveBeenCalledWith(
+      expect(chatService.getOrCreateCurrentChat).toHaveBeenCalledWith(
+        mockUserId,
+      );
+      expect(chatService.getChatById).toHaveBeenCalledWith(
+        mockChatId,
+        mockUserId,
+      );
+      expect(
+        openaiService.transcribeAndRespondWithHistory,
+      ).toHaveBeenCalledWith(
         mockAudioFile,
         [
           { role: 'user', content: 'Hello' },
@@ -93,7 +121,11 @@ describe('AiService', () => {
     it('powinien zapisać chat', async () => {
       await service.saveChat(mockUserId, 'transcript', 'reply');
 
-      expect(chatService.saveChat).toHaveBeenCalledWith(mockUserId, 'transcript', 'reply');
+      expect(chatService.saveChat).toHaveBeenCalledWith(
+        mockUserId,
+        'transcript',
+        'reply',
+      );
     });
   });
 
@@ -141,7 +173,10 @@ describe('AiService', () => {
 
       const result = await service.getChatById(mockChatId, mockUserId);
 
-      expect(chatService.getChatById).toHaveBeenCalledWith(mockChatId, mockUserId);
+      expect(chatService.getChatById).toHaveBeenCalledWith(
+        mockChatId,
+        mockUserId,
+      );
       expect(result).toEqual(mockChat);
     });
   });
@@ -157,4 +192,3 @@ describe('AiService', () => {
     });
   });
 });
-

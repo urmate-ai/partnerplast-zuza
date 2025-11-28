@@ -10,4 +10,3 @@ export class ResetPasswordDto {
   @MinLength(6, { message: 'Hasło musi mieć minimum 6 znaków' })
   newPassword: string;
 }
-
