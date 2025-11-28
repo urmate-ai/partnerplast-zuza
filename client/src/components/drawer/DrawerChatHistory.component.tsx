@@ -1,11 +1,16 @@
 import React from 'react';
 import { Pressable } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner.component';
 import { useChatHistory } from '../../shared/hooks/useChatHistory.hook';
 import type { ChatHistoryItem } from '../../shared/types';
+import type { RootStackParamList } from '../../navigation/RootNavigator';
+
+type DrawerChatHistoryNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 type DrawerChatHistoryProps = {
   onChatPress?: (chatId: string) => void;
@@ -14,7 +19,16 @@ type DrawerChatHistoryProps = {
 export const DrawerChatHistory: React.FC<DrawerChatHistoryProps> = ({
   onChatPress,
 }) => {
+  const navigation = useNavigation<DrawerChatHistoryNavigationProp>();
   const { data: chatHistory, isLoading } = useChatHistory();
+
+  const handleChatPress = (chatId: string) => {
+    if (onChatPress) {
+      onChatPress(chatId);
+    } else {
+      navigation.navigate('ChatDetail', { chatId });
+    }
+  };
 
   return (
     <View className="py-4">
@@ -28,7 +42,7 @@ export const DrawerChatHistory: React.FC<DrawerChatHistoryProps> = ({
         </View>
       ) : chatHistory && chatHistory.length > 0 ? (
         chatHistory.map((chat: ChatHistoryItem) => (
-          <Pressable key={chat.id} onPress={() => onChatPress?.(chat.id)}>
+          <Pressable key={chat.id} onPress={() => handleChatPress(chat.id)}>
             <View className="flex-row items-center justify-between px-5 py-3">
               <View className="flex-1 mr-2">
                 <Text className="text-sm text-gray-900 font-medium mb-0.5" numberOfLines={1}>

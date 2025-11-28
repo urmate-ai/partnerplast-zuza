@@ -1,14 +1,14 @@
 import React from 'react';
 import { View } from '../shared/components/View.component';
+import { Text } from '../shared/components/Text.component';
+import { Button } from '../shared/components/Button.component';
 import { DrawerMenu } from '../components/DrawerMenu.component';
 import { useAuthStore } from '../stores/authStore';
 import { useLogout } from '../shared/hooks/useAuth.hook';
 import { useHomeScreen } from '../shared/hooks/useHomeScreen.hook';
 import { HomeHeader } from '../components/home/components/HomeHeader.component';
-import { HomeContent } from '../components/home/components/HomeContent.component';
 import { VoiceControl } from '../components/home/VoiceControl.component';
-import { TranscriptSection } from '../components/home/components/TranscriptSection.component';
-import { ReplySection } from '../components/home/components/ReplySection.component';
+import { ChatMessages } from '../components/home/components/ChatMessages.component';
 
 export const HomeScreen: React.FC = () => {
   const { user } = useAuthStore();
@@ -19,12 +19,14 @@ export const HomeScreen: React.FC = () => {
     voiceState,
     startListening,
     stopListening,
-    transcript,
-    reply,
+    messages,
     isLoading,
+    isTyping,
     error,
     ttsState,
     speak,
+    stopTTS,
+    handleTypingComplete,
   } = useHomeScreen();
 
   const handleLogout = async () => {
@@ -36,38 +38,70 @@ export const HomeScreen: React.FC = () => {
   };
 
   return (
-    <View className="flex-1 bg-white pt-14 px-6 pb-8">
+    <View className="flex-1 bg-white">
       <DrawerMenu
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         userName={user?.name}
       />
 
-      <HomeHeader
-        onMenuPress={() => setIsDrawerOpen(true)}
-        onLogout={handleLogout}
-      />
+      <View className="pt-14 px-4">
+        <HomeHeader
+          onMenuPress={() => setIsDrawerOpen(true)}
+          onLogout={handleLogout}
+        />
+      </View>
 
-      <HomeContent userName={user?.name} />
+      {/* Chat Messages Area */}
+      <View className="flex-1 px-4 py-4">
+        <ChatMessages
+          messages={messages}
+          isTyping={isTyping || isLoading}
+          onTypingComplete={handleTypingComplete}
+        />
+      </View>
 
-      <View className="items-center gap-4">
+      {/* Error Display */}
+      {error && (
+        <View className="px-4 pb-2">
+          <View className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <Text className="text-red-800 text-sm">{error}</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Voice Control */}
+      <View className="items-center pb-4 pt-4">
         <VoiceControl
           isListening={voiceState.isListening}
           onPress={() =>
             voiceState.isListening ? stopListening() : startListening()
           }
         />
-
-        <TranscriptSection transcript={transcript} />
-
-        <ReplySection
-          isLoading={isLoading}
-          error={error}
-          reply={reply}
-          ttsState={ttsState}
-          speak={speak}
-        />
       </View>
+
+      {/* TTS Control */}
+      {messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && (
+        <View className="px-4 pb-4">
+          <Button
+            onPress={() => {
+              if (ttsState.isSpeaking) {
+                stopTTS();
+              } else {
+                const lastMessage = messages[messages.length - 1];
+                if (lastMessage && lastMessage.role === 'assistant') {
+                  speak(lastMessage.content);
+                }
+              }
+            }}
+            variant="secondary"
+            size="sm"
+            className="self-center"
+          >
+            {ttsState.isSpeaking ? 'Zatrzymaj mówienie' : 'Odtwórz odpowiedź'}
+          </Button>
+        </View>
+      )}
     </View>
   );
 };

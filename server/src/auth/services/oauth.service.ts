@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ChatService } from '../../ai/services/chat.service';
 import { User } from '@prisma/client';
 import type { GoogleProfile, GoogleAuthResult } from '../types/oauth.types';
 import type { JwtPayload } from '../types/auth.types';
@@ -12,6 +13,7 @@ export class OAuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly chatService: ChatService,
   ) {}
 
   async validateGoogleUser(profile: GoogleProfile): Promise<GoogleAuthResult> {
@@ -42,6 +44,12 @@ export class OAuthService {
           providerId: profile.id,
         },
       });
+    }
+
+    try {
+      await this.chatService.createNewChat(user.id);
+    } catch (error) {
+      this.logger.warn(`Failed to create new chat for user ${user.id}, but login succeeded:`, error);
     }
 
     return this.generateTokens(user);

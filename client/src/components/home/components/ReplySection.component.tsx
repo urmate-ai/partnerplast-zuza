@@ -11,6 +11,7 @@ type ReplySectionProps = {
   reply: string;
   ttsState: { isSpeaking: boolean };
   speak: (text: string) => void;
+  stopTTS: () => void;
 };
 
 export const ReplySection: React.FC<ReplySectionProps> = ({
@@ -19,6 +20,7 @@ export const ReplySection: React.FC<ReplySectionProps> = ({
   reply,
   ttsState,
   speak,
+  stopTTS,
 }) => {
   return (
     <View className="mt-4 w-full gap-2">
@@ -39,13 +41,17 @@ export const ReplySection: React.FC<ReplySectionProps> = ({
       )}
       
       <Button
-        onPress={() =>
-          reply
-            ? speak(reply)
-            : speak(
-                'To jest przykładowa odpowiedź ZUZA. Gdy backend odpowie, usłyszysz tutaj prawdziwą odpowiedź.',
-              )
-        }
+        onPress={() => {
+          if (ttsState.isSpeaking) {
+            stopTTS();
+          } else if (reply) {
+            speak(reply);
+          } else {
+            speak(
+              'To jest przykładowa odpowiedź ZUZA. Gdy backend odpowie, usłyszysz tutaj prawdziwą odpowiedź.',
+            );
+          }
+        }}
         variant="primary"
         size="md"
         className="self-start"

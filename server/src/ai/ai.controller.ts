@@ -6,6 +6,7 @@ import {
   UseInterceptors,
   Body,
   Query,
+  Param,
   UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -37,7 +38,7 @@ export class AiController {
     @Body() body: VoiceRequestDto,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    const result = await this.aiService.transcribeAndRespond(audio, {
+    const result = await this.aiService.transcribeAndRespond(audio, user.id, {
       language: body.language ?? 'pl',
       context: body.context,
     });
@@ -65,6 +66,15 @@ export class AiController {
       return this.aiService.searchChats(user.id, search.trim());
     }
     return this.aiService.getChatHistory(user.id);
+  }
+
+  @Get('chats/:id')
+  @UseGuards(AuthGuard('jwt'))
+  async getChatById(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') chatId: string,
+  ) {
+    return this.aiService.getChatById(chatId, user.id);
   }
 }
 

@@ -10,7 +10,7 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [ConfigModule, PrismaModule],
   controllers: [AiController],
   providers: [AiService, OpenAIService, ChatService],
-  exports: [AiService],
+  exports: [AiService, ChatService],
 })
 export class AiModule {}
 

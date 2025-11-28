@@ -1,39 +1,86 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useVoiceListener } from '../../hooks/useVoiceListener.hook';
 import { useTextToSpeech } from '../../hooks/useTextToSpeech.hook';
 import { useVoiceAi } from './useVoiceAi.hook';
 import { useAuthStore } from '../../stores/authStore';
+import { useQueryClient } from '@tanstack/react-query';
+
+type Message = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+};
 
 export const useHomeScreen = () => {
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [transcript, setTranscript] = useState<string>('');
-  const [reply, setReply] = useState<string>('');
+  const [messages, setMessages] = useState<Message[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
 
   const voiceAiMutation = useVoiceAi();
-  const { state: ttsState, speak } = useTextToSpeech();
+  const { state: ttsState, speak, stop: stopTTS } = useTextToSpeech();
 
   const [voiceState, startListening, stopListening] = useVoiceListener({
     autoStart: false,
     onStop: async (uri) => {
-      if (!uri) return;
+      if (!uri || !user?.id) return;
       setError(null);
-      try {
+      
+      try { 
+        let userMessageId = `user-${Date.now()}`;
+        const userMessage: Message = {
+          id: userMessageId,
+          role: 'user',
+          content: '',  
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, userMessage]);
+
+        setIsTyping(true);
+
         const result = await voiceAiMutation.mutateAsync({
           uri,
           options: { language: 'pl' },
         });
-        setTranscript(result.transcript);
-        setReply(result.reply);
-        speak(result.reply);
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === userMessageId
+              ? { ...msg, content: result.transcript }
+              : msg
+          )
+        );
+
+        const assistantMessageId = `assistant-${Date.now()}`;
+        const assistantMessage: Message = {
+          id: assistantMessageId,
+          role: 'assistant',
+          content: result.reply, 
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+
+        const typingDuration = result.reply.length * 20 + 500; 
+        setTimeout(() => {
+          speak(result.reply);
+        }, typingDuration);
+
+        queryClient.invalidateQueries({ queryKey: ['chats'] });
       } catch (err) {
         setError(
           err instanceof Error ? err.message : 'Coś poszło nie tak po stronie AI.',
         );
+        setIsTyping(false);
       }
     },
   });
+
+  const handleTypingComplete = useCallback(() => {
+    setIsTyping(false);
+  }, []);
 
   return {
     user,
@@ -42,12 +89,14 @@ export const useHomeScreen = () => {
     voiceState,
     startListening,
     stopListening,
-    transcript,
-    reply,
+    messages,
     isLoading: voiceAiMutation.isPending,
+    isTyping,
     error,
     ttsState,
     speak,
+    stopTTS,
+    handleTypingComplete,
   };
 };
 
