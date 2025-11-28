@@ -59,16 +59,14 @@ export const useSettingsScreen = ({}: UseSettingsScreenProps = {}) => {
           onPress: async () => {
             try {
               await logoutMutation.mutateAsync();
-              clearAuth();
             } catch (error) {
               console.error('Logout error:', error);
-              clearAuth();
             }
           },
         },
       ],
     );
-  }, [logoutMutation, clearAuth]);
+  }, [logoutMutation]);
 
   return {
     handleEditProfile,
