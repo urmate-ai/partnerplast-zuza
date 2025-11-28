@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from '../shared/components/View.component';
 import { DrawerMenu } from '../components/DrawerMenu.component';
 import { useAuthStore } from '../stores/authStore';
+import { useLogout } from '../shared/hooks/useAuth.hook';
 import { useHomeScreen } from '../shared/hooks/useHomeScreen.hook';
 import { HomeHeader } from '../components/home/components/HomeHeader.component';
 import { HomeContent } from '../components/home/components/HomeContent.component';
@@ -10,7 +11,8 @@ import { TranscriptSection } from '../components/home/components/TranscriptSecti
 import { ReplySection } from '../components/home/components/ReplySection.component';
 
 export const HomeScreen: React.FC = () => {
-  const { user, clearAuth } = useAuthStore();
+  const { user } = useAuthStore();
+  const logoutMutation = useLogout();
   const {
     isDrawerOpen,
     setIsDrawerOpen,
@@ -25,6 +27,14 @@ export const HomeScreen: React.FC = () => {
     speak,
   } = useHomeScreen();
 
+  const handleLogout = async () => {
+    try {
+      await logoutMutation.mutateAsync();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   return (
     <View className="flex-1 bg-white pt-14 px-6 pb-8">
       <DrawerMenu
@@ -35,7 +45,7 @@ export const HomeScreen: React.FC = () => {
 
       <HomeHeader
         onMenuPress={() => setIsDrawerOpen(true)}
-        onLogout={clearAuth}
+        onLogout={handleLogout}
       />
 
       <HomeContent userName={user?.name} />
