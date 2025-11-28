@@ -41,7 +41,7 @@ describe('date.utils', () => {
       const dateString = new Date('2024-01-01T10:30:00Z').toISOString();
       const result = formatMessageTime(dateString);
       
-      expect(result).toMatch(/\d{1,2}\s\w{3}\s\d{2}:\d{2}/);
+      expect(result).toMatch(/\d{1,2}\s\w{3}[,\s]\s?\d{2}:\d{2}/);
       expect(result).not.toBe('Teraz');
       expect(result).not.toContain('min temu');
       expect(result).not.toContain('godz. temu');

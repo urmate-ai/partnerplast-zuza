@@ -114,3 +114,16 @@ export async function updateNotifications(
     throw new Error(errorMessage);
   }
 }
+
+export async function deleteAccount(): Promise<{ message: string }> {
+  try {
+    const response = await apiClient.delete<{ message: string }>('/auth/account');
+    return response.data;
+  } catch (error: unknown) {
+    const errorMessage = getApiErrorMessage(
+      error,
+      'Błąd podczas usuwania konta',
+    );
+    throw new Error(errorMessage);
+  }
+}

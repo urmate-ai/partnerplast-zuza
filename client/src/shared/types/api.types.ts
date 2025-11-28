@@ -8,6 +8,10 @@ export type ApiError = {
 };
 
 export const isApiError = (error: unknown): error is ApiError => {
+  if (error instanceof Error) {
+    return false;
+  }
+  
   return (
     typeof error === 'object' &&
     error !== null &&
@@ -29,4 +33,5 @@ export const getApiErrorMessage = (
   
   return defaultMessage;
 };
+
 

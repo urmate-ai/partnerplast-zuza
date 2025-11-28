@@ -1,0 +1,313 @@
+diff --git a/node_modules/react-native/index.js b/node_modules/react-native/index.js
+index c737c93..f4c26f7 100644
+--- a/node_modules/react-native/index.js
++++ b/node_modules/react-native/index.js
+@@ -337,7 +337,7 @@ module.exports = {
+       .VirtualViewMode;
+   },
+   // #endregion
+-} as ReactNativePublicAPI;
++};
+ 
+ if (__DEV__) {
+   /* $FlowFixMe[prop-missing] This is intentional: Flow will error when
+diff --git a/node_modules/react-native/jest/mock.js b/node_modules/react-native/jest/mock.js
+index 9c3b433..f48d601 100644
+--- a/node_modules/react-native/jest/mock.js
++++ b/node_modules/react-native/jest/mock.js
+@@ -35,5 +35,5 @@ export default function mock<TModuleRef: $Flow$ModuleRef<mixed>>(
+ 
+ function deref(ref: $Flow$ModuleRef<mixed>): string {
+   // $FlowIgnore[incompatible-cast]
+-  return (ref as string).substring(2);
++  return ((ref: any): string).substring(2);
+ }
+diff --git a/node_modules/react-native/jest/mocks/NativeModules.js b/node_modules/react-native/jest/mocks/NativeModules.js
+index a3a358f..75c971e 100644
+--- a/node_modules/react-native/jest/mocks/NativeModules.js
++++ b/node_modules/react-native/jest/mocks/NativeModules.js
+@@ -11,27 +11,27 @@
+ // TODO: Split this up into separate files.
+ const NativeModules = {
+   AlertManager: {
+-    alertWithArgs: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    alertWithArgs: jest.fn(),
+   },
+   AsyncLocalStorage: {
+     multiGet: jest.fn((keys, callback) =>
+       process.nextTick(() => callback(null, [])),
+-    ) as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    ),
+     multiSet: jest.fn((entries, callback) =>
+       process.nextTick(() => callback(null)),
+-    ) as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    ),
+     multiRemove: jest.fn((keys, callback) =>
+       process.nextTick(() => callback(null)),
+-    ) as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    ),
+     multiMerge: jest.fn((entries, callback) =>
+       process.nextTick(() => callback(null)),
+-    ) as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    ),
+     clear: jest.fn(callback =>
+       process.nextTick(() => callback(null)),
+-    ) as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    ),
+     getAllKeys: jest.fn(callback =>
+       process.nextTick(() => callback(null, [])),
+-    ) as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    ),
+   },
+   DeviceInfo: {
+     getConstants(): $FlowFixMe {
+@@ -54,74 +54,59 @@ const NativeModules = {
+     },
+   },
+   DevSettings: {
+-    addMenuItem: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    reload: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    addMenuItem: jest.fn(),
++    reload: jest.fn(),
+   },
+   ImageLoader: {
+-    getSize: jest.fn(url => Promise.resolve([320, 240])) as JestMockFn<
+-      $FlowFixMe,
+-      $FlowFixMe,
+-    >,
++    getSize: jest.fn(url => Promise.resolve([320, 240])),
+     getSizeWithHeaders: jest.fn((url, headers) =>
+       Promise.resolve({height: 222, width: 333}),
+-    ) as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    prefetchImage: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    prefetchImageWithMetadata: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    queryCache: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    ),
++    prefetchImage: jest.fn(),
++    prefetchImageWithMetadata: jest.fn(),
++    queryCache: jest.fn(),
+   },
+   ImageViewManager: {
+     getSize: jest.fn((uri, success) =>
+       process.nextTick(() => success(320, 240)),
+-    ) as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    prefetchImage: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    ),
++    prefetchImage: jest.fn(),
+   },
+   KeyboardObserver: {
+-    addListener: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    removeListeners: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    addListener: jest.fn(),
++    removeListeners: jest.fn(),
+   },
+   NativeAnimatedModule: {
+-    createAnimatedNode: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    updateAnimatedNodeConfig: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    getValue: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    startListeningToAnimatedNodeValue: jest.fn() as JestMockFn<
+-      $FlowFixMe,
+-      $FlowFixMe,
+-    >,
+-    stopListeningToAnimatedNodeValue: jest.fn() as JestMockFn<
+-      $FlowFixMe,
+-      $FlowFixMe,
+-    >,
+-    connectAnimatedNodes: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    disconnectAnimatedNodes: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    createAnimatedNode: jest.fn(),
++    updateAnimatedNodeConfig: jest.fn(),
++    getValue: jest.fn(),
++    startListeningToAnimatedNodeValue: jest.fn(),
++    stopListeningToAnimatedNodeValue: jest.fn(),
++    connectAnimatedNodes: jest.fn(),
++    disconnectAnimatedNodes: jest.fn(),
+     startAnimatingNode: jest.fn((animationId, nodeTag, config, endCallback) => {
+       setTimeout(() => endCallback({finished: true}), 16);
+-    }) as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    stopAnimation: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    setAnimatedNodeValue: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    setAnimatedNodeOffset: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    flattenAnimatedNodeOffset: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    extractAnimatedNodeOffset: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    connectAnimatedNodeToView: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    disconnectAnimatedNodeFromView: jest.fn() as JestMockFn<
+-      $FlowFixMe,
+-      $FlowFixMe,
+-    >,
+-    restoreDefaultValues: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    dropAnimatedNode: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    addAnimatedEventToView: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    removeAnimatedEventFromView: jest.fn() as JestMockFn<
+-      $FlowFixMe,
+-      $FlowFixMe,
+-    >,
+-    addListener: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    removeListener: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    removeListeners: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    }),
++    stopAnimation: jest.fn(),
++    setAnimatedNodeValue: jest.fn(),
++    setAnimatedNodeOffset: jest.fn(),
++    flattenAnimatedNodeOffset: jest.fn(),
++    extractAnimatedNodeOffset: jest.fn(),
++    connectAnimatedNodeToView: jest.fn(),
++    disconnectAnimatedNodeFromView: jest.fn(),
++    restoreDefaultValues: jest.fn(),
++    dropAnimatedNode: jest.fn(),
++    addAnimatedEventToView: jest.fn(),
++    removeAnimatedEventFromView: jest.fn(),
++    addListener: jest.fn(),
++    removeListener: jest.fn(),
++    removeListeners: jest.fn(),
+   },
+   Networking: {
+-    sendRequest: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    abortRequest: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    addListener: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    removeListeners: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    sendRequest: jest.fn(),
++    abortRequest: jest.fn(),
++    addListener: jest.fn(),
++    removeListeners: jest.fn(),
+   },
+   PlatformConstants: {
+     getConstants(): $FlowFixMe {
+@@ -136,47 +121,32 @@ const NativeModules = {
+     },
+   },
+   PushNotificationManager: {
+-    presentLocalNotification: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    scheduleLocalNotification: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    cancelAllLocalNotifications: jest.fn() as JestMockFn<
+-      $FlowFixMe,
+-      $FlowFixMe,
+-    >,
+-    removeAllDeliveredNotifications: jest.fn() as JestMockFn<
+-      $FlowFixMe,
+-      $FlowFixMe,
+-    >,
++    presentLocalNotification: jest.fn(),
++    scheduleLocalNotification: jest.fn(),
++    cancelAllLocalNotifications: jest.fn(),
++    removeAllDeliveredNotifications: jest.fn(),
+     getDeliveredNotifications: jest.fn(callback =>
+       process.nextTick(() => []),
+-    ) as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    removeDeliveredNotifications: jest.fn() as JestMockFn<
+-      $FlowFixMe,
+-      $FlowFixMe,
+-    >,
+-    setApplicationIconBadgeNumber: jest.fn() as JestMockFn<
+-      $FlowFixMe,
+-      $FlowFixMe,
+-    >,
++    ),
++    removeDeliveredNotifications: jest.fn(),
++    setApplicationIconBadgeNumber: jest.fn(),
+     getApplicationIconBadgeNumber: jest.fn(callback =>
+       process.nextTick(() => callback(0)),
+-    ) as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    cancelLocalNotifications: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    ),
++    cancelLocalNotifications: jest.fn(),
+     getScheduledLocalNotifications: jest.fn(callback =>
+       process.nextTick(() => callback()),
+-    ) as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    ),
+     requestPermissions: jest.fn(() =>
+       Promise.resolve({alert: true, badge: true, sound: true}),
+-    ) as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    abandonPermissions: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    ),
++    abandonPermissions: jest.fn(),
+     checkPermissions: jest.fn(callback =>
+       process.nextTick(() => callback({alert: true, badge: true, sound: true})),
+-    ) as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    getInitialNotification: jest.fn(() => Promise.resolve(null)) as JestMockFn<
+-      $FlowFixMe,
+-      $FlowFixMe,
+-    >,
+-    addListener: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    removeListeners: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    ),
++    getInitialNotification: jest.fn(() => Promise.resolve(null)),
++    addListener: jest.fn(),
++    removeListeners: jest.fn(),
+   },
+   SourceCode: {
+     getConstants(): $FlowFixMe {
+@@ -186,22 +156,19 @@ const NativeModules = {
+     },
+   },
+   StatusBarManager: {
+-    setColor: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    setStyle: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    setHidden: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    setNetworkActivityIndicatorVisible: jest.fn() as JestMockFn<
+-      $FlowFixMe,
+-      $FlowFixMe,
+-    >,
+-    setBackgroundColor: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    setTranslucent: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    setColor: jest.fn(),
++    setStyle: jest.fn(),
++    setHidden: jest.fn(),
++    setNetworkActivityIndicatorVisible: jest.fn(),
++    setBackgroundColor: jest.fn(),
++    setTranslucent: jest.fn(),
+     getConstants: (): $FlowFixMe => ({
+       HEIGHT: 42,
+     }),
+   },
+   Timing: {
+-    createTimer: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    deleteTimer: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    createTimer: jest.fn(),
++    deleteTimer: jest.fn(),
+   },
+   UIManager: {},
+   BlobModule: {
+@@ -209,26 +176,26 @@ const NativeModules = {
+       BLOB_URI_SCHEME: 'content',
+       BLOB_URI_HOST: null,
+     }),
+-    addNetworkingHandler: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    enableBlobSupport: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    disableBlobSupport: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    createFromParts: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    sendBlob: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    release: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    addNetworkingHandler: jest.fn(),
++    enableBlobSupport: jest.fn(),
++    disableBlobSupport: jest.fn(),
++    createFromParts: jest.fn(),
++    sendBlob: jest.fn(),
++    release: jest.fn(),
+   },
+   WebSocketModule: {
+-    connect: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    send: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    sendBinary: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    ping: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    close: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    addListener: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    removeListeners: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    connect: jest.fn(),
++    send: jest.fn(),
++    sendBinary: jest.fn(),
++    ping: jest.fn(),
++    close: jest.fn(),
++    addListener: jest.fn(),
++    removeListeners: jest.fn(),
+   },
+   I18nManager: {
+-    allowRTL: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    forceRTL: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
+-    swapLeftAndRightInRTL: jest.fn() as JestMockFn<$FlowFixMe, $FlowFixMe>,
++    allowRTL: jest.fn(),
++    forceRTL: jest.fn(),
++    swapLeftAndRightInRTL: jest.fn(),
+     getConstants: (): $FlowFixMe => ({
+       isRTL: false,
+       doLeftAndRightSwapInRTL: true,

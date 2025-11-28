@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useLogout } from '../auth/useAuth.hook';
+import { useLogout, useDeleteAccount } from '../auth/useAuth.hook';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../navigation/RootNavigator';
 
@@ -11,6 +11,7 @@ type UseSettingsScreenProps = {
 
 export const useSettingsScreen = ({}: UseSettingsScreenProps = {}) => {
   const logoutMutation = useLogout();
+  const deleteAccountMutation = useDeleteAccount();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const handleEditProfile = useCallback(() => {
@@ -24,7 +25,7 @@ export const useSettingsScreen = ({}: UseSettingsScreenProps = {}) => {
   const handleDeleteAccount = useCallback(() => {
     Alert.alert(
       'Usuń konto',
-      'Czy na pewno chcesz usunąć swoje konto? Ta operacja jest nieodwracalna.',
+      'Czy na pewno chcesz usunąć swoje konto? Ta operacja jest nieodwracalna i spowoduje usunięcie wszystkich Twoich danych, w tym czatów i wiadomości.',
       [
         {
           text: 'Anuluj',
@@ -34,12 +35,27 @@ export const useSettingsScreen = ({}: UseSettingsScreenProps = {}) => {
           text: 'Usuń',
           style: 'destructive',
           onPress: async () => {
-            Alert.alert('Info', 'Funkcja usuwania konta będzie dostępna wkrótce');
+            try {
+              await deleteAccountMutation.mutateAsync();
+              Alert.alert(
+                'Konto usunięte',
+                'Twoje konto zostało pomyślnie usunięte.',
+                [{ text: 'OK' }],
+              );
+            } catch (error) {
+              console.error('Delete account error:', error);
+              Alert.alert(
+                'Błąd',
+                error instanceof Error
+                  ? error.message
+                  : 'Wystąpił błąd podczas usuwania konta. Spróbuj ponownie.',
+              );
+            }
           },
         },
       ],
     );
-  }, []);
+  }, [deleteAccountMutation]);
 
   const handleLogout = useCallback(async () => {
     Alert.alert(
@@ -70,7 +86,7 @@ export const useSettingsScreen = ({}: UseSettingsScreenProps = {}) => {
     handleChangePassword,
     handleDeleteAccount,
     handleLogout,
-    isLoading: logoutMutation.isPending,
+    isLoading: logoutMutation.isPending || deleteAccountMutation.isPending,
   };
 };
 

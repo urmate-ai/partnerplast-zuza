@@ -79,4 +79,8 @@ export class AuthService {
   async verifyGoogleToken(accessToken: string) {
     return this.oauthService.verifyGoogleToken(accessToken);
   }
+
+  async deleteAccount(userId: string) {
+    return this.userService.deleteAccount(userId);
+  }
 }
