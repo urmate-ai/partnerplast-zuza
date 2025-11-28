@@ -15,13 +15,21 @@ const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
 const mockUseAuthStore = useAuthStore as jest.MockedFunction<typeof useAuthStore>;
 const mockLogoutService = logoutService as jest.MockedFunction<typeof logoutService>;
 
-const createWrapper = () => {
+const createWrapper = (queryClientsRef: QueryClient[]) => {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
+      queries: { 
+        retry: false,
+        gcTime: 0,
+      },
+      mutations: { 
+        retry: false,
+        gcTime: 0,
+      },
     },
   });
+
+  queryClientsRef.push(queryClient);
 
   return ({ children }: { children: React.ReactNode }) => {
     return React.createElement(QueryClientProvider, { client: queryClient }, children);
@@ -31,9 +39,19 @@ const createWrapper = () => {
 describe('useAuth.hook', () => {
   const mockSetAuth = jest.fn();
   const mockClearAuth = jest.fn();
+  let queryClients: QueryClient[] = [];
 
   beforeEach(() => {
     jest.clearAllMocks();
+    queryClients = [];
+  });
+
+  afterEach(async () => {
+    await Promise.all(
+      queryClients.map((client) => client.clear()),
+    );
+    queryClients = [];
+    jest.clearAllTimers();
   });
 
   describe('useLogin', () => {
@@ -70,7 +88,7 @@ describe('useAuth.hook', () => {
       });
 
       const { result } = renderHook(() => useLogin(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       result.current.mutate(mockLoginData);
@@ -103,7 +121,7 @@ describe('useAuth.hook', () => {
       });
 
       const { result } = renderHook(() => useLogin(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       result.current.mutate(mockLoginData);
@@ -149,7 +167,7 @@ describe('useAuth.hook', () => {
       });
 
       const { result } = renderHook(() => useRegister(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       result.current.mutate(mockRegisterData);
@@ -182,7 +200,7 @@ describe('useAuth.hook', () => {
       });
 
       const { result } = renderHook(() => useRegister(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       result.current.mutate(mockRegisterData);
@@ -210,7 +228,7 @@ describe('useAuth.hook', () => {
       });
 
       const { result } = renderHook(() => useLogout(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       result.current.mutate();
@@ -239,7 +257,7 @@ describe('useAuth.hook', () => {
       });
 
       const { result } = renderHook(() => useLogout(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       result.current.mutate();

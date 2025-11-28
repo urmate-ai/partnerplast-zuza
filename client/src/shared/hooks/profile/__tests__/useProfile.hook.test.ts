@@ -28,13 +28,21 @@ const mockUpdateNotifications = updateNotifications as jest.MockedFunction<
 >;
 const mockUseAuthStore = useAuthStore as jest.MockedFunction<typeof useAuthStore>;
 
-const createWrapper = () => {
+const createWrapper = (queryClientsRef: QueryClient[]) => {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
+      queries: { 
+        retry: false,
+        gcTime: 0,
+      },
+      mutations: { 
+        retry: false,
+        gcTime: 0,
+      },
     },
   });
+
+  queryClientsRef.push(queryClient);
 
   return ({ children }: { children: React.ReactNode }) => {
     return React.createElement(QueryClientProvider, { client: queryClient }, children);
@@ -54,17 +62,25 @@ describe('useProfile.hook', () => {
     clearAuth: jest.fn(),
     loadAuth: jest.fn(),
   };
+  let queryClients: QueryClient[] = [];
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Set up default mock for useAuthStore
+    queryClients = [];
     mockUseAuthStore.mockImplementation((selector?: (state: AuthState) => unknown) => {
       if (selector && typeof selector === 'function') {
         return selector(defaultMockState) as never;
       }
-      // When called without selector, return the entire state
       return defaultMockState as never;
     });
+  });
+
+  afterEach(async () => {
+    await Promise.all(
+      queryClients.map((client) => client.clear()),
+    );
+    queryClients = [];
+    jest.clearAllTimers();
   });
 
   describe('useProfile', () => {
@@ -84,7 +100,7 @@ describe('useProfile.hook', () => {
       mockGetProfile.mockResolvedValue(mockProfile);
 
       const { result } = renderHook(() => useProfile(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       await waitFor(() => {
@@ -100,7 +116,7 @@ describe('useProfile.hook', () => {
       mockGetProfile.mockRejectedValue(error);
 
       const { result } = renderHook(() => useProfile(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       await waitFor(
@@ -133,7 +149,7 @@ describe('useProfile.hook', () => {
       mockUpdateProfile.mockResolvedValue(mockUpdatedProfile);
 
       const { result } = renderHook(() => useUpdateProfile(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       result.current.mutate(mockUpdateData);
@@ -158,7 +174,7 @@ describe('useProfile.hook', () => {
       mockUpdateProfile.mockRejectedValue(error);
 
       const { result } = renderHook(() => useUpdateProfile(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       result.current.mutate(mockUpdateData);
@@ -179,7 +195,7 @@ describe('useProfile.hook', () => {
       mockChangePassword.mockResolvedValue({ message: 'Hasło zostało zmienione' });
 
       const { result } = renderHook(() => useChangePassword(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       result.current.mutate(mockChangePasswordData);
@@ -196,7 +212,7 @@ describe('useProfile.hook', () => {
       mockChangePassword.mockRejectedValue(error);
 
       const { result } = renderHook(() => useChangePassword(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       result.current.mutate(mockChangePasswordData);
@@ -230,7 +246,7 @@ describe('useProfile.hook', () => {
       mockUpdateNotifications.mockResolvedValue(mockUpdatedProfile);
 
       const { result } = renderHook(() => useUpdateNotifications(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       result.current.mutate(mockNotificationData);
@@ -247,7 +263,7 @@ describe('useProfile.hook', () => {
       mockUpdateNotifications.mockRejectedValue(error);
 
       const { result } = renderHook(() => useUpdateNotifications(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClients),
       });
 
       result.current.mutate(mockNotificationData);
