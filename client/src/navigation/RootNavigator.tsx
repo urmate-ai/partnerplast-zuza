@@ -16,7 +16,6 @@ import { IntegrationsScreen } from '../screens/IntegrationsScreen.component';
 import { SearchChatsScreen } from '../screens/SearchChatsScreen.component';
 import { ChatDetailScreen } from '../screens/ChatDetailScreen.component';
 import { useAuthStore } from '../stores/authStore';
-import { ToastProvider } from '../shared/components/Toast.component';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -92,28 +91,26 @@ export const RootNavigator: React.FC = () => {
 
   return (
     <SafeAreaProvider>
-      <ToastProvider>
-        <NavigationContainer ref={navigationRef}>
-          <Stack.Navigator
-            screenOptions={{
-              headerShown: false,
-            }}
-            initialRouteName={isAuthenticated ? 'Home' : 'Login'}
-          >
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Register" component={RegisterScreen} />
-            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-            <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-            <Stack.Screen name="Home" component={HomeScreen} />
-            <Stack.Screen name="Settings" component={SettingsScreen} />
-            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-            <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-            <Stack.Screen name="Integrations" component={IntegrationsScreen} />
-            <Stack.Screen name="SearchChats" component={SearchChatsScreen} />
-            <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </ToastProvider>
+      <NavigationContainer ref={navigationRef}>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+          }}
+          initialRouteName={isAuthenticated ? 'Home' : 'Login'}
+        >
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+          <Stack.Screen name="Integrations" component={IntegrationsScreen} />
+          <Stack.Screen name="SearchChats" component={SearchChatsScreen} />
+          <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
     </SafeAreaProvider>
   );
 };
