@@ -1,5 +1,6 @@
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { useAuthStore } from '../../stores/authStore';
+import type { ApiSuccessResponse } from '../types/api.types';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -24,7 +25,15 @@ apiClient.interceptors.request.use(
 );
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response: AxiosResponse<ApiSuccessResponse<unknown>>) => {
+    if (response.data && typeof response.data === 'object' && 'success' in response.data && response.data.success) {
+      return {
+        ...response,
+        data: response.data.data,
+      } as AxiosResponse<unknown>;
+    }
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
       useAuthStore.getState().clearAuth();
