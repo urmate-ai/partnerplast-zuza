@@ -5,7 +5,7 @@ export const useChats = (searchQuery?: string) => {
   return useQuery({
     queryKey: ['chats', searchQuery],
     queryFn: () => getChats(searchQuery),
-    staleTime: 2 * 60 * 1000, // 2 minuty - czaty mogą się często zmieniać
+    staleTime: 2 * 60 * 1000, 
     retry: 1,
     retryOnMount: false,
     refetchOnWindowFocus: false,

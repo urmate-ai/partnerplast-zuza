@@ -42,6 +42,11 @@ export class AiService {
   async getChatById(chatId: string, userId: string): Promise<ChatWithMessages> {
     return this.chatService.getChatById(chatId, userId);
   }
+
+  async createNewChat(userId: string): Promise<{ chatId: string }> {
+    const chatId = await this.chatService.createNewChat(userId);
+    return { chatId };
+  }
 }
 
 

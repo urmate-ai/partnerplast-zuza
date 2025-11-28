@@ -97,15 +97,14 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
 
   const handleGoogleLogin = async () => {
     try {
-      setGoogleError(null); // Wyczyść poprzedni błąd
+      setGoogleError(null); 
       const response = await loginWithGoogle();
       await useAuthStore.getState().setAuth(response.user, response.accessToken);
       navigation.replace('Home');
     } catch (error) {
       console.error('Google login error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
-      if (errorMessage.includes('cancelled')) {
-        // User cancelled, don't show error
+      if (errorMessage.includes('cancelled')) { 
         return;
       }
       setGoogleError('Błąd logowania Google: ' + errorMessage);

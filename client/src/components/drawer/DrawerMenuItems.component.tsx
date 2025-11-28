@@ -20,15 +20,26 @@ type MenuItem = {
 
 type DrawerMenuItemsProps = {
   onClose?: () => void;
+  onNewChat?: () => void;
 };
 
 export const DrawerMenuItems: React.FC<DrawerMenuItemsProps> = ({
   onClose,
+  onNewChat,
 }) => {
   const navigation = useNavigation<DrawerMenuItemsNavigationProp>();
 
+  const handleNewChat = () => {
+    onClose?.();
+    onNewChat?.();
+  };
+
   const menuItems: MenuItem[] = [
-    { icon: 'create-outline', label: 'Nowy czat' },
+    {
+      icon: 'create-outline',
+      label: 'Nowy czat',
+      onPress: handleNewChat,
+    },
     {
       icon: 'search-outline',
       label: 'Wyszukaj czaty',

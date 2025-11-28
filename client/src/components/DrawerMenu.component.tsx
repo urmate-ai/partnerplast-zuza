@@ -10,12 +10,14 @@ type DrawerMenuProps = {
   isOpen: boolean;
   onClose: () => void;
   userName?: string;
+  onNewChat?: () => void;
 };
 
 export const DrawerMenu: React.FC<DrawerMenuProps> = ({
   isOpen,
   onClose,
   userName,
+  onNewChat,
 }) => {
   const slideAnim = useRef(new Animated.Value(-300)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -64,7 +66,7 @@ export const DrawerMenu: React.FC<DrawerMenuProps> = ({
         <View className="flex-1 flex-col">
           <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
             <DrawerHeader onClose={onClose} />
-            <DrawerMenuItems onClose={onClose} />
+            <DrawerMenuItems onClose={onClose} onNewChat={onNewChat} />
             <DrawerChatHistory />
           </ScrollView>
 
