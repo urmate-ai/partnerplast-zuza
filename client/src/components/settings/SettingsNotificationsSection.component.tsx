@@ -1,6 +1,5 @@
 import React, { useRef } from 'react';
 import { Switch } from 'react-native';
-import { showToast } from '../../shared/components/Toast.component';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
 import { useProfile, useUpdateNotifications } from '../../shared/hooks/useProfile.hook';
@@ -79,20 +78,9 @@ export const SettingsNotificationsSection: React.FC = () => {
       {
         onSuccess: () => {
           console.log('✅ [PUSH] Component onSuccess callback');
-          showToast({
-            type: 'success',
-            text1: value ? 'Powiadomienia push włączone' : 'Powiadomienia push wyłączone',
-            visibilityTime: 2000,
-          });
         },
         onError: (error: any) => {
           console.log('❌ [PUSH] Component onError callback:', error);
-          showToast({
-            type: 'error',
-            text1: 'Błąd',
-            text2: error.message || 'Nie udało się zaktualizować ustawień',
-            visibilityTime: 3000,
-          });
         },
         onSettled: () => {
           console.log('🏁 [PUSH] Component onSettled - releasing lock');
@@ -103,9 +91,6 @@ export const SettingsNotificationsSection: React.FC = () => {
   };
 
   const handleEmailNotificationsChange = (value: boolean) => {
-    console.log('👆 [EMAIL] Switch clicked, new value:', value);
-    console.log('👆 [EMAIL] Current isUpdating:', isUpdatingRef.current);
-    console.log('👆 [EMAIL] Current profile value:', emailNotifications);
     
     if (isUpdatingRef.current) {
       console.log('🚫 [EMAIL] Blocked - already updating');
@@ -119,20 +104,9 @@ export const SettingsNotificationsSection: React.FC = () => {
       {
         onSuccess: () => {
           console.log('✅ [EMAIL] Component onSuccess callback');
-          showToast({
-            type: 'success',
-            text1: value ? 'Powiadomienia email włączone' : 'Powiadomienia email wyłączone',
-            visibilityTime: 2000,
-          });
         },
         onError: (error: any) => {
           console.log('❌ [EMAIL] Component onError callback:', error);
-          showToast({
-            type: 'error',
-            text1: 'Błąd',
-            text2: error.message || 'Nie udało się zaktualizować ustawień',
-            visibilityTime: 3000,
-          });
         },
         onSettled: () => {
           console.log('🏁 [EMAIL] Component onSettled - releasing lock');
@@ -159,20 +133,9 @@ export const SettingsNotificationsSection: React.FC = () => {
       {
         onSuccess: () => {
           console.log('✅ [SOUND] Component onSuccess callback');
-          showToast({
-            type: 'success',
-            text1: value ? 'Dźwięk włączony' : 'Dźwięk wyłączony',
-            visibilityTime: 2000,
-          });
         },
         onError: (error: any) => {
           console.log('❌ [SOUND] Component onError callback:', error);
-          showToast({
-            type: 'error',
-            text1: 'Błąd',
-            text2: error.message || 'Nie udało się zaktualizować ustawień',
-            visibilityTime: 3000,
-          });
         },
         onSettled: () => {
           console.log('🏁 [SOUND] Component onSettled - releasing lock');
