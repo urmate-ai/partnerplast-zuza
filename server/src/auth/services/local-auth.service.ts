@@ -41,6 +41,12 @@ export class LocalAuthService {
 
     this.logger.log(`User registered: ${email}`);
 
+    try {
+      await this.emailService.sendWelcomeEmail(email, name);
+    } catch (error) {
+      this.logger.warn(`Failed to send welcome email to ${email}, but user registration succeeded:`, error);
+    }
+
     return this.generateTokens(user);
   }
 
