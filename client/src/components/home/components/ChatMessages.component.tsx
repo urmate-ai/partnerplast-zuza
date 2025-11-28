@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { View } from '../../../shared/components/View.component';
 import { Text } from '../../../shared/components/Text.component';
 import { TypingIndicator } from './TypingIndicator.component';
@@ -25,9 +25,25 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   const scrollViewRef = useRef<ScrollView>(null);   
   const [displayedReply, setDisplayedReply] = useState<string>('');
   const typingMessageIdRef = useRef<string | null>(null);
+  const shouldScrollToEndRef = useRef<boolean>(true);
+  const contentHeightRef = useRef<number>(0);
+  const scrollViewHeightRef = useRef<number>(0);
 
   const lastAssistantMessage = messages.filter((m) => m.role === 'assistant').pop();
   const isLastMessageTyping = isTyping && lastAssistantMessage?.content;
+  
+  const scrollToEnd = (animated = true, force = false) => {
+    if (scrollViewRef.current && (shouldScrollToEndRef.current || force)) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated });
+      }, 100);
+    }
+  };
+
+  const isNearBottom = (contentHeight: number, scrollY: number, layoutHeight: number): boolean => {
+    const threshold = 50;
+    return contentHeight - scrollY - layoutHeight < threshold;
+  };
   
   useEffect(() => {
     if (isTyping && lastAssistantMessage) {
@@ -83,10 +99,20 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   }, [isLastMessageTyping, lastAssistantMessage?.id, lastAssistantMessage?.content, isTyping, onTypingComplete]);
 
   useEffect(() => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  }, [messages.length, displayedReply]);
+    scrollToEnd(true, true);
+  }, [messages.length]);
+
+  useEffect(() => {
+    if (displayedReply) {
+      scrollToEnd(false, true);
+    }
+  }, [displayedReply]);
+
+  useEffect(() => {
+    if (!isTyping && displayedReply) {
+      scrollToEnd(true, true);
+    }
+  }, [isTyping, displayedReply]);
 
   if (messages.length === 0 && !isTyping) {
     return (
@@ -104,6 +130,35 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       className="flex-1"
       contentContainerStyle={{ paddingBottom: 16 }}
       showsVerticalScrollIndicator={false}
+      onContentSizeChange={(contentWidth, contentHeight) => {
+        contentHeightRef.current = contentHeight;
+        scrollToEnd();
+      }}
+      onLayout={(event) => {
+        scrollViewHeightRef.current = event.nativeEvent.layout.height;
+        scrollToEnd();
+      }}
+      onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+        const isAtBottom = isNearBottom(
+          contentSize.height,
+          contentOffset.y,
+          layoutMeasurement.height,
+        );
+        
+        shouldScrollToEndRef.current = isAtBottom;
+      }}
+      onScrollBeginDrag={() => {
+      }}
+      onMomentumScrollEnd={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+        const isAtBottom = isNearBottom(
+          contentSize.height,
+          contentOffset.y,
+          layoutMeasurement.height,
+        );
+        shouldScrollToEndRef.current = isAtBottom;
+      }}
     >
       <View className="gap-4 px-2">
         {messages.map((message, index) => {
