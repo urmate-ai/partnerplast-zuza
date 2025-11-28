@@ -64,7 +64,7 @@ export class EmailService {
     const mailOptions = {
       from: smtpFrom,
       to: email,
-      subject: 'Reset hasła - Urmate AI',
+      subject: 'Reset hasła - Zuza Team',
       html: `
         <!DOCTYPE html>
         <html>
@@ -99,7 +99,7 @@ export class EmailService {
         </html>
       `,
       text: `
-        Reset hasła - Urmate AI
+        Reset hasła - Zuza Team
         
         Otrzymaliśmy prośbę o reset hasła dla Twojego konta.
         
@@ -116,6 +116,95 @@ export class EmailService {
     } catch (error) {
       this.logger.error(`Failed to send password reset email to ${email}:`, error);
       throw new Error('Nie udało się wysłać emaila z resetem hasła');
+    }
+  }
+
+  async sendWelcomeEmail(email: string, name: string): Promise<void> {
+    if (!this.transporter) {
+      this.logger.warn(
+        'Cannot send welcome email: SMTP transporter not configured. ' +
+        'User registration will continue without email notification.',
+      );
+      return;
+    }
+
+    const smtpFrom = this.configService.get<string>('SMTP_FROM') || this.configService.get<string>('SMTP_USER');
+
+    if (!smtpFrom) {
+      this.logger.warn('SMTP_FROM is not configured. Welcome email will not be sent.');
+      return;
+    }
+
+    const appUrl = this.configService.get<string>('FRONTEND_URL') || 'urmate-ai-zuza://';
+
+    const mailOptions = {
+      from: smtpFrom,
+      to: email,
+      subject: 'Witamy w Zuza Team! 🎉',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #f9fafb; padding: 30px; border-radius: 8px;">
+            <h1 style="color: #111827; margin-bottom: 20px;">Witaj, ${name}! 👋</h1>
+            <p style="color: #4b5563; margin-bottom: 20px;">
+              Dziękujemy za dołączenie do Zuza Team! Cieszymy się, że jesteś z nami.
+            </p>
+            <p style="color: #4b5563; margin-bottom: 20px;">
+              Twoje konto zostało pomyślnie utworzone. Możesz teraz korzystać z wszystkich funkcji naszej aplikacji:
+            </p>
+            <ul style="color: #4b5563; margin-bottom: 30px; padding-left: 20px;">
+              <li style="margin-bottom: 10px;">🎤 Rozmawiaj z AI za pomocą głosu</li>
+              <li style="margin-bottom: 10px;">💬 Otrzymuj inteligentne odpowiedzi na swoje pytania</li>
+              <li style="margin-bottom: 10px;">📝 Zapisz historię swoich rozmów</li>
+              <li style="margin-bottom: 10px;">⚙️ Dostosuj ustawienia do swoich potrzeb</li>
+            </ul>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${appUrl}" 
+                 style="display: inline-block; background-color: #111827; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                Rozpocznij korzystanie
+              </a>
+            </div>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+              Jeśli masz pytania lub potrzebujesz pomocy, skontaktuj się z nami. Jesteśmy tutaj, aby pomóc!
+            </p>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 10px;">
+              Pozdrawiamy,<br>
+              <strong>Zespół Zuza Team</strong>
+            </p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+        Witaj, ${name}!
+        
+        Dziękujemy za dołączenie do Zuza Team! Cieszymy się, że jesteś z nami.
+        
+        Twoje konto zostało pomyślnie utworzone. Możesz teraz korzystać z wszystkich funkcji naszej aplikacji:
+        - Rozmawiaj z AI za pomocą głosu
+        - Otrzymuj inteligentne odpowiedzi na swoje pytania
+        - Zapisz historię swoich rozmów
+        - Dostosuj ustawienia do swoich potrzeb
+        
+        Rozpocznij korzystanie: ${appUrl}
+        
+        Jeśli masz pytania lub potrzebujesz pomocy, skontaktuj się z nami. Jesteśmy tutaj, aby pomóc!
+        
+        Pozdrawiamy,
+        Zespół Zuza Team
+      `,
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      this.logger.log(`Welcome email sent to: ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send welcome email to ${email}:`, error);
     }
   }
 }
