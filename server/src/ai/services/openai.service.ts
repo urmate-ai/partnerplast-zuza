@@ -2,13 +2,21 @@ import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common
 import { ConfigService } from '@nestjs/config';
 import OpenAI, { toFile } from 'openai';
 import * as fs from 'node:fs';
+import { PromptUtils } from '../utils/prompt.utils';
 import type { AudioFile } from '../types/ai.types';
 import type { VoiceProcessOptions, VoiceProcessResult } from '../types/ai.types';
+
+interface OpenAIConfig {
+  model: string;
+  maxTokens: number;
+  temperature: number;
+}
 
 @Injectable()
 export class OpenAIService {
   private readonly logger = new Logger(OpenAIService.name);
   private readonly openai: OpenAI;
+  private readonly config: OpenAIConfig;
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
@@ -16,9 +24,12 @@ export class OpenAIService {
       this.logger.warn('OPENAI_API_KEY is not set – AI features will not work.');
     }
 
-    this.openai = new OpenAI({
-      apiKey,
-    });
+    this.openai = new OpenAI({ apiKey });
+    this.config = {
+      model: 'gpt-4o-mini',
+      maxTokens: 500,
+      temperature: 0.7,
+    };
   }
 
   async transcribeAudio(file: AudioFile, language?: string): Promise<string> {
@@ -28,10 +39,7 @@ export class OpenAIService {
 
     try {
       const audioBuffer = fs.readFileSync(file.path);
-      const openAiFile = await toFile(
-        audioBuffer,
-        file.originalname || 'audio.m4a',
-      );
+      const openAiFile = await toFile(audioBuffer, file.originalname || 'audio.m4a');
 
       const transcription = await this.openai.audio.transcriptions.create({
         file: openAiFile,
@@ -48,9 +56,7 @@ export class OpenAIService {
 
       return transcript;
     } finally {
-      if (file?.path) {
-        fs.unlink(file.path, () => undefined);
-      }
+      this.cleanupFile(file.path);
     }
   }
 
@@ -59,20 +65,13 @@ export class OpenAIService {
     chatHistory: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [],
     context?: string,
   ): Promise<string> {
-    const systemPrompt =
-      context ??
-      'Jesteś ZUZA, pomocnym, ciepłym asystentem głosowym AI mówiącym po polsku. Odpowiadaj zwięźle i naturalnie.';
-
-    const messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
-      { role: 'system', content: systemPrompt },
-      ...chatHistory.filter((msg) => msg.role !== 'system'),
-      { role: 'user', content: transcript },
-    ];
+    const systemPrompt = context ?? PromptUtils.DEFAULT_SYSTEM_PROMPT;
+    const messages = PromptUtils.buildMessages(systemPrompt, chatHistory, transcript);
 
     const completion = await this.openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: this.config.model,
       messages,
-      max_tokens: 500,
+      max_tokens: this.config.maxTokens,
     });
 
     const reply = completion.choices[0]?.message?.content?.trim() ?? '';
@@ -91,11 +90,7 @@ export class OpenAIService {
     try {
       const transcript = await this.transcribeAudio(file, options.language);
       const reply = await this.generateResponse(transcript, [], options.context);
-
-      return {
-        transcript,
-        reply,
-      };
+      return { transcript, reply };
     } catch (error) {
       this.logger.error('Failed to process voice input', error as Error);
       throw new InternalServerErrorException('Failed to process voice input');
@@ -110,11 +105,7 @@ export class OpenAIService {
     try {
       const transcript = await this.transcribeAudio(file, options.language);
       const reply = await this.generateResponse(transcript, chatHistory, options.context);
-
-      return {
-        transcript,
-        reply,
-      };
+      return { transcript, reply };
     } catch (error) {
       this.logger.error('Failed to process voice input with history', error as Error);
       throw new InternalServerErrorException('Failed to process voice input');
@@ -123,19 +114,16 @@ export class OpenAIService {
 
   async generateChatTitle(firstMessage: string): Promise<string> {
     try {
-      const prompt = `Stwórz krótki, zwięzły tytuł (maksymalnie 5-6 słów) dla następującej wiadomości użytkownika. Tytuł powinien być po polsku i opisywać główny temat wiadomości. Odpowiedz tylko tytułem, bez dodatkowych słów.\n\nWiadomość: "${firstMessage}"`;
+      const prompt = PromptUtils.generateTitlePrompt(firstMessage);
 
       const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: this.config.model,
         messages: [
-          {
-            role: 'system',
-            content: 'Jesteś asystentem, który tworzy krótkie, zwięzłe tytuły dla wiadomości. Odpowiadaj tylko tytułem, bez dodatkowych słów.',
-          },
+          { role: 'system', content: PromptUtils.TITLE_GENERATION_SYSTEM_PROMPT },
           { role: 'user', content: prompt },
         ],
         max_tokens: 30,
-        temperature: 0.7,
+        temperature: this.config.temperature,
       });
 
       const title = completion.choices[0]?.message?.content?.trim() ?? 'Nowa rozmowa';
@@ -145,5 +133,10 @@ export class OpenAIService {
       return 'Nowa rozmowa';
     }
   }
-}
 
+  private cleanupFile(filePath: string | undefined): void {
+    if (filePath) {
+      fs.unlink(filePath, () => undefined);
+    }
+  }
+}

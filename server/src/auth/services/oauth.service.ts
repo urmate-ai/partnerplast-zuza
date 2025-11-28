@@ -1,12 +1,18 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ChatService } from '../../ai/services/chat.service';
+import { TokenService } from '../../common/services/token.service';
+import { UserUtils } from '../utils/user.utils';
 import { OAuth2Client } from 'google-auth-library';
-import { User } from '@prisma/client';
+import type { User } from '@prisma/client';
 import type { GoogleProfile, GoogleAuthResult } from '../types/oauth.types';
-import type { JwtPayload } from '../types/auth.types';
+
+interface GoogleUserInfo {
+  email: string;
+  name: string;
+  sub: string;
+}
 
 @Injectable()
 export class OAuthService {
@@ -14,7 +20,7 @@ export class OAuthService {
   private readonly googleClient: OAuth2Client;
 
   constructor(
-    private readonly jwtService: JwtService,
+    private readonly tokenService: TokenService,
     private readonly prisma: PrismaService,
     private readonly chatService: ChatService,
     private readonly configService: ConfigService,
@@ -24,115 +30,97 @@ export class OAuthService {
   }
 
   async validateGoogleUser(profile: GoogleProfile): Promise<GoogleAuthResult> {
-    const email = profile.emails[0]?.value;
+    const email = UserUtils.extractEmailFromGoogleProfile(profile.emails);
     if (!email) {
       throw new Error('Email not found in Google profile');
     }
 
-    let user = await this.prisma.user.findUnique({
-      where: { email },
-    });
+    const user = await this.findOrCreateGoogleUser(email, profile.displayName, profile.id);
+    await this.ensureUserHasChat(user.id);
 
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          email,
-          name: profile.displayName,
-          provider: 'google',
-          providerId: profile.id,
-        },
-      });
-      this.logger.log(`New Google user created: ${email}`);
-    } else if (user.provider !== 'google') {
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: {
-          provider: 'google',
-          providerId: profile.id,
-        },
-      });
-    }
-
-    try {
-      await this.chatService.createNewChat(user.id);
-    } catch (error) {
-      this.logger.warn(`Failed to create new chat for user ${user.id}, but login succeeded:`, error);
-    }
-
-    return this.generateTokens(user);
+    return this.tokenService.generateTokenResult(user);
   }
 
   async verifyGoogleToken(accessToken: string): Promise<GoogleAuthResult> {
     try {
-      const userInfoResponse = await fetch(
-        `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`,
-      );
+      const userInfo = await this.fetchGoogleUserInfo(accessToken);
+      const user = await this.findOrCreateGoogleUser(userInfo.email, userInfo.name, userInfo.sub);
+      await this.ensureUserHasChat(user.id);
 
-      if (!userInfoResponse.ok) {
-        throw new UnauthorizedException('Invalid Google access token');
-      }
-
-      const userInfo = await userInfoResponse.json();
-      
-      if (!userInfo.email) {
-        throw new UnauthorizedException('Email not found in Google profile');
-      }
-
-      let user = await this.prisma.user.findUnique({
-        where: { email: userInfo.email },
-      });
-
-      if (!user) {
-        user = await this.prisma.user.create({
-          data: {
-            email: userInfo.email,
-            name: userInfo.name || userInfo.email,
-            provider: 'google',
-            providerId: userInfo.sub,
-          },
-        });
-        this.logger.log(`New Google user created: ${userInfo.email}`);
-      } else if (user.provider !== 'google') {
-        user = await this.prisma.user.update({
-          where: { id: user.id },
-          data: {
-            provider: 'google',
-            providerId: userInfo.sub,
-          },
-        });
-      }
-
-      try {
-        await this.chatService.createNewChat(user.id);
-      } catch (error) {
-        this.logger.warn(`Failed to create new chat for user ${user.id}, but login succeeded:`, error);
-      }
-
-      return this.generateTokens(user);
+      return this.tokenService.generateTokenResult(user);
     } catch (error) {
       this.logger.error('Google token verification failed:', error);
       throw new UnauthorizedException('Failed to verify Google token');
     }
   }
 
-  private generateTokens(user: User): GoogleAuthResult {
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      name: user.name,
-      iat: Math.floor(Date.now() / 1000),
-    };
+  private async fetchGoogleUserInfo(accessToken: string): Promise<GoogleUserInfo> {
+    const userInfoResponse = await fetch(
+      `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`,
+    );
 
-    const accessToken = this.jwtService.sign(payload);
+    if (!userInfoResponse.ok) {
+      throw new UnauthorizedException('Invalid Google access token');
+    }
+
+    const userInfo = await userInfoResponse.json();
+
+    if (!userInfo.email) {
+      throw new UnauthorizedException('Email not found in Google profile');
+    }
 
     return {
-      accessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-      },
+      email: userInfo.email,
+      name: userInfo.name || userInfo.email,
+      sub: userInfo.sub,
     };
   }
-}
 
+  private async findOrCreateGoogleUser(
+    email: string,
+    name: string,
+    providerId: string,
+  ): Promise<User> {
+    let user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      user = await this.createGoogleUser(email, name, providerId);
+      this.logger.log(`New Google user created: ${email}`);
+    } else if (user.provider !== 'google') {
+      user = await this.updateUserToGoogle(user.id, providerId);
+    }
+
+    return user;
+  }
+
+  private async createGoogleUser(email: string, name: string, providerId: string): Promise<User> {
+    return this.prisma.user.create({
+      data: {
+        email,
+        name,
+        provider: 'google',
+        providerId,
+      },
+    });
+  }
+
+  private async updateUserToGoogle(userId: string, providerId: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        provider: 'google',
+        providerId,
+      },
+    });
+  }
+
+  private async ensureUserHasChat(userId: string): Promise<void> {
+    try {
+      await this.chatService.createNewChat(userId);
+    } catch (error) {
+      this.logger.warn(`Failed to create new chat for user ${userId}, but login succeeded:`, error);
+    }
+  }
+}

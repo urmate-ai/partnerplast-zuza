@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OpenAIService } from './openai.service';
+import { DateUtils } from '../../common/utils/date.utils';
 import type { ChatHistoryItem, ChatWithMessages } from '../types/ai.types';
 
 @Injectable()
@@ -15,18 +16,10 @@ export class ChatService {
   async createNewChat(userId: string): Promise<string> {
     try {
       const chat = await this.prisma.chat.create({
-        data: {
-          userId,
-        },
+        data: { userId },
       });
 
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          currentChatId: chat.id,
-        },
-      });
-
+      await this.updateUserCurrentChat(userId, chat.id);
       this.logger.log(`New chat created for user: ${userId}, chatId: ${chat.id}`);
       return chat.id;
     } catch (error) {
@@ -37,22 +30,10 @@ export class ChatService {
 
   async getOrCreateCurrentChat(userId: string): Promise<string> {
     try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { currentChatId: true },
-      });
-
-      if (user?.currentChatId) {
-        const chatExists = await this.prisma.chat.findUnique({
-          where: { id: user.currentChatId },
-          select: { id: true },
-        });
-
-        if (chatExists) {
-          return user.currentChatId;
-        }
+      const currentChatId = await this.getUserCurrentChatId(userId);
+      if (currentChatId && (await this.chatExists(currentChatId))) {
+        return currentChatId;
       }
-
       return await this.createNewChat(userId);
     } catch (error) {
       this.logger.error('Error getting or creating current chat:', error);
@@ -60,50 +41,17 @@ export class ChatService {
     }
   }
 
-  async generateChatTitle(firstMessage: string): Promise<string> {
-    return this.openaiService.generateChatTitle(firstMessage);
-  }
-
-  async addMessage(
-    chatId: string,
-    role: 'user' | 'assistant',
-    content: string,
-  ): Promise<void> {
+  async addMessage(chatId: string, role: 'user' | 'assistant', content: string): Promise<void> {
     try {
       await this.prisma.message.create({
-        data: {
-          chatId,
-          role,
-          content,
-        },
+        data: { chatId, role, content },
       });
 
       if (role === 'user') {
-        const chat = await this.prisma.chat.findUnique({
-          where: { id: chatId },
-          select: { title: true },
-        });
-
-        if (!chat?.title) {
-          const messageCount = await this.prisma.message.count({
-            where: { chatId },
-          });
-
-          if (messageCount === 1) {
-            const title = await this.generateChatTitle(content);
-            await this.prisma.chat.update({
-              where: { id: chatId },
-              data: { title },
-            });
-            this.logger.log(`Chat title generated: ${title} for chatId: ${chatId}`);
-          }
-        }
+        await this.handleFirstUserMessage(chatId, content);
       }
 
-      await this.prisma.chat.update({
-        where: { id: chatId },
-        data: { updatedAt: new Date() },
-      });
+      await this.updateChatTimestamp(chatId);
     } catch (error) {
       this.logger.error('Error adding message to chat:', error);
       throw error;
@@ -113,10 +61,8 @@ export class ChatService {
   async saveChat(userId: string, transcript: string, reply: string): Promise<void> {
     try {
       const chatId = await this.getOrCreateCurrentChat(userId);
-
       await this.addMessage(chatId, 'user', transcript);
       await this.addMessage(chatId, 'assistant', reply);
-
       this.logger.log(`Chat saved for user: ${userId}, chatId: ${chatId}`);
     } catch (error) {
       this.logger.error('Error saving chat to database:', error);
@@ -127,33 +73,15 @@ export class ChatService {
   async getChatById(chatId: string, userId: string): Promise<ChatWithMessages> {
     try {
       const chat = await this.prisma.chat.findFirst({
-        where: {
-          id: chatId,
-          userId,
-        },
-        include: {
-          messages: {
-            orderBy: { createdAt: 'asc' },
-          },
-        },
+        where: { id: chatId, userId },
+        include: { messages: { orderBy: { createdAt: 'asc' } } },
       });
 
       if (!chat) {
         throw new NotFoundException('Chat not found');
       }
 
-      return {
-        id: chat.id,
-        title: chat.title ?? 'Bez tytułu',
-        messages: chat.messages.map((msg) => ({
-          id: msg.id,
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-          createdAt: msg.createdAt,
-        })),
-        createdAt: chat.createdAt,
-        updatedAt: chat.updatedAt,
-      };
+      return this.mapChatToDto(chat);
     } catch (error) {
       this.logger.error('Error fetching chat by id:', error);
       throw error;
@@ -166,18 +94,10 @@ export class ChatService {
         where: { userId },
         orderBy: { updatedAt: 'desc' },
         take: 100,
-        select: {
-          id: true,
-          title: true,
-          updatedAt: true,
-        },
+        select: { id: true, title: true, updatedAt: true },
       });
 
-      return chats.map((chat) => ({
-        id: chat.id,
-        title: chat.title ?? 'Bez tytułu',
-        timestamp: this.formatTimestamp(chat.updatedAt),
-      }));
+      return chats.map((chat) => this.mapChatToHistoryItem(chat));
     } catch (error) {
       this.logger.error('Error fetching chat history:', error);
       return [];
@@ -191,56 +111,100 @@ export class ChatService {
           userId,
           OR: [
             { title: { contains: query, mode: 'insensitive' } },
-            {
-              messages: {
-                some: {
-                  content: { contains: query, mode: 'insensitive' },
-                },
-              },
-            },
+            { messages: { some: { content: { contains: query, mode: 'insensitive' } } } },
           ],
         },
         orderBy: { updatedAt: 'desc' },
         take: 50,
-        select: {
-          id: true,
-          title: true,
-          updatedAt: true,
-        },
+        select: { id: true, title: true, updatedAt: true },
       });
 
-      return chats.map((chat) => ({
-        id: chat.id,
-        title: chat.title ?? 'Bez tytułu',
-        timestamp: this.formatTimestamp(chat.updatedAt),
-      }));
+      return chats.map((chat) => this.mapChatToHistoryItem(chat));
     } catch (error) {
       this.logger.error('Error searching chats:', error);
       return [];
     }
   }
 
-  private formatTimestamp(date: Date | string): string {
-    const chatDate = typeof date === 'string' ? new Date(date) : date;
-    const now = new Date();
-    const diffMs = now.getTime() - chatDate.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  private async getUserCurrentChatId(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { currentChatId: true },
+    });
+    return user?.currentChatId ?? null;
+  }
 
-    if (diffHours < 1) {
-      return 'Teraz';
-    } else if (diffHours < 24) {
-      return 'Dzisiaj';
-    } else if (diffDays === 1) {
-      return 'Wczoraj';
-    } else if (diffDays < 7) {
-      return `${diffDays} dni temu`;
-    } else if (diffDays < 30) {
-      const weeks = Math.floor(diffDays / 7);
-      return weeks === 1 ? 'Tydzień temu' : `${weeks} tygodnie temu`;
-    } else {
-      const months = Math.floor(diffDays / 30);
-      return months === 1 ? 'Miesiąc temu' : `${months} miesiące temu`;
+  private async chatExists(chatId: string): Promise<boolean> {
+    const chat = await this.prisma.chat.findUnique({
+      where: { id: chatId },
+      select: { id: true },
+    });
+    return !!chat;
+  }
+
+  private async updateUserCurrentChat(userId: string, chatId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { currentChatId: chatId },
+    });
+  }
+
+  private async handleFirstUserMessage(chatId: string, content: string): Promise<void> {
+    const chat = await this.prisma.chat.findUnique({
+      where: { id: chatId },
+      select: { title: true },
+    });
+
+    if (!chat?.title) {
+      const messageCount = await this.prisma.message.count({ where: { chatId } });
+      if (messageCount === 1) {
+        const title = await this.openaiService.generateChatTitle(content);
+        await this.prisma.chat.update({
+          where: { id: chatId },
+          data: { title },
+        });
+        this.logger.log(`Chat title generated: ${title} for chatId: ${chatId}`);
+      }
     }
+  }
+
+  private async updateChatTimestamp(chatId: string): Promise<void> {
+    await this.prisma.chat.update({
+      where: { id: chatId },
+      data: { updatedAt: new Date() },
+    });
+  }
+
+  private mapChatToDto(chat: {
+    id: string;
+    title: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    messages: Array<{ id: string; role: string; content: string; createdAt: Date }>;
+  }): ChatWithMessages {
+    return {
+      id: chat.id,
+      title: chat.title ?? 'Bez tytułu',
+      messages: chat.messages.map((msg) => ({
+        id: msg.id,
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+        createdAt: msg.createdAt,
+      })),
+      createdAt: chat.createdAt,
+      updatedAt: chat.updatedAt,
+    };
+  }
+
+  private mapChatToHistoryItem(chat: {
+    id: string;
+    title: string | null;
+    updatedAt: Date;
+  }): ChatHistoryItem {
+    return {
+      id: chat.id,
+      title: chat.title ?? 'Bez tytułu',
+      timestamp: DateUtils.formatRelativeTimestamp(chat.updatedAt),
+    };
   }
 }
