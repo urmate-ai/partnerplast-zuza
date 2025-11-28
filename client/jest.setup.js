@@ -1,9 +1,5 @@
 require('@testing-library/jest-native/extend-expect');
 
-// Mock react-native/jest modules to avoid Flow/ES module syntax errors
-jest.mock('react-native/jest/mock', () => ({}), { virtual: true });
-jest.mock('react-native/jest/setup', () => ({}), { virtual: true });
-
 // Mock expo modules
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(),

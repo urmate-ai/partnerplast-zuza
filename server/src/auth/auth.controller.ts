@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Put,
+  Delete,
   Body,
   UseGuards,
   Request,
@@ -136,5 +137,12 @@ export class AuthController {
   @Get('users')
   getAllUsers() {
     return this.authService.getAllUsers();
+  }
+
+  @Delete('account')
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  async deleteAccount(@CurrentUser() user: CurrentUserPayload) {
+    return this.authService.deleteAccount(user.id);
   }
 }

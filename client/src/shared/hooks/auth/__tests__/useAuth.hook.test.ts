@@ -7,7 +7,7 @@ import { useAuthStore } from '../../../../stores/authStore';
 import { logout as logoutService } from '../../../../services/auth.service';
 import type { AuthState } from '../../../../stores/authStore';
 
-jest.mock('../../../../utils/api');
+jest.mock('../../../utils/api');
 jest.mock('../../../../stores/authStore');
 jest.mock('../../../../services/auth.service');
 

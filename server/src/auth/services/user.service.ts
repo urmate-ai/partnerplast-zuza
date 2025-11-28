@@ -182,4 +182,21 @@ export class UserService {
 
     return user;
   }
+
+  async deleteAccount(userId: string): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Użytkownik nie został znaleziony');
+    }
+
+    await this.prisma.user.delete({
+      where: { id: userId },
+    });
+
+    this.logger.log(`Account deleted for user: ${userId}`);
+    return { message: 'Konto zostało pomyślnie usunięte' };
+  }
 }

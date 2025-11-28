@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { apiClient } from '../../utils/api';
 import { useAuthStore } from '../../../stores/authStore';
-import { logout as logoutService } from '../../../services/auth.service';
+import { logout as logoutService, deleteAccount as deleteAccountService } from '../../../services/auth.service';
 import type { AuthResponse, LoginData, RegisterData } from '../../../shared/types';
 
 const loginUser = async (data: LoginData): Promise<AuthResponse> => {
@@ -38,6 +38,19 @@ export const useLogout = () => {
   const clearAuth = useAuthStore((state) => state.clearAuth);
   return useMutation({
     mutationFn: logoutService,
+    onSuccess: () => {
+      clearAuth();
+    },
+    onError: () => {
+      clearAuth();
+    },
+  });
+};
+
+export const useDeleteAccount = () => {
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+  return useMutation({
+    mutationFn: deleteAccountService,
     onSuccess: () => {
       clearAuth();
     },

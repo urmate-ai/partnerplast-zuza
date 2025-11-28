@@ -17,8 +17,8 @@ import { useAuthStore } from '../../../../stores/authStore';
 import type { UserProfile } from '../../../../services/auth.service';
 import type { AuthState } from '../../../../stores/authStore';
 
-jest.mock('../../../services/auth.service');
-jest.mock('../../../stores/authStore');
+jest.mock('../../../../services/auth.service');
+jest.mock('../../../../stores/authStore');
 
 const mockGetProfile = getProfile as jest.MockedFunction<typeof getProfile>;
 const mockUpdateProfile = updateProfile as jest.MockedFunction<typeof updateProfile>;
@@ -42,8 +42,29 @@ const createWrapper = () => {
 };
 
 describe('useProfile.hook', () => {
+  const mockSetAuth = jest.fn();
+  const mockUser = { id: '1', email: 'test@example.com', name: 'Test User' };
+  const mockToken = 'token123';
+  const defaultMockState: AuthState = {
+    user: mockUser,
+    token: mockToken,
+    isLoading: false,
+    isAuthenticated: true,
+    setAuth: mockSetAuth,
+    clearAuth: jest.fn(),
+    loadAuth: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
+    // Set up default mock for useAuthStore
+    mockUseAuthStore.mockImplementation((selector?: (state: AuthState) => unknown) => {
+      if (selector && typeof selector === 'function') {
+        return selector(defaultMockState) as never;
+      }
+      // When called without selector, return the entire state
+      return defaultMockState as never;
+    });
   });
 
   describe('useProfile', () => {
@@ -82,9 +103,14 @@ describe('useProfile.hook', () => {
         wrapper: createWrapper(),
       });
 
-      await waitFor(() => {
-        expect(result.current.isError).toBe(true);
-      });
+      await waitFor(
+        () => {
+          expect(result.current.isError).toBe(true);
+        },
+        { timeout: 3000 },
+      );
+      
+      expect(result.current.error).toEqual(error);
     });
   });
 
@@ -103,24 +129,8 @@ describe('useProfile.hook', () => {
       updatedAt: '2024-01-01T12:00:00Z',
     };
 
-    const mockSetAuth = jest.fn();
-    const mockUser = { id: '1', email: 'test@example.com', name: 'Test User' };
-    const mockToken = 'token123';
-
     it('should update profile successfully', async () => {
       mockUpdateProfile.mockResolvedValue(mockUpdatedProfile);
-      mockUseAuthStore.mockImplementation((selector: (state: AuthState) => unknown) => {
-        const mockState: AuthState = {
-          user: mockUser,
-          token: mockToken,
-          isLoading: false,
-          isAuthenticated: true,
-          setAuth: mockSetAuth,
-          clearAuth: jest.fn(),
-          loadAuth: jest.fn(),
-        };
-        return selector(mockState) as never;
-      });
 
       const { result } = renderHook(() => useUpdateProfile(), {
         wrapper: createWrapper(),
