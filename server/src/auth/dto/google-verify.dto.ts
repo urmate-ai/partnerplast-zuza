@@ -5,4 +5,3 @@ export class GoogleVerifyDto {
   @IsString({ message: 'Access token musi być tekstem' })
   accessToken: string;
 }
-

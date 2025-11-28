@@ -14,7 +14,10 @@ import { AuthGuard } from '@nestjs/passport';
 import { diskStorage } from 'multer';
 import { AiService } from './ai.service';
 import { VoiceRequestDto } from './dto/voice-request.dto';
-import { CurrentUser, type CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type CurrentUserPayload,
+} from '../auth/decorators/current-user.decorator';
 import type { AudioFile } from './types/ai.types';
 
 @Controller('ai')
@@ -43,9 +46,11 @@ export class AiController {
       context: body.context,
     });
 
-    this.aiService.saveChat(user.id, result.transcript, result.reply).catch((error) => {
-      console.error('Failed to save chat:', error);
-    });
+    this.aiService
+      .saveChat(user.id, result.transcript, result.reply)
+      .catch((error) => {
+        console.error('Failed to save chat:', error);
+      });
 
     return {
       transcript: result.transcript,
@@ -61,7 +66,10 @@ export class AiController {
 
   @Get('chats')
   @UseGuards(AuthGuard('jwt'))
-  async searchChats(@CurrentUser() user: CurrentUserPayload, @Query('search') search?: string) {
+  async searchChats(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('search') search?: string,
+  ) {
     if (search && search.trim()) {
       return this.aiService.searchChats(user.id, search.trim());
     }
@@ -83,5 +91,3 @@ export class AiController {
     return this.aiService.createNewChat(user.id);
   }
 }
-
-

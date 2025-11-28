@@ -10,4 +10,3 @@ import { TokenService } from './services/token.service';
   exports: [EmailService, TokenService],
 })
 export class CommonModule {}
-

@@ -14,4 +14,3 @@ export interface GoogleAuthResult {
     name: string;
   };
 }
-

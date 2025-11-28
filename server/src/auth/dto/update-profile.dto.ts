@@ -1,4 +1,10 @@
-import { IsString, MinLength, MaxLength, IsOptional, IsEmail } from 'class-validator';
+import {
+  IsString,
+  MinLength,
+  MaxLength,
+  IsOptional,
+  IsEmail,
+} from 'class-validator';
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -11,4 +17,3 @@ export class UpdateProfileDto {
   @IsEmail({}, { message: 'Nieprawidłowy format email' })
   email?: string;
 }
-

@@ -11,4 +11,3 @@ export interface GoogleCallbackRequest extends Request {
 }
 
 export type ExpressResponse = Response;
-

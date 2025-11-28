@@ -8,4 +8,3 @@ export interface IntegrationResponse {
   createdAt: Date;
   updatedAt: Date;
 }
-

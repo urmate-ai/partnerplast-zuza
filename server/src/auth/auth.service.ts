@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { LocalAuthService } from './services/local-auth.service';
 import { OAuthService } from './services/oauth.service';
 import { UserService } from './services/user.service';
-import type { JwtPayload, UpdateProfileData, UpdateNotificationsData } from './types/auth.types';
+import type {
+  JwtPayload,
+  UpdateProfileData,
+  UpdateNotificationsData,
+} from './types/auth.types';
 import type { GoogleProfile } from './types/oauth.types';
 
 @Injectable()
@@ -21,8 +25,16 @@ export class AuthService {
     return this.localAuthService.login(email, password);
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
-    return this.localAuthService.changePassword(userId, currentPassword, newPassword);
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    return this.localAuthService.changePassword(
+      userId,
+      currentPassword,
+      newPassword,
+    );
   }
 
   async validateGoogleUser(profile: GoogleProfile) {
@@ -41,7 +53,10 @@ export class AuthService {
     return this.userService.updateProfile(userId, updateData);
   }
 
-  async updateNotifications(userId: string, updateData: UpdateNotificationsData) {
+  async updateNotifications(
+    userId: string,
+    updateData: UpdateNotificationsData,
+  ) {
     return this.userService.updateNotifications(userId, updateData);
   }
 

@@ -102,7 +102,9 @@ describe('UserUtils', () => {
     it('powinien wyodrębnić email z profilu Google', () => {
       const emails = [{ value: 'test@example.com' }];
 
-      expect(UserUtils.extractEmailFromGoogleProfile(emails)).toBe('test@example.com');
+      expect(UserUtils.extractEmailFromGoogleProfile(emails)).toBe(
+        'test@example.com',
+      );
     });
 
     it('powinien zwrócić null gdy brak emaili', () => {
@@ -116,8 +118,9 @@ describe('UserUtils', () => {
         { value: 'second@example.com' },
       ];
 
-      expect(UserUtils.extractEmailFromGoogleProfile(emails)).toBe('first@example.com');
+      expect(UserUtils.extractEmailFromGoogleProfile(emails)).toBe(
+        'first@example.com',
+      );
     });
   });
 });
-

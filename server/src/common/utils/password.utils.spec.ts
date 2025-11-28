@@ -33,7 +33,10 @@ describe('PasswordUtils', () => {
 
       const result = await PasswordUtils.compare(plainPassword, hashedPassword);
 
-      expect(mockBcrypt.compare).toHaveBeenCalledWith(plainPassword, hashedPassword);
+      expect(mockBcrypt.compare).toHaveBeenCalledWith(
+        plainPassword,
+        hashedPassword,
+      );
       expect(result).toBe(true);
     });
 
@@ -45,9 +48,11 @@ describe('PasswordUtils', () => {
 
       const result = await PasswordUtils.compare(plainPassword, hashedPassword);
 
-      expect(mockBcrypt.compare).toHaveBeenCalledWith(plainPassword, hashedPassword);
+      expect(mockBcrypt.compare).toHaveBeenCalledWith(
+        plainPassword,
+        hashedPassword,
+      );
       expect(result).toBe(false);
     });
   });
 });
-

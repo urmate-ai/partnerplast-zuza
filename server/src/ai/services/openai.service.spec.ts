@@ -4,20 +4,28 @@ import { ConfigService } from '@nestjs/config';
 import { OpenAIService } from './openai.service';
 import * as fs from 'node:fs';
 import * as OpenAI from 'openai';
+import type { AudioFile } from '../types/ai.types';
+
+type MockChatCompletion = {
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+};
 
 jest.mock('node:fs');
 jest.mock('openai');
 
 describe('OpenAIService', () => {
   let service: OpenAIService;
-  let configService: ConfigService;
   let mockOpenAI: jest.Mocked<OpenAI.OpenAI>;
 
-  const mockAudioFile = {
+  const mockAudioFile: Partial<AudioFile> = {
     path: '/tmp/test-audio.m4a',
     originalname: 'test.m4a',
     mimetype: 'audio/m4a',
-  } as any;
+  } as AudioFile;
 
   beforeEach(async () => {
     const mockOpenAIClient = {
@@ -33,8 +41,10 @@ describe('OpenAIService', () => {
       },
     };
 
-    (OpenAI.OpenAI as unknown as jest.Mock).mockImplementation(() => mockOpenAIClient);
-    mockOpenAI = mockOpenAIClient as any;
+    (OpenAI.OpenAI as unknown as jest.Mock).mockImplementation(
+      () => mockOpenAIClient,
+    );
+    mockOpenAI = mockOpenAIClient as unknown as jest.Mocked<OpenAI.OpenAI>;
 
     (fs.readFileSync as jest.Mock).mockReturnValue(Buffer.from('audio-data'));
     (fs.unlink as unknown as jest.Mock).mockImplementation((path, callback) => {
@@ -57,7 +67,6 @@ describe('OpenAIService', () => {
     }).compile();
 
     service = module.get<OpenAIService>(OpenAIService);
-    configService = module.get<ConfigService>(ConfigService);
   });
 
   afterEach(() => {
@@ -67,12 +76,16 @@ describe('OpenAIService', () => {
   describe('transcribeAudio', () => {
     it('powinien przetranskrybować audio i zwrócić tekst', async () => {
       const transcript = 'Przetranskrybowany tekst';
-      (mockOpenAI.audio.transcriptions.create as jest.Mock).mockResolvedValue(transcript as any);
+      (mockOpenAI.audio.transcriptions.create as jest.Mock).mockResolvedValue(
+        transcript as string,
+      );
 
       const result = await service.transcribeAudio(mockAudioFile, 'pl');
 
       expect(fs.readFileSync).toHaveBeenCalledWith(mockAudioFile.path);
-      expect(mockOpenAI.audio.transcriptions.create as jest.Mock).toHaveBeenCalledWith(
+      expect(
+        mockOpenAI.audio.transcriptions.create as jest.Mock,
+      ).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'whisper-1',
           language: 'pl',
@@ -80,23 +93,31 @@ describe('OpenAIService', () => {
         }),
       );
       expect(result).toBe(transcript);
-      expect(fs.unlink).toHaveBeenCalledWith(mockAudioFile.path, expect.any(Function));
+      expect(fs.unlink).toHaveBeenCalledWith(
+        mockAudioFile.path,
+        expect.any(Function),
+      );
     });
 
     it('powinien rzucić błąd gdy brak ścieżki do pliku', async () => {
-      const fileWithoutPath = { ...mockAudioFile, path: undefined };
+      const fileWithoutPath: Partial<AudioFile> = {
+        ...mockAudioFile,
+        path: undefined,
+      };
 
-      await expect(service.transcribeAudio(fileWithoutPath, 'pl')).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(
+        service.transcribeAudio(fileWithoutPath, 'pl'),
+      ).rejects.toThrow(InternalServerErrorException);
     });
 
     it('powinien rzucić błąd gdy transkrypcja jest pusta', async () => {
-      (mockOpenAI.audio.transcriptions.create as jest.Mock).mockResolvedValue('' as any);
-
-      await expect(service.transcribeAudio(mockAudioFile, 'pl')).rejects.toThrow(
-        InternalServerErrorException,
+      (mockOpenAI.audio.transcriptions.create as jest.Mock).mockResolvedValue(
+        '' as string,
       );
+
+      await expect(
+        service.transcribeAudio(mockAudioFile, 'pl'),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -113,11 +134,13 @@ describe('OpenAIService', () => {
             },
           },
         ],
-      } as any);
+      } as MockChatCompletion);
 
       const result = await service.generateResponse(transcript);
 
-      expect(mockOpenAI.chat.completions.create as jest.Mock).toHaveBeenCalledWith(
+      expect(
+        mockOpenAI.chat.completions.create as jest.Mock,
+      ).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'gpt-4o-mini',
           messages: expect.arrayContaining([
@@ -139,7 +162,7 @@ describe('OpenAIService', () => {
     it('powinien rzucić błąd gdy odpowiedź jest pusta', async () => {
       (mockOpenAI.chat.completions.create as jest.Mock).mockResolvedValue({
         choices: [{ message: { content: '' } }],
-      } as any);
+      } as MockChatCompletion);
 
       await expect(service.generateResponse('test')).rejects.toThrow(
         InternalServerErrorException,
@@ -152,12 +175,16 @@ describe('OpenAIService', () => {
       const transcript = 'Witaj';
       const reply = 'Cześć!';
 
-      (mockOpenAI.audio.transcriptions.create as jest.Mock).mockResolvedValue(transcript as any);
+      (mockOpenAI.audio.transcriptions.create as jest.Mock).mockResolvedValue(
+        transcript as string,
+      );
       (mockOpenAI.chat.completions.create as jest.Mock).mockResolvedValue({
         choices: [{ message: { content: reply } }],
-      } as any);
+      } as MockChatCompletion);
 
-      const result = await service.transcribeAndRespond(mockAudioFile, { language: 'pl' });
+      const result = await service.transcribeAndRespond(mockAudioFile, {
+        language: 'pl',
+      });
 
       expect(result).toEqual({ transcript, reply });
     });
@@ -170,12 +197,14 @@ describe('OpenAIService', () => {
 
       (mockOpenAI.chat.completions.create as jest.Mock).mockResolvedValue({
         choices: [{ message: { content: title } }],
-      } as any);
+      } as MockChatCompletion);
 
       const result = await service.generateChatTitle(firstMessage);
 
       expect(result).toBe(title);
-      expect(mockOpenAI.chat.completions.create as jest.Mock).toHaveBeenCalledWith(
+      expect(
+        mockOpenAI.chat.completions.create as jest.Mock,
+      ).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'gpt-4o-mini',
           max_tokens: 30,
@@ -185,11 +214,10 @@ describe('OpenAIService', () => {
 
     it('powinien skrócić tytuł jeśli jest za długi', async () => {
       const longTitle = 'A'.repeat(100);
-      const expectedTitle = 'A'.repeat(60);
 
       (mockOpenAI.chat.completions.create as jest.Mock).mockResolvedValue({
         choices: [{ message: { content: longTitle } }],
-      } as any);
+      } as MockChatCompletion);
 
       const result = await service.generateChatTitle('test');
 
@@ -197,7 +225,9 @@ describe('OpenAIService', () => {
     });
 
     it('powinien zwrócić domyślny tytuł w przypadku błędu', async () => {
-      (mockOpenAI.chat.completions.create as jest.Mock).mockRejectedValue(new Error('API Error'));
+      (mockOpenAI.chat.completions.create as jest.Mock).mockRejectedValue(
+        new Error('API Error'),
+      );
 
       const result = await service.generateChatTitle('test');
 
@@ -205,4 +235,3 @@ describe('OpenAIService', () => {
     });
   });
 });
-

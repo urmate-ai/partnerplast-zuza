@@ -98,11 +98,17 @@ describe('LocalAuthService', () => {
     it('powinien zarejestrować nowego użytkownika', async () => {
       (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
       (PasswordUtils.hash as jest.Mock).mockResolvedValue(mockHashedPassword);
-      (prismaService.user.create as jest.Mock).mockResolvedValue(mockUser as any);
+      (prismaService.user.create as jest.Mock).mockResolvedValue(
+        mockUser as User,
+      );
       emailService.sendWelcomeEmail.mockResolvedValue(undefined);
       tokenService.generateTokenResult.mockReturnValue(mockAuthResponse);
 
-      const result = await service.register('Test User', mockEmail, mockPassword);
+      const result = await service.register(
+        'Test User',
+        mockEmail,
+        mockPassword,
+      );
 
       expect(prismaService.user.findUnique as jest.Mock).toHaveBeenCalledWith({
         where: { email: mockEmail },
@@ -116,29 +122,39 @@ describe('LocalAuthService', () => {
           provider: 'local',
         },
       });
-      expect(emailService.sendWelcomeEmail).toHaveBeenCalledWith(mockEmail, 'Test User');
+      expect(emailService.sendWelcomeEmail).toHaveBeenCalledWith(
+        mockEmail,
+        'Test User',
+      );
       expect(result).toEqual(mockAuthResponse);
     });
 
     it('powinien rzucić ConflictException gdy email już istnieje', async () => {
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser as any);
-
-      await expect(service.register('Test User', mockEmail, mockPassword)).rejects.toThrow(
-        ConflictException,
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(
+        mockUser as User | null,
       );
+
+      await expect(
+        service.register('Test User', mockEmail, mockPassword),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
   describe('login', () => {
     it('powinien zalogować użytkownika z poprawnymi danymi', async () => {
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser as any);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(
+        mockUser as User | null,
+      );
       (PasswordUtils.compare as jest.Mock).mockResolvedValue(true);
       chatService.createNewChat.mockResolvedValue('chat-id');
       tokenService.generateTokenResult.mockReturnValue(mockAuthResponse);
 
       const result = await service.login(mockEmail, mockPassword);
 
-      expect(PasswordUtils.compare).toHaveBeenCalledWith(mockPassword, mockHashedPassword);
+      expect(PasswordUtils.compare).toHaveBeenCalledWith(
+        mockPassword,
+        mockHashedPassword,
+      );
       expect(chatService.createNewChat).toHaveBeenCalledWith(mockUserId);
       expect(result).toEqual(mockAuthResponse);
     });
@@ -152,7 +168,9 @@ describe('LocalAuthService', () => {
     });
 
     it('powinien rzucić UnauthorizedException gdy hasło jest nieprawidłowe', async () => {
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser as any);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(
+        mockUser as User | null,
+      );
       (PasswordUtils.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(service.login(mockEmail, 'wrong-password')).rejects.toThrow(
@@ -167,14 +185,26 @@ describe('LocalAuthService', () => {
       const newPassword = 'newPassword';
       const newHashedPassword = 'new-hashed-password';
 
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser as any);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(
+        mockUser as User | null,
+      );
       (PasswordUtils.compare as jest.Mock).mockResolvedValue(true);
       (PasswordUtils.hash as jest.Mock).mockResolvedValue(newHashedPassword);
-      (prismaService.user.update as jest.Mock).mockResolvedValue({} as any);
+      const mockUpdateResult: PrismaUpdateResult = { id: mockUserId };
+      (prismaService.user.update as jest.Mock).mockResolvedValue(
+        mockUpdateResult as User,
+      );
 
-      const result = await service.changePassword(mockUserId, currentPassword, newPassword);
+      const result = await service.changePassword(
+        mockUserId,
+        currentPassword,
+        newPassword,
+      );
 
-      expect(PasswordUtils.compare).toHaveBeenCalledWith(currentPassword, mockHashedPassword);
+      expect(PasswordUtils.compare).toHaveBeenCalledWith(
+        currentPassword,
+        mockHashedPassword,
+      );
       expect(PasswordUtils.hash).toHaveBeenCalledWith(newPassword);
       expect(prismaService.user.update as jest.Mock).toHaveBeenCalledWith({
         where: { id: mockUserId },
@@ -184,7 +214,9 @@ describe('LocalAuthService', () => {
     });
 
     it('powinien rzucić UnauthorizedException gdy aktualne hasło jest nieprawidłowe', async () => {
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser as any);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(
+        mockUser as User | null,
+      );
       (PasswordUtils.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(
@@ -200,7 +232,9 @@ describe('LocalAuthService', () => {
 
       const response = await service.forgotPassword(mockEmail);
 
-      expect(passwordResetService.requestPasswordReset).toHaveBeenCalledWith(mockEmail);
+      expect(passwordResetService.requestPasswordReset).toHaveBeenCalledWith(
+        mockEmail,
+      );
       expect(response).toEqual(result);
     });
   });
@@ -214,9 +248,11 @@ describe('LocalAuthService', () => {
 
       const response = await service.resetPassword(token, newPassword);
 
-      expect(passwordResetService.resetPassword).toHaveBeenCalledWith(token, newPassword);
+      expect(passwordResetService.resetPassword).toHaveBeenCalledWith(
+        token,
+        newPassword,
+      );
       expect(response).toEqual(result);
     });
   });
 });
-

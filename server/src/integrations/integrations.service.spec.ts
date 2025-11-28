@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { IntegrationsService } from './integrations.service';
 import { PrismaService } from '../prisma/prisma.service';
 import type { IntegrationResponse } from './types/integrations.types';
+import type { Integration } from '@prisma/client';
 
 describe('IntegrationsService', () => {
   let service: IntegrationsService;
@@ -55,11 +56,15 @@ describe('IntegrationsService', () => {
 
   describe('getAllIntegrations', () => {
     it('powinien zwrócić wszystkie integracje posortowane alfabetycznie', async () => {
-      (prismaService.integration.findMany as jest.Mock).mockResolvedValue(mockIntegrations as any);
+      (prismaService.integration.findMany as jest.Mock).mockResolvedValue(
+        mockIntegrations as Integration[],
+      );
 
       const result = await service.getAllIntegrations();
 
-      expect(prismaService.integration.findMany as jest.Mock).toHaveBeenCalledWith({
+      expect(
+        prismaService.integration.findMany as jest.Mock,
+      ).toHaveBeenCalledWith({
         orderBy: { name: 'asc' },
         select: {
           id: true,
@@ -77,9 +82,13 @@ describe('IntegrationsService', () => {
     });
 
     it('powinien rzucić błąd gdy wystąpi problem z bazą danych', async () => {
-      (prismaService.integration.findMany as jest.Mock).mockRejectedValue(new Error('Database error'));
+      (prismaService.integration.findMany as jest.Mock).mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.getAllIntegrations()).rejects.toThrow('Database error');
+      await expect(service.getAllIntegrations()).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
@@ -88,11 +97,15 @@ describe('IntegrationsService', () => {
       const query = 'calendar';
       const filteredIntegrations = [mockIntegrations[0]];
 
-      (prismaService.integration.findMany as jest.Mock).mockResolvedValue(filteredIntegrations as any);
+      (prismaService.integration.findMany as jest.Mock).mockResolvedValue(
+        filteredIntegrations as Integration[],
+      );
 
       const result = await service.searchIntegrations(query);
 
-      expect(prismaService.integration.findMany as jest.Mock).toHaveBeenCalledWith({
+      expect(
+        prismaService.integration.findMany as jest.Mock,
+      ).toHaveBeenCalledWith({
         where: {
           OR: [
             { name: { contains: query, mode: 'insensitive' } },
@@ -125,10 +138,13 @@ describe('IntegrationsService', () => {
     });
 
     it('powinien rzucić błąd gdy wystąpi problem z bazą danych', async () => {
-      (prismaService.integration.findMany as jest.Mock).mockRejectedValue(new Error('Database error'));
+      (prismaService.integration.findMany as jest.Mock).mockRejectedValue(
+        new Error('Database error'),
+      );
 
-      await expect(service.searchIntegrations('test')).rejects.toThrow('Database error');
+      await expect(service.searchIntegrations('test')).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 });
-

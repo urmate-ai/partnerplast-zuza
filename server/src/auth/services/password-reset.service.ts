@@ -20,12 +20,16 @@ export class PasswordResetService {
     const user = await this.findLocalUserByEmail(email);
 
     if (!user) {
-      this.logger.warn(`Password reset requested for non-existent or OAuth user: ${email}`);
+      this.logger.warn(
+        `Password reset requested for non-existent or OAuth user: ${email}`,
+      );
       return this.getPasswordResetResponse();
     }
 
     const resetToken = this.generateResetToken();
-    const resetTokenExpires = DateUtils.addHours(PasswordResetService.RESET_TOKEN_EXPIRY_HOURS);
+    const resetTokenExpires = DateUtils.addHours(
+      PasswordResetService.RESET_TOKEN_EXPIRY_HOURS,
+    );
 
     await this.updateUserResetToken(user.id, resetToken, resetTokenExpires);
 
@@ -34,18 +38,26 @@ export class PasswordResetService {
       this.logger.log(`Password reset email sent to: ${email}`);
     } catch (error) {
       await this.clearUserResetToken(user.id);
-      this.logger.error(`Failed to send password reset email to ${email}:`, error);
+      this.logger.error(
+        `Failed to send password reset email to ${email}:`,
+        error,
+      );
       throw new Error('Nie udało się wysłać emaila z resetem hasła');
     }
 
     return this.getPasswordResetResponse();
   }
 
-  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+  async resetPassword(
+    token: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
     const user = await this.findUserByResetToken(token);
 
     if (!user) {
-      throw new UnauthorizedException('Nieprawidłowy lub wygasły token resetu hasła');
+      throw new UnauthorizedException(
+        'Nieprawidłowy lub wygasły token resetu hasła',
+      );
     }
 
     const hashedPassword = await PasswordUtils.hash(newPassword);
@@ -77,7 +89,11 @@ export class PasswordResetService {
     return crypto.randomBytes(32).toString('hex');
   }
 
-  private async updateUserResetToken(userId: string, token: string, expires: Date): Promise<void> {
+  private async updateUserResetToken(
+    userId: string,
+    token: string,
+    expires: Date,
+  ): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -97,7 +113,10 @@ export class PasswordResetService {
     });
   }
 
-  private async updateUserPassword(userId: string, hashedPassword: string): Promise<void> {
+  private async updateUserPassword(
+    userId: string,
+    hashedPassword: string,
+  ): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -109,7 +128,9 @@ export class PasswordResetService {
   }
 
   private getPasswordResetResponse(): { message: string } {
-    return { message: 'Jeśli konto z tym emailem istnieje, otrzymasz email z instrukcjami resetu hasła' };
+    return {
+      message:
+        'Jeśli konto z tym emailem istnieje, otrzymasz email z instrukcjami resetu hasła',
+    };
   }
 }
-

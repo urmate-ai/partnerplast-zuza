@@ -43,3 +43,4 @@ export interface UpdateNotificationsData {
   soundEnabled?: boolean;
 }
 
+export type UserWithPassword = User & { password: string };

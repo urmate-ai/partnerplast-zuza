@@ -2,7 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { UserProfile, UpdateProfileData, UpdateNotificationsData } from '../types/auth.types';
+import type { User, UserWithLogout } from '@prisma/client';
+import type {
+  UserProfile,
+  UpdateProfileData,
+  UpdateNotificationsData,
+} from '../types/auth.types';
+import type { PrismaUpdateResult } from '../../common/types/test.types';
 
 describe('UserService', () => {
   let service: UserService;
@@ -12,7 +18,7 @@ describe('UserService', () => {
   const mockUserProfile: UserProfile = {
     id: mockUserId,
     email: 'test@example.com',
-    name: 'Test User',      
+    name: 'Test User',
     provider: 'local',
     pushNotifications: true,
     emailNotifications: true,
@@ -49,7 +55,9 @@ describe('UserService', () => {
 
   describe('getProfile', () => {
     it('powinien zwrócić profil użytkownika', async () => {
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUserProfile as any);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(
+        mockUserProfile as UserProfile | null,
+      );
 
       const result = await service.getProfile(mockUserId);
 
@@ -73,7 +81,9 @@ describe('UserService', () => {
     it('powinien rzucić NotFoundException gdy użytkownik nie istnieje', async () => {
       (prismaService.user.findUnique as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.getProfile(mockUserId)).rejects.toThrow(NotFoundException);
+      await expect(service.getProfile(mockUserId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -85,10 +95,13 @@ describe('UserService', () => {
       };
 
       (prismaService.user.findFirst as jest.Mock).mockResolvedValue(null);
-      (prismaService.user.update as jest.Mock).mockResolvedValue({
+      const updatedProfile: UserProfile = {
         ...mockUserProfile,
         ...updateData,
-      } as any);
+      };
+      (prismaService.user.update as jest.Mock).mockResolvedValue(
+        updatedProfile,
+      );
 
       const result = await service.updateProfile(mockUserId, updateData);
 
@@ -112,14 +125,17 @@ describe('UserService', () => {
         email: 'existing@example.com',
       };
 
-      (prismaService.user.findFirst as jest.Mock).mockResolvedValue({
+      const existingUser: Partial<User> = {
         id: 'other-user',
         email: 'existing@example.com',
-      } as any);
-
-      await expect(service.updateProfile(mockUserId, updateData)).rejects.toThrow(
-        ConflictException,
+      };
+      (prismaService.user.findFirst as jest.Mock).mockResolvedValue(
+        existingUser as User | null,
       );
+
+      await expect(
+        service.updateProfile(mockUserId, updateData),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('powinien zaktualizować tylko podane pola', async () => {
@@ -127,10 +143,13 @@ describe('UserService', () => {
         name: 'New Name',
       };
 
-      (prismaService.user.update as jest.Mock).mockResolvedValue({
+      const updatedProfileName: UserProfile = {
         ...mockUserProfile,
         name: 'New Name',
-      } as any);
+      };
+      (prismaService.user.update as jest.Mock).mockResolvedValue(
+        updatedProfileName,
+      );
 
       await service.updateProfile(mockUserId, updateData);
 
@@ -150,10 +169,13 @@ describe('UserService', () => {
         soundEnabled: false,
       };
 
-      (prismaService.user.update as jest.Mock).mockResolvedValue({
+      const updatedNotifications: UserProfile = {
         ...mockUserProfile,
         ...updateData,
-      } as any);
+      };
+      (prismaService.user.update as jest.Mock).mockResolvedValue(
+        updatedNotifications,
+      );
 
       const result = await service.updateNotifications(mockUserId, updateData);
 
@@ -170,7 +192,10 @@ describe('UserService', () => {
 
   describe('logout', () => {
     it('powinien zaktualizować lastLogoutAt', async () => {
-      (prismaService.user.update as jest.Mock).mockResolvedValue({} as any);
+      const mockUpdateResult: PrismaUpdateResult = { id: mockUserId };
+      (prismaService.user.update as jest.Mock).mockResolvedValue(
+        mockUpdateResult as User,
+      );
 
       const result = await service.logout(mockUserId);
 
@@ -186,9 +211,19 @@ describe('UserService', () => {
 
   describe('getAllUsers', () => {
     it('powinien zwrócić wszystkich użytkowników', async () => {
-      const mockUsers = [mockUserProfile, { ...mockUserProfile, id: 'user-456' }];
+      const mockUsers = [
+        mockUserProfile,
+        { ...mockUserProfile, id: 'user-456' },
+      ];
 
-      (prismaService.user.findMany as jest.Mock).mockResolvedValue(mockUsers as any);
+      (prismaService.user.findMany as jest.Mock).mockResolvedValue(
+        mockUsers as Array<
+          Pick<
+            User,
+            'id' | 'email' | 'name' | 'provider' | 'createdAt' | 'updatedAt'
+          >
+        >,
+      );
 
       const result = await service.getAllUsers();
 
@@ -216,7 +251,9 @@ describe('UserService', () => {
         lastLogoutAt: null,
       };
 
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(mockUser as any);
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(
+        mockUser as UserWithLogout | null,
+      );
 
       const result = await service.validateUser(payload);
 
@@ -233,15 +270,20 @@ describe('UserService', () => {
 
     it('powinien zwrócić null gdy token został wydany przed wylogowaniem', async () => {
       const lastLogoutAt = new Date('2024-01-15T10:00:00Z');
-      const tokenIssuedAt = Math.floor(new Date('2024-01-15T09:00:00Z').getTime() / 1000);
+      const tokenIssuedAt = Math.floor(
+        new Date('2024-01-15T09:00:00Z').getTime() / 1000,
+      );
       const payload = { sub: mockUserId, iat: tokenIssuedAt };
 
-      (prismaService.user.findUnique as jest.Mock).mockResolvedValue({
+      const userWithLogout: Partial<UserWithLogout> = {
         id: mockUserId,
         email: 'test@example.com',
         name: 'Test User',
         lastLogoutAt,
-      } as any);
+      };
+      (prismaService.user.findUnique as jest.Mock).mockResolvedValue(
+        userWithLogout as UserWithLogout | null,
+      );
 
       const result = await service.validateUser(payload);
 
@@ -249,4 +291,3 @@ describe('UserService', () => {
     });
   });
 });
-

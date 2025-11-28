@@ -9,7 +9,6 @@ jest.mock('../templates/email.templates');
 
 describe('EmailService', () => {
   let service: EmailService;
-  let configService: ConfigService;
   let mockTransporter: {
     sendMail: jest.Mock;
   };
@@ -44,7 +43,6 @@ describe('EmailService', () => {
     }).compile();
 
     service = module.get<EmailService>(EmailService);
-    configService = module.get<ConfigService>(ConfigService);
   });
 
   afterEach(() => {
@@ -57,8 +55,12 @@ describe('EmailService', () => {
       const resetToken = 'test-token-123';
       const resetUrl = `urmate-ai-zuza://reset-password?token=${resetToken}`;
 
-      (EmailTemplates.passwordReset as jest.Mock).mockReturnValue('<html>Reset</html>');
-      (EmailTemplates.passwordResetText as jest.Mock).mockReturnValue('Reset text');
+      (EmailTemplates.passwordReset as jest.Mock).mockReturnValue(
+        '<html>Reset</html>',
+      );
+      (EmailTemplates.passwordResetText as jest.Mock).mockReturnValue(
+        'Reset text',
+      );
 
       await service.sendPasswordResetEmail(email, resetToken);
 
@@ -86,10 +88,14 @@ describe('EmailService', () => {
         ],
       }).compile();
 
-      const serviceWithoutConfig = moduleWithoutConfig.get<EmailService>(EmailService);
+      const serviceWithoutConfig =
+        moduleWithoutConfig.get<EmailService>(EmailService);
 
       await expect(
-        serviceWithoutConfig.sendPasswordResetEmail('test@example.com', 'token'),
+        serviceWithoutConfig.sendPasswordResetEmail(
+          'test@example.com',
+          'token',
+        ),
       ).rejects.toThrow('Konfiguracja SMTP nie jest ustawiona');
     });
 
@@ -99,9 +105,9 @@ describe('EmailService', () => {
 
       mockTransporter.sendMail.mockRejectedValueOnce(new Error('SMTP Error'));
 
-      await expect(service.sendPasswordResetEmail(email, resetToken)).rejects.toThrow(
-        'Nie udało się wysłać emaila z resetem hasła',
-      );
+      await expect(
+        service.sendPasswordResetEmail(email, resetToken),
+      ).rejects.toThrow('Nie udało się wysłać emaila z resetem hasła');
     });
   });
 
@@ -110,7 +116,9 @@ describe('EmailService', () => {
       const email = 'newuser@example.com';
       const name = 'Jan Kowalski';
 
-      (EmailTemplates.welcome as jest.Mock).mockReturnValue('<html>Welcome</html>');
+      (EmailTemplates.welcome as jest.Mock).mockReturnValue(
+        '<html>Welcome</html>',
+      );
       (EmailTemplates.welcomeText as jest.Mock).mockReturnValue('Welcome text');
 
       await service.sendWelcomeEmail(email, name);
@@ -122,8 +130,14 @@ describe('EmailService', () => {
         html: '<html>Welcome</html>',
         text: 'Welcome text',
       });
-      expect(EmailTemplates.welcome).toHaveBeenCalledWith(name, 'https://app.example.com');
-      expect(EmailTemplates.welcomeText).toHaveBeenCalledWith(name, 'https://app.example.com');
+      expect(EmailTemplates.welcome).toHaveBeenCalledWith(
+        name,
+        'https://app.example.com',
+      );
+      expect(EmailTemplates.welcomeText).toHaveBeenCalledWith(
+        name,
+        'https://app.example.com',
+      );
     });
 
     it('powinien zignorować błąd gdy SMTP nie jest skonfigurowany', async () => {
@@ -139,7 +153,8 @@ describe('EmailService', () => {
         ],
       }).compile();
 
-      const serviceWithoutConfig = moduleWithoutConfig.get<EmailService>(EmailService);
+      const serviceWithoutConfig =
+        moduleWithoutConfig.get<EmailService>(EmailService);
 
       await expect(
         serviceWithoutConfig.sendWelcomeEmail('test@example.com', 'Test User'),
@@ -147,4 +162,3 @@ describe('EmailService', () => {
     });
   });
 });
-

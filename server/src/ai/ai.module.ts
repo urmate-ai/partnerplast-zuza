@@ -13,5 +13,3 @@ import { PrismaModule } from '../prisma/prisma.module';
   exports: [AiService, ChatService],
 })
 export class AiModule {}
-
-

@@ -20,7 +20,9 @@ export class ChatService {
       });
 
       await this.updateUserCurrentChat(userId, chat.id);
-      this.logger.log(`New chat created for user: ${userId}, chatId: ${chat.id}`);
+      this.logger.log(
+        `New chat created for user: ${userId}, chatId: ${chat.id}`,
+      );
       return chat.id;
     } catch (error) {
       this.logger.error('Error creating new chat:', error);
@@ -41,7 +43,11 @@ export class ChatService {
     }
   }
 
-  async addMessage(chatId: string, role: 'user' | 'assistant', content: string): Promise<void> {
+  async addMessage(
+    chatId: string,
+    role: 'user' | 'assistant',
+    content: string,
+  ): Promise<void> {
     try {
       await this.prisma.message.create({
         data: { chatId, role, content },
@@ -58,7 +64,11 @@ export class ChatService {
     }
   }
 
-  async saveChat(userId: string, transcript: string, reply: string): Promise<void> {
+  async saveChat(
+    userId: string,
+    transcript: string,
+    reply: string,
+  ): Promise<void> {
     try {
       const chatId = await this.getOrCreateCurrentChat(userId);
       await this.addMessage(chatId, 'user', transcript);
@@ -111,7 +121,11 @@ export class ChatService {
           userId,
           OR: [
             { title: { contains: query, mode: 'insensitive' } },
-            { messages: { some: { content: { contains: query, mode: 'insensitive' } } } },
+            {
+              messages: {
+                some: { content: { contains: query, mode: 'insensitive' } },
+              },
+            },
           ],
         },
         orderBy: { updatedAt: 'desc' },
@@ -142,21 +156,29 @@ export class ChatService {
     return !!chat;
   }
 
-  private async updateUserCurrentChat(userId: string, chatId: string): Promise<void> {
+  private async updateUserCurrentChat(
+    userId: string,
+    chatId: string,
+  ): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
       data: { currentChatId: chatId },
     });
   }
 
-  private async handleFirstUserMessage(chatId: string, content: string): Promise<void> {
+  private async handleFirstUserMessage(
+    chatId: string,
+    content: string,
+  ): Promise<void> {
     const chat = await this.prisma.chat.findUnique({
       where: { id: chatId },
       select: { title: true },
     });
 
     if (!chat?.title) {
-      const messageCount = await this.prisma.message.count({ where: { chatId } });
+      const messageCount = await this.prisma.message.count({
+        where: { chatId },
+      });
       if (messageCount === 1) {
         const title = await this.openaiService.generateChatTitle(content);
         await this.prisma.chat.update({
@@ -180,7 +202,12 @@ export class ChatService {
     title: string | null;
     createdAt: Date;
     updatedAt: Date;
-    messages: Array<{ id: string; role: string; content: string; createdAt: Date }>;
+    messages: Array<{
+      id: string;
+      role: string;
+      content: string;
+      createdAt: Date;
+    }>;
   }): ChatWithMessages {
     return {
       id: chat.id,

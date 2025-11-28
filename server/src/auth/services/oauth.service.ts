@@ -35,7 +35,11 @@ export class OAuthService {
       throw new Error('Email not found in Google profile');
     }
 
-    const user = await this.findOrCreateGoogleUser(email, profile.displayName, profile.id);
+    const user = await this.findOrCreateGoogleUser(
+      email,
+      profile.displayName,
+      profile.id,
+    );
     await this.ensureUserHasChat(user.id);
 
     return this.tokenService.generateTokenResult(user);
@@ -44,7 +48,11 @@ export class OAuthService {
   async verifyGoogleToken(accessToken: string): Promise<GoogleAuthResult> {
     try {
       const userInfo = await this.fetchGoogleUserInfo(accessToken);
-      const user = await this.findOrCreateGoogleUser(userInfo.email, userInfo.name, userInfo.sub);
+      const user = await this.findOrCreateGoogleUser(
+        userInfo.email,
+        userInfo.name,
+        userInfo.sub,
+      );
       await this.ensureUserHasChat(user.id);
 
       return this.tokenService.generateTokenResult(user);
@@ -54,7 +62,9 @@ export class OAuthService {
     }
   }
 
-  private async fetchGoogleUserInfo(accessToken: string): Promise<GoogleUserInfo> {
+  private async fetchGoogleUserInfo(
+    accessToken: string,
+  ): Promise<GoogleUserInfo> {
     const userInfoResponse = await fetch(
       `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${accessToken}`,
     );
@@ -63,7 +73,11 @@ export class OAuthService {
       throw new UnauthorizedException('Invalid Google access token');
     }
 
-    const userInfo = await userInfoResponse.json();
+    const userInfo = (await userInfoResponse.json()) as {
+      email?: string;
+      name?: string;
+      sub?: string;
+    };
 
     if (!userInfo.email) {
       throw new UnauthorizedException('Email not found in Google profile');
@@ -72,7 +86,7 @@ export class OAuthService {
     return {
       email: userInfo.email,
       name: userInfo.name || userInfo.email,
-      sub: userInfo.sub,
+      sub: userInfo.sub || '',
     };
   }
 
@@ -95,7 +109,11 @@ export class OAuthService {
     return user;
   }
 
-  private async createGoogleUser(email: string, name: string, providerId: string): Promise<User> {
+  private async createGoogleUser(
+    email: string,
+    name: string,
+    providerId: string,
+  ): Promise<User> {
     return this.prisma.user.create({
       data: {
         email,
@@ -106,7 +124,10 @@ export class OAuthService {
     });
   }
 
-  private async updateUserToGoogle(userId: string, providerId: string): Promise<User> {
+  private async updateUserToGoogle(
+    userId: string,
+    providerId: string,
+  ): Promise<User> {
     return this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -120,7 +141,10 @@ export class OAuthService {
     try {
       await this.chatService.createNewChat(userId);
     } catch (error) {
-      this.logger.warn(`Failed to create new chat for user ${userId}, but login succeeded:`, error);
+      this.logger.warn(
+        `Failed to create new chat for user ${userId}, but login succeeded:`,
+        error,
+      );
     }
   }
 }
