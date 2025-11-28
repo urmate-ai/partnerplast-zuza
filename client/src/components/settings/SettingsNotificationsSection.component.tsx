@@ -3,7 +3,6 @@ import { Switch } from 'react-native';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
 import { useProfile, useUpdateNotifications } from '../../shared/hooks/useProfile.hook';
-import { showToast } from '../../shared/components/Toast.component';
 
 type NotificationItemProps = {
   label: string;
@@ -63,22 +62,6 @@ export const SettingsNotificationsSection: React.FC = () => {
     updateNotificationsMutation.mutate(
       { pushNotifications: value },
       {
-        onSuccess: () => {
-          showToast({
-            type: 'success',
-            text1: value ? 'Powiadomienia push włączone' : 'Powiadomienia push wyłączone',
-            visibilityTime: 2000,
-          });
-        },
-        onError: (error: any) => {
-          const errorMessage = error?.response?.data?.message || error?.message || 'Nie udało się zaktualizować ustawień';
-          showToast({
-            type: 'error',
-            text1: 'Błąd',
-            text2: errorMessage,
-            visibilityTime: 3000,
-          });
-        },
         onSettled: () => {
           isUpdatingRef.current = false;
         },
@@ -96,22 +79,6 @@ export const SettingsNotificationsSection: React.FC = () => {
     updateNotificationsMutation.mutate(
       { emailNotifications: value },
       {
-        onSuccess: () => {
-          showToast({
-            type: 'success',
-            text1: value ? 'Powiadomienia email włączone' : 'Powiadomienia email wyłączone',
-            visibilityTime: 2000,
-          });
-        },
-        onError: (error: any) => {
-          const errorMessage = error?.response?.data?.message || error?.message || 'Nie udało się zaktualizować ustawień';
-          showToast({
-            type: 'error',
-            text1: 'Błąd',
-            text2: errorMessage,
-            visibilityTime: 3000,
-          });
-        },
         onSettled: () => {
           isUpdatingRef.current = false;
         },
@@ -128,22 +95,6 @@ export const SettingsNotificationsSection: React.FC = () => {
     updateNotificationsMutation.mutate(
       { soundEnabled: value },
       {
-        onSuccess: () => {
-          showToast({
-            type: 'success',
-            text1: value ? 'Dźwięk włączony' : 'Dźwięk wyłączony',
-            visibilityTime: 2000,
-          });
-        },
-        onError: (error: any) => {
-          const errorMessage = error?.response?.data?.message || error?.message || 'Nie udało się zaktualizować ustawień';
-          showToast({
-            type: 'error',
-            text1: 'Błąd',
-            text2: errorMessage,
-            visibilityTime: 3000,
-          });
-        },
         onSettled: () => {
           isUpdatingRef.current = false;
         },

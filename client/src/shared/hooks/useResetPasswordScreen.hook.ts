@@ -5,7 +5,6 @@ import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { apiClient } from '../utils/api';
-import { showToast } from '../components/Toast.component';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 
@@ -54,27 +53,12 @@ export const useResetPasswordScreen = ({ token }: UseResetPasswordScreenProps) =
     mutationFn: (data: ResetPasswordFormData) => resetPasswordRequest(token, data.newPassword),
     onSuccess: () => {
       setIsSuccess(true);
-      showToast({
-        type: 'success',
-        text1: 'Sukces',
-        text2: 'Hasło zostało zresetowane pomyślnie',
-        visibilityTime: 3000,
-      });
       setTimeout(() => {
         navigation.replace('Login');
       }, 2000);
     },
     onError: (error: any) => {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        'Nie udało się zresetować hasła';
-      showToast({
-        type: 'error',
-        text1: 'Błąd',
-        text2: errorMessage,
-        visibilityTime: 4000,
-      });
+      console.error('Reset password error:', error);
     },
   });
 

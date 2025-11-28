@@ -12,7 +12,6 @@ import { Button } from '../shared/components/Button.component';
 import { LoadingSpinner } from '../shared/components/LoadingSpinner.component';
 import { useUpdateProfile } from '../shared/hooks/useProfile.hook';
 import { useAuthStore } from '../stores/authStore';
-import { showToast } from '../shared/components/Toast.component';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
@@ -50,20 +49,9 @@ export const EditProfileScreen: React.FC = () => {
   const onSubmit = async (data: EditProfileFormData) => {
     try {
       await updateProfileMutation.mutateAsync(data);
-      showToast({
-        type: 'success',
-        text1: 'Sukces',
-        text2: 'Profil został zaktualizowany',
-        visibilityTime: 3000,
-      });
       navigation.goBack();
     } catch (error: any) {
-      showToast({
-        type: 'error',
-        text1: 'Błąd',
-        text2: error.message || 'Nie udało się zaktualizować profilu',
-        visibilityTime: 3000,
-      });
+      console.error('Update profile error:', error);
     }
   };
 
