@@ -15,10 +15,10 @@ type Message = {
 export const useHomeScreen = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isTyping, setIsTyping] = useState(false);
+  const [isTyping, setIsTyping] = useState<boolean>(false);
 
   const voiceAiMutation = useVoiceAi();
   const { state: ttsState, speak, stop: stopTTS } = useTextToSpeech();
@@ -30,6 +30,15 @@ export const useHomeScreen = () => {
       setError(null);
       
       try {
+        const userMessageId = `user-${Date.now()}`;
+        const userMessage: Message = {
+          id: userMessageId,
+          role: 'user',
+          content: 'Przetwarzanie mowy...',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, userMessage]);
+
         setIsTyping(true);
 
         const result = await voiceAiMutation.mutateAsync({
@@ -37,14 +46,13 @@ export const useHomeScreen = () => {
           options: { language: 'pl' },
         });
 
-        const userMessageId = `user-${Date.now()}`;
-        const userMessage: Message = {
-          id: userMessageId,
-          role: 'user',
-          content: result.transcript,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, userMessage]);
+        setMessages((prev) => 
+          prev.map(msg => 
+            msg.id === userMessageId 
+              ? { ...msg, content: result.transcript }
+              : msg
+          )
+        );
 
         const assistantMessageId = `assistant-${Date.now()}`;
         const assistantMessage: Message = {
@@ -55,6 +63,7 @@ export const useHomeScreen = () => {
         };
         setMessages((prev) => [...prev, assistantMessage]);
 
+        setIsTyping(false);
         speak(result.reply);
 
         queryClient.invalidateQueries({ queryKey: ['chats'] });
@@ -63,6 +72,14 @@ export const useHomeScreen = () => {
           err instanceof Error ? err.message : 'Coś poszło nie tak po stronie AI.',
         );
         setIsTyping(false);
+        
+        setMessages((prev) => 
+          prev.map((msg, idx, arr) => 
+            idx === arr.length - 1 && msg.role === 'user'
+              ? { ...msg, content: 'Błąd przetwarzania mowy' }
+              : msg
+          )
+        );
       }
     },
   });
@@ -108,4 +125,3 @@ export const useHomeScreen = () => {
     handleNewChat,
   };
 };
-
