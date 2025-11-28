@@ -85,24 +85,10 @@ export const useUpdateNotifications = () => {
       }
     },
     onSuccess: (updatedProfile, variables) => {
-      console.log('✅ [ON_SUCCESS] Mutation succeeded');
-      console.log('✅ [ON_SUCCESS] Server data:', JSON.stringify(updatedProfile));
-      console.log('✅ [ON_SUCCESS] Variables:', JSON.stringify(variables));
-      
       queryClient.setQueryData(['profile'], updatedProfile);
-      console.log('💾 [ON_SUCCESS] Cache updated with server data');
-      
-      const currentCache = queryClient.getQueryData(['profile']);
-      console.log('💾 [ON_SUCCESS] Current cache:', JSON.stringify(currentCache));
     },
     onSettled: (data, error, variables) => {
-      console.log('🏁 [ON_SETTLED] Mutation settled');
-      console.log('🏁 [ON_SETTLED] Data:', JSON.stringify(data));
-      console.log('🏁 [ON_SETTLED] Error:', error);
-      console.log('🏁 [ON_SETTLED] Variables:', JSON.stringify(variables));
-
       queryClient.invalidateQueries({ queryKey: ['profile'] });
-      console.log('🔄 [ON_SETTLED] Profile query invalidated');
     },
   });
 };

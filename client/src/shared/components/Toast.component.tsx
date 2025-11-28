@@ -1,11 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, TouchableOpacity, Dimensions, Platform, StatusBar } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View } from './View.component';
-import { Text } from './Text.component';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
 
-type ToastType = 'success' | 'error' | 'info';
+export type ToastType = 'success' | 'error' | 'info';
 
 export type ToastConfig = {
   type: ToastType;
@@ -14,183 +12,123 @@ export type ToastConfig = {
   visibilityTime?: number;
 };
 
-type ToastState = {
-  visible: boolean;
-  config: ToastConfig | null;
+const toastConfig = {
+  success: ({ text1, text2 }: { text1?: string; text2?: string }) => (
+    <View style={[styles.toast, styles.successToast]}>
+      <Ionicons name="checkmark-circle" size={24} color="#10B981" style={styles.icon} />
+      <View style={styles.content}>
+        <Text style={[styles.text1, styles.successText1]}>{text1}</Text>
+        {text2 && <Text style={[styles.text2, styles.successText2]}>{text2}</Text>}
+      </View>
+    </View>
+  ),
+  error: ({ text1, text2 }: { text1?: string; text2?: string }) => (
+    <View style={[styles.toast, styles.errorToast]}>
+      <Ionicons name="close-circle" size={24} color="#EF4444" style={styles.icon} />
+      <View style={styles.content}>
+        <Text style={[styles.text1, styles.errorText1]}>{text1}</Text>
+        {text2 && <Text style={[styles.text2, styles.errorText2]}>{text2}</Text>}
+      </View>
+    </View>
+  ),
+  info: ({ text1, text2 }: { text1?: string; text2?: string }) => (
+    <View style={[styles.toast, styles.infoToast]}>
+      <Ionicons name="information-circle" size={24} color="#3B82F6" style={styles.icon} />
+      <View style={styles.content}>
+        <Text style={[styles.text1, styles.infoText1]}>{text1}</Text>
+        {text2 && <Text style={[styles.text2, styles.infoText2]}>{text2}</Text>}
+      </View>
+    </View>
+  ),
 };
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-let toastRef: { showToast: (config: ToastConfig) => void } | null = null;
+const styles = StyleSheet.create({
+  toast: {
+    height: 'auto',
+    minHeight: 60,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  successToast: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#10B981',
+    backgroundColor: '#F0FDF4',
+  },
+  errorToast: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  infoToast: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
+  },
+  icon: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  content: {
+    flex: 1,
+  },
+  text1: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  text2: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  successText1: {
+    color: '#065F46',
+  },
+  successText2: {
+    color: '#047857',
+  },
+  errorText1: {
+    color: '#991B1B',
+  },
+  errorText2: {
+    color: '#DC2626',
+  },
+  infoText1: {
+    color: '#1E40AF',
+  },
+  infoText2: {
+    color: '#2563EB',
+  },
+});
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const insets = useSafeAreaInsets();
-  const [toastState, setToastState] = useState<ToastState>({
-    visible: false,
-    config: null,
-  });
-  const slideAnim = useRef(new Animated.Value(-100)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const topOffset = Math.max(
-    insets.top + 8,
-    Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 8 : 60
-  );
-
-  const hideToast = React.useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: -100,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setToastState({ visible: false, config: null });
-    });
-  }, [slideAnim, opacityAnim]);
-
-  const showToast = React.useCallback((config: ToastConfig) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    setToastState({ visible: true, config });
-
-    slideAnim.setValue(-100);
-    opacityAnim.setValue(0);
-
-    Animated.parallel([
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 50,
-        friction: 7,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    const visibilityTime = config.visibilityTime || 3000;
-    timeoutRef.current = setTimeout(() => {
-      hideToast();
-    }, visibilityTime);
-  }, [slideAnim, opacityAnim, hideToast]);
-
-  useEffect(() => {
-    toastRef = { showToast };
-    return () => {
-      toastRef = null;
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [showToast]);
-
-  const getToastStyles = () => {
-    switch (toastState.config?.type) {
-      case 'success':
-        return {
-          bg: 'bg-green-50',
-          border: 'border-green-200',
-          iconColor: '#10B981',
-          iconName: 'checkmark-circle' as const,
-        };
-      case 'error':
-        return {
-          bg: 'bg-red-50',
-          border: 'border-red-200',
-          iconColor: '#EF4444',
-          iconName: 'close-circle' as const,
-        };
-      default:
-        return {
-          bg: 'bg-blue-50',
-          border: 'border-blue-200',
-          iconColor: '#3B82F6',
-          iconName: 'information-circle' as const,
-        };
-    }
-  };
-
-  const styles = getToastStyles();
-
   return (
     <>
       {children}
-      {toastState.visible && toastState.config && (
-        <Animated.View
-          style={{
-            position: 'absolute',
-            top: topOffset,
-            left: 16,
-            right: 16,
-            transform: [{ translateY: slideAnim }],
-            opacity: opacityAnim,
-            zIndex: 99999,
-            elevation: Platform.OS === 'android' ? 50 : 0,
-          }}
-          pointerEvents="box-none"
-        >
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={hideToast}
-            className={`${styles.bg} ${styles.border} border rounded-xl px-4 py-3 shadow-lg`}
-            style={{
-              maxWidth: SCREEN_WIDTH - 32,
-            }}
-          >
-            <View className="flex-row items-start">
-              <Ionicons
-                name={styles.iconName}
-                size={24}
-                color={styles.iconColor}
-                style={{ marginRight: 12, marginTop: 2 }}
-              />
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900 mb-0.5">
-                  {toastState.config.text1}
-                </Text>
-                {toastState.config.text2 && (
-                  <Text className="text-sm text-gray-600 mt-0.5">
-                    {toastState.config.text2}
-                  </Text>
-                )}
-              </View>
-              <TouchableOpacity
-                onPress={hideToast}
-                className="ml-2 p-1"
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons name="close" size={20} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
+      <Toast config={toastConfig} />
     </>
   );
 };
 
 export const showToast = (config: ToastConfig) => {
-  if (toastRef) {
-    toastRef.showToast(config);
-  }
+  Toast.show({
+    type: config.type,
+    text1: config.text1,
+    text2: config.text2,
+    visibilityTime: config.visibilityTime || 3000,
+    position: 'top',
+    topOffset: 60,
+    autoHide: true,
+  });
 };
 
 export const useToast = () => {
@@ -198,4 +136,3 @@ export const useToast = () => {
     showToast,
   };
 };
-

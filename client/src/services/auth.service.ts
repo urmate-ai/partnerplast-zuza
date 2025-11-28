@@ -47,7 +47,6 @@ export async function logout() {
     const response = await apiClient.post('/auth/logout');
     return response.data;
   } catch (error: any) {
-    console.error('Logout error:', error);
     return { message: 'Wylogowano' };
   }
 }
@@ -109,20 +108,14 @@ export async function changePassword(data: ChangePasswordData): Promise<{ messag
 export async function updateNotifications(
   data: UpdateNotificationsData,
 ): Promise<UserProfile> {
-  console.log('🌐 [API] updateNotifications called with:', JSON.stringify(data));
   try {
-    console.log('🌐 [API] Sending PUT request to /auth/notifications');
     const response = await apiClient.put<UserProfile>('/auth/notifications', data);
-    console.log('🌐 [API] Response received:', JSON.stringify(response.data));
     return response.data;
   } catch (error: any) {
-    console.log('🌐 [API] Request failed:', error);
-    console.log('🌐 [API] Error response:', error.response?.data);
     const errorMessage =
       error.response?.data?.message ||
       error.message ||
       'Błąd podczas aktualizacji ustawień powiadomień';
-    console.log('🌐 [API] Throwing error:', errorMessage);
     throw new Error(errorMessage);
   }
 }
