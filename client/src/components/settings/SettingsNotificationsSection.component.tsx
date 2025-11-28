@@ -3,6 +3,7 @@ import { Switch } from 'react-native';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
 import { useProfile, useUpdateNotifications } from '../../shared/hooks/useProfile.hook';
+import { showToast } from '../../shared/components/Toast.component';
 
 type NotificationItemProps = {
   label: string;
@@ -53,37 +54,32 @@ export const SettingsNotificationsSection: React.FC = () => {
   const emailNotifications = profile?.emailNotifications ?? false;
   const soundEnabled = profile?.soundEnabled ?? true;
 
-  console.log('🎨 [COMPONENT] Render - Profile data:', JSON.stringify({
-    pushNotifications,
-    emailNotifications,
-    soundEnabled,
-    isUpdating: isUpdatingRef.current,
-    isPending: updateNotificationsMutation.isPending,
-  }));
-
   const handlePushNotificationsChange = (value: boolean) => {
-    console.log('👆 [PUSH] Switch clicked, new value:', value);
-    console.log('👆 [PUSH] Current isUpdating:', isUpdatingRef.current);
-    console.log('👆 [PUSH] Current profile value:', pushNotifications);
-    
     if (isUpdatingRef.current) {
-      console.log('🚫 [PUSH] Blocked - already updating');
       return;
     }
     
-    console.log('✅ [PUSH] Proceeding with mutation');
     isUpdatingRef.current = true;
     updateNotificationsMutation.mutate(
       { pushNotifications: value },
       {
         onSuccess: () => {
-          console.log('✅ [PUSH] Component onSuccess callback');
+          showToast({
+            type: 'success',
+            text1: value ? 'Powiadomienia push włączone' : 'Powiadomienia push wyłączone',
+            visibilityTime: 2000,
+          });
         },
         onError: (error: any) => {
-          console.log('❌ [PUSH] Component onError callback:', error);
+          const errorMessage = error?.response?.data?.message || error?.message || 'Nie udało się zaktualizować ustawień';
+          showToast({
+            type: 'error',
+            text1: 'Błąd',
+            text2: errorMessage,
+            visibilityTime: 3000,
+          });
         },
         onSettled: () => {
-          console.log('🏁 [PUSH] Component onSettled - releasing lock');
           isUpdatingRef.current = false;
         },
       },
@@ -93,23 +89,30 @@ export const SettingsNotificationsSection: React.FC = () => {
   const handleEmailNotificationsChange = (value: boolean) => {
     
     if (isUpdatingRef.current) {
-      console.log('🚫 [EMAIL] Blocked - already updating');
       return;
     }
     
-    console.log('✅ [EMAIL] Proceeding with mutation');
     isUpdatingRef.current = true;
     updateNotificationsMutation.mutate(
       { emailNotifications: value },
       {
         onSuccess: () => {
-          console.log('✅ [EMAIL] Component onSuccess callback');
+          showToast({
+            type: 'success',
+            text1: value ? 'Powiadomienia email włączone' : 'Powiadomienia email wyłączone',
+            visibilityTime: 2000,
+          });
         },
         onError: (error: any) => {
-          console.log('❌ [EMAIL] Component onError callback:', error);
+          const errorMessage = error?.response?.data?.message || error?.message || 'Nie udało się zaktualizować ustawień';
+          showToast({
+            type: 'error',
+            text1: 'Błąd',
+            text2: errorMessage,
+            visibilityTime: 3000,
+          });
         },
         onSettled: () => {
-          console.log('🏁 [EMAIL] Component onSettled - releasing lock');
           isUpdatingRef.current = false;
         },
       },
@@ -117,28 +120,31 @@ export const SettingsNotificationsSection: React.FC = () => {
   };
 
   const handleSoundChange = (value: boolean) => {
-    console.log('👆 [SOUND] Switch clicked, new value:', value);
-    console.log('👆 [SOUND] Current isUpdating:', isUpdatingRef.current);
-    console.log('👆 [SOUND] Current profile value:', soundEnabled);
-    
     if (isUpdatingRef.current) {
-      console.log('🚫 [SOUND] Blocked - already updating');
       return;
     }
     
-    console.log('✅ [SOUND] Proceeding with mutation');
     isUpdatingRef.current = true;
     updateNotificationsMutation.mutate(
       { soundEnabled: value },
       {
         onSuccess: () => {
-          console.log('✅ [SOUND] Component onSuccess callback');
+          showToast({
+            type: 'success',
+            text1: value ? 'Dźwięk włączony' : 'Dźwięk wyłączony',
+            visibilityTime: 2000,
+          });
         },
         onError: (error: any) => {
-          console.log('❌ [SOUND] Component onError callback:', error);
+          const errorMessage = error?.response?.data?.message || error?.message || 'Nie udało się zaktualizować ustawień';
+          showToast({
+            type: 'error',
+            text1: 'Błąd',
+            text2: errorMessage,
+            visibilityTime: 3000,
+          });
         },
         onSettled: () => {
-          console.log('🏁 [SOUND] Component onSettled - releasing lock');
           isUpdatingRef.current = false;
         },
       },
