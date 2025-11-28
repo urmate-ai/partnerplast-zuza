@@ -37,7 +37,6 @@ export const useHomeScreen = () => {
           options: { language: 'pl' },
         });
 
-        // Add user message immediately with transcript
         const userMessageId = `user-${Date.now()}`;
         const userMessage: Message = {
           id: userMessageId,
@@ -56,7 +55,6 @@ export const useHomeScreen = () => {
         };
         setMessages((prev) => [...prev, assistantMessage]);
 
-        // Start TTS immediately (will play while typing animation)
         speak(result.reply);
 
         queryClient.invalidateQueries({ queryKey: ['chats'] });
@@ -73,6 +71,25 @@ export const useHomeScreen = () => {
     setIsTyping(false);
   }, []);
 
+  const handleNewChat = useCallback(async () => {
+    try {
+      setMessages([]);
+      setError(null);
+      setIsTyping(false);
+      stopTTS();
+      
+      const { createNewChat } = await import('../../services/chats.service');
+      await createNewChat();
+
+      queryClient.invalidateQueries({ queryKey: ['chats'] });
+    } catch (err) {
+      console.error('Error creating new chat:', err);
+      setError(
+        err instanceof Error ? err.message : 'Nie udało się utworzyć nowego chatu',
+      );
+    }
+  }, [stopTTS, queryClient]);
+
   return {
     user,
     isDrawerOpen,
@@ -88,6 +105,7 @@ export const useHomeScreen = () => {
     speak,
     stopTTS,
     handleTypingComplete,
+    handleNewChat,
   };
 };
 

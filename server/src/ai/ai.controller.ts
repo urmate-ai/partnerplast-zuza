@@ -76,6 +76,12 @@ export class AiController {
   ) {
     return this.aiService.getChatById(chatId, user.id);
   }
+
+  @Post('chats/new')
+  @UseGuards(AuthGuard('jwt'))
+  async createNewChat(@CurrentUser() user: CurrentUserPayload) {
+    return this.aiService.createNewChat(user.id);
+  }
 }
 
 

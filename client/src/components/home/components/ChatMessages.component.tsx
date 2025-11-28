@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { View } from '../../../shared/components/View.component';
 import { Text } from '../../../shared/components/Text.component';
@@ -22,23 +22,19 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
   isTyping = false,
   onTypingComplete,
 }) => {
-  const scrollViewRef = useRef<ScrollView>(null);
-  const displayedContentRef = useRef<string>('');
-  const [displayedReply, setDisplayedReply] = React.useState<string>('');
-  const typingMessageIdRef = React.useRef<string | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);   
+  const [displayedReply, setDisplayedReply] = useState<string>('');
+  const typingMessageIdRef = useRef<string | null>(null);
 
-  // Find the last assistant message that's being typed
   const lastAssistantMessage = messages.filter((m) => m.role === 'assistant').pop();
   const isLastMessageTyping = isTyping && lastAssistantMessage?.content;
   
-  // Track which message is currently being typed - reset when new message arrives
-  React.useEffect(() => {
+  useEffect(() => {
     if (isTyping && lastAssistantMessage) {
       const currentMessageId = lastAssistantMessage.id;
-      // If this is a new message (different ID), reset animation
       if (typingMessageIdRef.current !== currentMessageId) {
         typingMessageIdRef.current = currentMessageId || null;
-        setDisplayedReply(''); // Reset displayed text for new message
+        setDisplayedReply(''); 
       }
     } else if (!isTyping) {
       typingMessageIdRef.current = null;
@@ -50,24 +46,20 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
       const fullText = lastAssistantMessage.content;
       const messageId = lastAssistantMessage.id;
       
-      // Only animate if this is the current message being typed
       if (typingMessageIdRef.current !== messageId) {
-        return; // Don't animate old messages
+        return;
       }
 
-      // Reset and start typing animation
       let currentIndex = 0;
       setDisplayedReply('');
 
       const typingInterval = setInterval(() => {
-        // Check if this is still the current message
         if (typingMessageIdRef.current !== messageId) {
           clearInterval(typingInterval);
           return;
         }
 
         if (currentIndex < fullText.length) {
-          // Variable speed: faster for spaces, slower for punctuation
           const charIndex = Math.floor(currentIndex);
           const char = charIndex < fullText.length ? fullText[charIndex] : '';
           const isPunctuation = /[.,!?;:]/.test(char);
@@ -82,17 +74,15 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
             setTimeout(() => onTypingComplete(), 100);
           }
         }
-      }, 20); // Update every 20ms for smooth animation
+      }, 20); 
 
       return () => clearInterval(typingInterval);
     } else if (lastAssistantMessage && !isTyping && lastAssistantMessage.content) {
-      // If not typing, show full message
       setDisplayedReply(lastAssistantMessage.content);
     }
   }, [isLastMessageTyping, lastAssistantMessage?.id, lastAssistantMessage?.content, isTyping, onTypingComplete]);
 
   useEffect(() => {
-    // Auto-scroll to bottom when new messages arrive
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);

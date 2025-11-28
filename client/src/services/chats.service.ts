@@ -28,4 +28,17 @@ export async function getChatById(chatId: string): Promise<ChatWithMessages> {
   }
 }
 
+export async function createNewChat(): Promise<{ chatId: string }> {
+  try {
+    const response = await apiClient.post<{ chatId: string }>('/ai/chats/new');
+    return response.data;
+  } catch (error: any) {
+    const errorMessage =
+      error.response?.data?.message ||
+      error.message ||
+      'Błąd podczas tworzenia nowego chatu';
+    throw new Error(errorMessage);
+  }
+}
+
 

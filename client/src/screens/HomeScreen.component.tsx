@@ -27,6 +27,7 @@ export const HomeScreen: React.FC = () => {
     speak,
     stopTTS,
     handleTypingComplete,
+    handleNewChat,
   } = useHomeScreen();
 
   const handleLogout = async () => {
@@ -43,6 +44,7 @@ export const HomeScreen: React.FC = () => {
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         userName={user?.name}
+        onNewChat={handleNewChat}
       />
 
       <View className="pt-14 px-4">
