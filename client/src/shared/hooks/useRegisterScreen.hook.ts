@@ -61,8 +61,8 @@ export const useRegisterScreen = ({ navigation }: UseRegisterScreenProps) => {
     reset,
   } = useForm({
     resolver: zodResolver(currentSchema),
-    mode: 'onBlur',
-    reValidateMode: 'onBlur',
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     defaultValues: {
       [currentStep]: formData[currentStep] || '',
     },
