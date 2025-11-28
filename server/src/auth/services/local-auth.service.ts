@@ -1,7 +1,10 @@
 import { Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EmailService } from '../../common/services/email.service';
 import { User } from '@prisma/client';
 import type { AuthResponse, JwtPayload } from '../types/auth.types';
 
@@ -12,6 +15,8 @@ export class LocalAuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
   ) {}
 
   async register(name: string, email: string, password: string): Promise<AuthResponse> {
@@ -55,6 +60,74 @@ export class LocalAuthService {
 
     this.logger.log(`User logged in: ${email}`);
     return this.generateTokens(user);
+  }
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user || user.provider !== 'local' || !user.password) {
+      this.logger.warn(`Password reset requested for non-existent or OAuth user: ${email}`);
+      return { message: 'Jeśli konto z tym emailem istnieje, otrzymasz email z instrukcjami resetu hasła' };
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpires = new Date(Date.now() + 3600000);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetPasswordToken: resetToken,
+        resetPasswordExpires: resetTokenExpires,
+      },
+    });
+
+    try {
+      await this.emailService.sendPasswordResetEmail(email, resetToken);
+      this.logger.log(`Password reset email sent to: ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send password reset email to ${email}:`, error);
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetPasswordToken: null,
+          resetPasswordExpires: null,
+        },
+      });
+      throw new Error('Nie udało się wysłać emaila z resetem hasła');
+    }
+
+    return { message: 'Jeśli konto z tym emailem istnieje, otrzymasz email z instrukcjami resetu hasła' };
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        resetPasswordToken: token,
+        resetPasswordExpires: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Nieprawidłowy lub wygasły token resetu hasła');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetPasswordToken: null,
+        resetPasswordExpires: null,
+      },
+    });
+
+    this.logger.log(`Password reset for user: ${user.id}`);
+    return { message: 'Hasło zostało zresetowane pomyślnie' };
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<{ message: string }> {

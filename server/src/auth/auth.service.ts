@@ -52,4 +52,12 @@ export class AuthService {
   async getAllUsers() {
     return this.userService.getAllUsers();
   }
+
+  async forgotPassword(email: string) {
+    return this.localAuthService.forgotPassword(email);
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    return this.localAuthService.resetPassword(token, newPassword);
+  }
 }
