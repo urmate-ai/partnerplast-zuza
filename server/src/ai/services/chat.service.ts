@@ -17,7 +17,6 @@ export class ChatService {
       const chat = await this.prisma.chat.create({
         data: {
           userId,
-          title: null,
         },
       });
 
@@ -79,10 +78,10 @@ export class ChatService {
 
       const chat = await this.prisma.chat.findUnique({
         where: { id: chatId },
-        select: { title: true, messages: { orderBy: { createdAt: 'asc' }, take: 1 } },
+        include: { messages: { orderBy: { createdAt: 'asc' }, take: 1 } },
       });
 
-      if (!chat?.title && chat?.messages.length === 1 && role === 'user') {
+      if (!chat?.title && chat?.messages && chat.messages.length === 1 && role === 'user') {
         const title = await this.generateChatTitle(content);
         await this.prisma.chat.update({
           where: { id: chatId },

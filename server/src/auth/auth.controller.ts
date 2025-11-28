@@ -19,6 +19,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateNotificationsDto } from './dto/update-notifications.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { GoogleVerifyDto } from './dto/google-verify.dto';
 import { CurrentUser, type CurrentUserPayload } from './decorators/current-user.decorator';
 import type { ExpressResponse } from '../common/types/express.types';
 import type { GoogleAuthResult } from './types/oauth.types';
@@ -83,6 +84,12 @@ export class AuthController {
       const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
       return res.redirect(`${redirectUri}?error=callback_failed`);
     }
+  }
+
+  @Post('google/verify')
+  @HttpCode(HttpStatus.OK)
+  async googleVerify(@Body() dto: GoogleVerifyDto) {
+    return this.authService.verifyGoogleToken(dto.accessToken);
   }
 
   @Put('profile')

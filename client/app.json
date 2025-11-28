@@ -15,7 +15,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.urmate.ai.zuza"
+      "bundleIdentifier": "com.urmate.ai.zuza",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": ["urmate-ai-zuza"]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +31,19 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.urmate.ai.zuza"
+      "package": "com.urmate.ai.zuza",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "urmate-ai-zuza"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",

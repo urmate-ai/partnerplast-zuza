@@ -92,3 +92,21 @@ npm run docker:logs
 ## 🔐 Environment Variables
 
 Zobacz `.env.example` dla pełnej listy zmiennych środowiskowych.
+
+### Google OAuth z tunelem
+
+Dla Google OAuth z tunelem (ngrok/expo tunnel) skonfiguruj:
+
+```env
+# Opcja 1: Użyj PUBLIC_URL (automatycznie zbuduje callback URL)
+PUBLIC_URL=https://your-ngrok-url.ngrok.io
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# Opcja 2: Użyj bezpośredniego GOOGLE_CALLBACK_URL
+GOOGLE_CALLBACK_URL=https://your-ngrok-url.ngrok.io/auth/google/callback
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+**Uwaga**: Jeśli ustawisz `PUBLIC_URL`, `GOOGLE_CALLBACK_URL` zostanie automatycznie zbudowany jako `${PUBLIC_URL}/auth/google/callback`. Jeśli ustawisz oba, `GOOGLE_CALLBACK_URL` ma priorytet.
