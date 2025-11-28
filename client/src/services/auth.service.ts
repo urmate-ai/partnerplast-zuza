@@ -1,5 +1,6 @@
 import { apiClient } from '../shared/utils/api';
 import type { RegisterData, LoginData, AuthResponse } from '../shared/types';
+import { getApiErrorMessage } from '../shared/types/api.types';
 
 export type { RegisterData, LoginData, AuthResponse };
 
@@ -7,11 +8,8 @@ export async function register(data: RegisterData): Promise<AuthResponse> {
   try {
     const response = await apiClient.post<AuthResponse>('/auth/register', data);
     return response.data;
-  } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      'Błąd podczas rejestracji';
+  } catch (error: unknown) {
+    const errorMessage = getApiErrorMessage(error, 'Błąd podczas rejestracji');
     throw new Error(errorMessage);
   }
 }
@@ -20,33 +18,30 @@ export async function login(data: LoginData): Promise<AuthResponse> {
   try {
     const response = await apiClient.post<AuthResponse>('/auth/login', data);
     return response.data;
-  } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      'Błąd podczas logowania';
+  } catch (error: unknown) {
+    const errorMessage = getApiErrorMessage(error, 'Błąd podczas logowania');
     throw new Error(errorMessage);
   }
 }
 
-export async function getProfile() {
+export async function getProfile(): Promise<UserProfile> {
   try {
-    const response = await apiClient.get('/auth/me');
+    const response = await apiClient.get<UserProfile>('/auth/me');
     return response.data;
-  } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      'Błąd podczas pobierania profilu';
+  } catch (error: unknown) {
+    const errorMessage = getApiErrorMessage(
+      error,
+      'Błąd podczas pobierania profilu',
+    );
     throw new Error(errorMessage);
   }
 }
 
-export async function logout() {
+export async function logout(): Promise<{ message: string }> {
   try {
-    const response = await apiClient.post('/auth/logout');
+    const response = await apiClient.post<{ message: string }>('/auth/logout');
     return response.data;
-  } catch (error: any) {
+  } catch {
     return { message: 'Wylogowano' };
   }
 }
@@ -83,11 +78,11 @@ export async function updateProfile(data: UpdateProfileData): Promise<UserProfil
   try {
     const response = await apiClient.put<UserProfile>('/auth/profile', data);
     return response.data;
-  } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      'Błąd podczas aktualizacji profilu';
+  } catch (error: unknown) {
+    const errorMessage = getApiErrorMessage(
+      error,
+      'Błąd podczas aktualizacji profilu',
+    );
     throw new Error(errorMessage);
   }
 }
@@ -96,11 +91,11 @@ export async function changePassword(data: ChangePasswordData): Promise<{ messag
   try {
     const response = await apiClient.post<{ message: string }>('/auth/change-password', data);
     return response.data;
-  } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      'Błąd podczas zmiany hasła';
+  } catch (error: unknown) {
+    const errorMessage = getApiErrorMessage(
+      error,
+      'Błąd podczas zmiany hasła',
+    );
     throw new Error(errorMessage);
   }
 }
@@ -111,11 +106,11 @@ export async function updateNotifications(
   try {
     const response = await apiClient.put<UserProfile>('/auth/notifications', data);
     return response.data;
-  } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      'Błąd podczas aktualizacji ustawień powiadomień';
+  } catch (error: unknown) {
+    const errorMessage = getApiErrorMessage(
+      error,
+      'Błąd podczas aktualizacji ustawień powiadomień',
+    );
     throw new Error(errorMessage);
   }
 }

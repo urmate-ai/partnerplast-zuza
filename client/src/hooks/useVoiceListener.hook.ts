@@ -119,7 +119,7 @@ export const useVoiceListener = (
         if (!recordingRef.current) return;
         try {
           const status = await recordingRef.current.getStatusAsync();
-          const metering = (status as any).metering ?? null;
+          const metering = (status as unknown as { metering: number | null }).metering ?? null;
 
           setState((prev) => ({
             ...prev,

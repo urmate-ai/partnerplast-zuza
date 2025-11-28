@@ -23,7 +23,7 @@ export const Text: React.FC<TextProps> = ({
   };
 
   return (
-    <RNText className={cn(variantClasses[variant], className)} {...(props as any)}>
+    <RNText className={cn(variantClasses[variant], className)} {...(props as RNTextProps)}>
       {children}
     </RNText>
   );

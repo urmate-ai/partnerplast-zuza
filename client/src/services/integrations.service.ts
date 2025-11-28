@@ -16,11 +16,16 @@ export async function getIntegrations(search?: string): Promise<Integration[]> {
     const params = search ? { search } : {};
     const response = await apiClient.get<Integration[]>('/integrations', { params });
     return response.data;
-  } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      'Błąd podczas pobierania integracji';
+  } catch (error) {
+    let errorMessage = 'Błąd podczas pobierania integracji';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      const errorObj = error as { response?: { data?: { message?: string } }; message?: string };
+      errorMessage = errorObj?.response?.data?.message || errorObj?.message || errorMessage;
+    }
+    
     throw new Error(errorMessage);
   }
 }

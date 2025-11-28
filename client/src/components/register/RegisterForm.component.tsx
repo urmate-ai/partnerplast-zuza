@@ -1,13 +1,14 @@
 import React from 'react';
 import type { Control, FieldErrors } from 'react-hook-form';
-import type { RegisterStep } from '../../shared/hooks/useRegisterScreen.hook';
+import type { RegisterStep } from '../../shared/hooks/auth/useRegisterScreen.hook';
+import type { RegisterFormData } from '../../shared/types/form.types';
 import { NameStep } from './NameStep.component';
 import { EmailStep } from './EmailStep.component';
 import { PasswordStep } from './PasswordStep.component';
 
 type RegisterFormProps = {
-  control: Control<Record<string, string>>;
-  errors: FieldErrors<Record<string, string>>;
+  control: Control<RegisterFormData>;
+  errors: FieldErrors<RegisterFormData>;
   currentStep: RegisterStep;
   onNext: () => void;
   isLoading: boolean;
@@ -30,18 +31,18 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
     case 'name':
       return (
         <NameStep
-          control={control as Control<Record<string, string>>}
-          errors={errors as FieldErrors<Record<string, string>>}
+          control={control}
+          errors={errors}
           onNext={onNext}
           isLoading={isLoading}
           buttonText={buttonText}
         />
       );
     case 'email':
-  return (
+      return (
         <EmailStep
-          control={control as Control<Record<string, string>>}
-          errors={errors as FieldErrors<Record<string, string>>}
+          control={control}
+          errors={errors}
           onNext={onNext}
           isLoading={isLoading}
           buttonText={buttonText}
@@ -50,14 +51,14 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
     case 'password':
       return (
         <PasswordStep
-          control={control as Control<Record<string, string>>}
-          errors={errors as FieldErrors<Record<string, string>>}
+          control={control}
+          errors={errors}
           onNext={onNext}
           isLoading={isLoading}
           buttonText={buttonText}
           registerError={registerError}
         />
-  );
+      );
     default:
       return null;
   }

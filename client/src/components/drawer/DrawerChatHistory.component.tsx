@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner.component';
-import { useChatHistory } from '../../shared/hooks/useChatHistory.hook';
+import { useChatHistory } from '../../shared/hooks/chat/useChatHistory.hook';
 import type { ChatHistoryItem } from '../../shared/types';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 
