@@ -1,26 +1,23 @@
 import { Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../common/services/email.service';
 import { ChatService } from '../../ai/services/chat.service';
 import { TokenService } from '../../common/services/token.service';
+import { PasswordResetService } from './password-reset.service';
 import { PasswordUtils } from '../../common/utils/password.utils';
-import { DateUtils } from '../../common/utils/date.utils';
 import { UserUtils } from '../utils/user.utils';
 import type { AuthResponse } from '../types/auth.types';
 
 @Injectable()
 export class LocalAuthService {
   private readonly logger = new Logger(LocalAuthService.name);
-  private static readonly RESET_TOKEN_EXPIRY_HOURS = 1;
 
   constructor(
     private readonly tokenService: TokenService,
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
-    private readonly configService: ConfigService,
     private readonly chatService: ChatService,
+    private readonly passwordResetService: PasswordResetService,
   ) {}
 
   async register(name: string, email: string, password: string): Promise<AuthResponse> {
@@ -52,42 +49,11 @@ export class LocalAuthService {
   }
 
   async forgotPassword(email: string): Promise<{ message: string }> {
-    const user = await this.findLocalUserByEmail(email);
-
-    if (!user) {
-      this.logger.warn(`Password reset requested for non-existent or OAuth user: ${email}`);
-      return this.getPasswordResetResponse();
-    }
-
-    const resetToken = this.generateResetToken();
-    const resetTokenExpires = DateUtils.addHours(LocalAuthService.RESET_TOKEN_EXPIRY_HOURS);
-
-    await this.updateUserResetToken(user.id, resetToken, resetTokenExpires);
-
-    try {
-      await this.emailService.sendPasswordResetEmail(email, resetToken);
-      this.logger.log(`Password reset email sent to: ${email}`);
-    } catch (error) {
-      await this.clearUserResetToken(user.id);
-      this.logger.error(`Failed to send password reset email to ${email}:`, error);
-      throw new Error('Nie udało się wysłać emaila z resetem hasła');
-    }
-
-    return this.getPasswordResetResponse();
+    return this.passwordResetService.requestPasswordReset(email);
   }
 
   async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
-    const user = await this.findUserByResetToken(token);
-
-    if (!user) {
-      throw new UnauthorizedException('Nieprawidłowy lub wygasły token resetu hasła');
-    }
-
-    const hashedPassword = await PasswordUtils.hash(newPassword);
-    await this.updateUserPassword(user.id, hashedPassword);
-
-    this.logger.log(`Password reset for user: ${user.id}`);
-    return { message: 'Hasło zostało zresetowane pomyślnie' };
+    return this.passwordResetService.resetPassword(token, newPassword);
   }
 
   async changePassword(
@@ -141,25 +107,9 @@ export class LocalAuthService {
     });
   }
 
-  private async findLocalUserByEmail(email: string) {
-    const user = await this.findUserByEmail(email);
-    return UserUtils.isLocalUser(user) ? user : null;
-  }
-
   private async findUserById(userId: string) {
     return this.prisma.user.findUnique({
       where: { id: userId },
-    });
-  }
-
-  private async findUserByResetToken(token: string) {
-    return this.prisma.user.findFirst({
-      where: {
-        resetPasswordToken: token,
-        resetPasswordExpires: {
-          gt: new Date(),
-        },
-      },
     });
   }
 
@@ -187,38 +137,10 @@ export class LocalAuthService {
     }
   }
 
-  private generateResetToken(): string {
-    return crypto.randomBytes(32).toString('hex');
-  }
-
-  private async updateUserResetToken(userId: string, token: string, expires: Date): Promise<void> {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        resetPasswordToken: token,
-        resetPasswordExpires: expires,
-      },
-    });
-  }
-
-  private async clearUserResetToken(userId: string): Promise<void> {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        resetPasswordToken: null,
-        resetPasswordExpires: null,
-      },
-    });
-  }
-
   private async updateUserPassword(userId: string, hashedPassword: string): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
-      data: {
-        password: hashedPassword,
-        resetPasswordToken: null,
-        resetPasswordExpires: null,
-      },
+      data: { password: hashedPassword },
     });
   }
 
@@ -230,7 +152,4 @@ export class LocalAuthService {
     }
   }
 
-  private getPasswordResetResponse(): { message: string } {
-    return { message: 'Jeśli konto z tym emailem istnieje, otrzymasz email z instrukcjami resetu hasła' };
-  }
 }

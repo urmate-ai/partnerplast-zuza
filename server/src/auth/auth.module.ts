@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { LocalAuthService } from './services/local-auth.service';
 import { OAuthService } from './services/oauth.service';
 import { UserService } from './services/user.service';
+import { PasswordResetService } from './services/password-reset.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -36,6 +37,7 @@ import { AiModule } from '../ai/ai.module';
     LocalAuthService,
     OAuthService,
     UserService,
+    PasswordResetService,
     JwtStrategy,
     GoogleStrategy,
   ],
