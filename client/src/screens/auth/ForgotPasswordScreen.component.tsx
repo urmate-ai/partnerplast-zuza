@@ -2,15 +2,15 @@ import React from 'react';
 import { Pressable, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Controller } from 'react-hook-form';
-import { View } from '../shared/components/View.component';
-import { Text } from '../shared/components/Text.component';
-import { Input } from '../shared/components/Input.component';
-import { Button } from '../shared/components/Button.component';
-import { LoadingSpinner } from '../shared/components/LoadingSpinner.component';
-import { SuccessScreen } from '../components/auth/SuccessScreen.component';
-import { useForgotPasswordScreen } from '../shared/hooks/auth/useForgotPasswordScreen.hook';
+import { View } from '../../shared/components/View.component';
+import { Text } from '../../shared/components/Text.component';
+import { Input } from '../../shared/components/Input.component';
+import { Button } from '../../shared/components/Button.component';
+import { LoadingSpinner } from '../../shared/components/LoadingSpinner.component';
+import { SuccessScreen } from '../../components/auth/SuccessScreen.component';
+import { useForgotPasswordScreen } from '../../shared/hooks/auth/useForgotPasswordScreen.hook';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/RootNavigator';
+import type { RootStackParamList } from '../../navigation/RootNavigator';
 import { Ionicons } from '@expo/vector-icons';
 
 type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<

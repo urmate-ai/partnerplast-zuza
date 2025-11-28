@@ -1,5 +1,6 @@
 import { apiClient } from '../shared/utils/api';
 import type { VoiceAiResponse, ChatHistoryItem } from '../shared/types';
+import { getApiErrorMessage } from '../shared/types/api.types';
 
 export type { VoiceAiResponse, ChatHistoryItem };
 
@@ -32,11 +33,11 @@ export async function sendVoiceToAi(
       },
     });
     return response.data;
-  } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      'Błąd podczas wysyłania głosu do AI';
+  } catch (error: unknown) {
+    const errorMessage = getApiErrorMessage(
+      error,
+      'Błąd podczas wysyłania głosu do AI',
+    );
     throw new Error(errorMessage);
   }
 }
@@ -45,11 +46,11 @@ export async function getChatHistory(): Promise<ChatHistoryItem[]> {
   try {
     const response = await apiClient.get<ChatHistoryItem[]>('/ai/chat-history');
     return response.data;
-  } catch (error: any) {
-    const errorMessage =
-      error.response?.data?.message ||
-      error.message ||
-      'Błąd podczas pobierania historii czatów';
+  } catch (error: unknown) {
+    const errorMessage = getApiErrorMessage(
+      error,
+      'Błąd podczas pobierania historii czatów',
+    );
     throw new Error(errorMessage);
   }
 }

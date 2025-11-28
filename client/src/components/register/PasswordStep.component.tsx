@@ -7,10 +7,11 @@ import { Button } from '../../shared/components/Button.component';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner.component';
 import { ErrorText } from '../../shared/components/ErrorText.component';
 import type { Control, FieldErrors } from 'react-hook-form';
+import type { RegisterFormData } from '../../shared/types/form.types';
 
 type PasswordStepProps = {
-  control: Control<Record<string, string>>;
-  errors: FieldErrors<Record<string, string>>;
+  control: Control<RegisterFormData>;
+  errors: FieldErrors<RegisterFormData>;
   onNext: () => void;
   isLoading: boolean;
   buttonText: string;
@@ -51,10 +52,8 @@ export const PasswordStep: React.FC<PasswordStepProps> = ({
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
               placeholder="Hasło (min. 6 znaków)"
-              value={value as string}
-              onChangeText={(text) => {
-                onChange(text);
-              }}
+              value={value}
+              onChangeText={onChange}
               onBlur={onBlur}
               keyboardType="default"
               autoCapitalize="none"
@@ -62,7 +61,7 @@ export const PasswordStep: React.FC<PasswordStepProps> = ({
               autoCorrect={false}
               secureTextEntry
               autoFocus
-              error={errors.password?.message as string | undefined}
+              error={errors.password?.message}
             />
           )}
         />

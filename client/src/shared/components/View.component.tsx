@@ -7,6 +7,6 @@ type ViewProps = RNViewProps & {
 };
 
 export const View: React.FC<ViewProps> = ({ className, ...props }) => {
-  return <RNView className={cn(className)} {...(props as any)} />;
+  return <RNView className={cn(className)} {...(props as RNViewProps)} />;
 };
 

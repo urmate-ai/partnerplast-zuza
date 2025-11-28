@@ -4,17 +4,17 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Linking from 'expo-linking';
-import { LoginScreen } from '../screens/LoginScreen.component';
-import { RegisterScreen } from '../screens/RegisterScreen.component';
-import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen.component';
-import { ResetPasswordScreen } from '../screens/ResetPasswordScreen.component';
-import { HomeScreen } from '../screens/HomeScreen.component';
-import { SettingsScreen } from '../screens/SettingsScreen.component';
-import { EditProfileScreen } from '../screens/EditProfileScreen.component';
-import { ChangePasswordScreen } from '../screens/ChangePasswordScreen.component';
-import { IntegrationsScreen } from '../screens/IntegrationsScreen.component';
-import { SearchChatsScreen } from '../screens/SearchChatsScreen.component';
-import { ChatDetailScreen } from '../screens/ChatDetailScreen.component';
+import { LoginScreen } from '../screens/auth/LoginScreen.component';
+import { RegisterScreen } from '../screens/auth/RegisterScreen.component';
+import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen.component';
+import { ResetPasswordScreen } from '../screens/auth/ResetPasswordScreen.component';
+import { HomeScreen } from '../screens/chat/HomeScreen.component';
+import { SettingsScreen } from '../screens/settings/SettingsScreen.component';
+import { EditProfileScreen } from '../screens/settings/EditProfileScreen.component';
+import { ChangePasswordScreen } from '../screens/settings/ChangePasswordScreen.component';
+import { IntegrationsScreen } from '../screens/integrations/IntegrationsScreen.component';
+import { SearchChatsScreen } from '../screens/chat/SearchChatsScreen.component';
+import { ChatDetailScreen } from '../screens/chat/ChatDetailScreen.component';
 import { useAuthStore } from '../stores/authStore';
 
 export type RootStackParamList = {

@@ -6,10 +6,11 @@ import { Input } from '../../shared/components/Input.component';
 import { Button } from '../../shared/components/Button.component';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner.component';
 import type { Control, FieldErrors } from 'react-hook-form';
+import type { RegisterFormData } from '../../shared/types/form.types';
 
 type NameStepProps = {
-  control: Control<Record<string, string>>;
-  errors: FieldErrors<Record<string, string>>;
+  control: Control<RegisterFormData>;
+  errors: FieldErrors<RegisterFormData>;
   onNext: () => void;
   isLoading: boolean;
   buttonText: string;
@@ -48,17 +49,15 @@ export const NameStep: React.FC<NameStepProps> = ({
           render={({ field: { onChange, onBlur, value } }) => (
             <Input
               placeholder="Twoje imię"
-              value={value as string}
-              onChangeText={(text) => {
-                onChange(text);
-              }}
+              value={value}
+              onChangeText={onChange}
               onBlur={onBlur}
               keyboardType="default"
               autoCapitalize="words"
               autoComplete="name"
               autoCorrect={false}
               autoFocus
-              error={errors.name?.message as string | undefined}
+              error={errors.name?.message}
             />
           )}
         />

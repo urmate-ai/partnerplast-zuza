@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Switch } from 'react-native';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
-import { useProfile, useUpdateNotifications } from '../../shared/hooks/useProfile.hook';
+import { useProfile, useUpdateNotifications } from '../../shared/hooks/profile/useProfile.hook';
 
 type NotificationItemProps = {
   label: string;
