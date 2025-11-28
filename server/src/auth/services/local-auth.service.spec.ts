@@ -7,6 +7,8 @@ import { ChatService } from '../../ai/services/chat.service';
 import { TokenService } from '../../common/services/token.service';
 import { PasswordResetService } from './password-reset.service';
 import { PasswordUtils } from '../../common/utils/password.utils';
+import type { PrismaUpdateResult } from '../../common/types/test.types';
+import type { User } from '@prisma/client';
 
 jest.mock('../../common/utils/password.utils');
 jest.mock('../utils/user.utils');

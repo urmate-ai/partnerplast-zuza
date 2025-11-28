@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { User, UserWithLogout } from '@prisma/client';
+import type { User } from '@prisma/client';
 import type {
   UserProfile,
   UpdateProfileData,
@@ -252,7 +252,7 @@ describe('UserService', () => {
       };
 
       (prismaService.user.findUnique as jest.Mock).mockResolvedValue(
-        mockUser as UserWithLogout | null,
+        mockUser as User | null,
       );
 
       const result = await service.validateUser(payload);
@@ -275,14 +275,14 @@ describe('UserService', () => {
       );
       const payload = { sub: mockUserId, iat: tokenIssuedAt };
 
-      const userWithLogout: Partial<UserWithLogout> = {
+      const userWithLogout: Partial<User> = {
         id: mockUserId,
         email: 'test@example.com',
         name: 'Test User',
         lastLogoutAt,
       };
       (prismaService.user.findUnique as jest.Mock).mockResolvedValue(
-        userWithLogout as UserWithLogout | null,
+        userWithLogout as User | null,
       );
 
       const result = await service.validateUser(payload);
