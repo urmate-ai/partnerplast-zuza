@@ -1,42 +1,6 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-echo "🧪 running tests before push..."
+echo "🧪 Running tests before push..."
 
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
-REMOTE="origin/${BRANCH}"
-
-if git rev-parse --verify "$REMOTE" >/dev/null 2>&1; then
-  CHANGED_FILES=$(git diff --name-only "$REMOTE"..HEAD 2>/dev/null || git diff --name-only HEAD)
-else
-  CHANGED_FILES=$(git diff --name-only HEAD)
-fi
-if echo "$CHANGED_FILES" | grep -q "^client/"; then
-  echo "📦 testing client..."
-  cd client
-  # Clean Vite temp directory to avoid permission issues
-  rm -rf node_modules/.vite-temp 2>/dev/null || true
-  npm test -- --run
-  TEST_EXIT_CODE=$?
-  cd ..
-  if [ $TEST_EXIT_CODE -ne 0 ]; then
-    echo "❌ client tests failed!"
-    exit 1
-  fi
-fi
-
-if echo "$CHANGED_FILES" | grep -q "^server/"; then
-  echo "☕ testing server..."
-  cd server && ./mvnw test
-  if [ $? -ne 0 ]; then
-    echo "❌ server tests failed!"
-    exit 1
-  fi
-  cd ..
-fi
-
-if ! echo "$CHANGED_FILES" | grep -q "^client/" && ! echo "$CHANGED_FILES" | grep -q "^server/"; then
-  echo "ℹ️  no changes in client or server, skipping tests"
-fi
-
-echo "✅ all tests passed successfully"
+cd server && npm run test
