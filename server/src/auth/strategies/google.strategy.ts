@@ -21,8 +21,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     const callbackURL =
       explicitCallbackUrl ||
       (publicUrl
-        ? `${publicUrl}/auth/google/callback`
-        : 'http://localhost:3000/auth/google/callback');
+        ? `${publicUrl}/api/v1/auth/google/callback`
+        : 'http://localhost:3000/api/v1/auth/google/callback');
 
     super({
       clientID:
