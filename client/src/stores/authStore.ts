@@ -7,7 +7,7 @@ export type User = {
   name: string;
 };
 
-type AuthState = {
+export type AuthState = {
   user: User | null;
   token: string | null;
   isLoading: boolean;
