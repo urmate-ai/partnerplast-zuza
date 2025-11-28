@@ -54,17 +54,25 @@ export class OpenAIService {
     }
   }
 
-  async generateResponse(transcript: string, context?: string): Promise<string> {
+  async generateResponse(
+    transcript: string,
+    chatHistory: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [],
+    context?: string,
+  ): Promise<string> {
     const systemPrompt =
       context ??
       'Jesteś ZUZA, pomocnym, ciepłym asystentem głosowym AI mówiącym po polsku. Odpowiadaj zwięźle i naturalnie.';
 
+    const messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
+      { role: 'system', content: systemPrompt },
+      ...chatHistory.filter((msg) => msg.role !== 'system'),
+      { role: 'user', content: transcript },
+    ];
+
     const completion = await this.openai.chat.completions.create({
-      model: 'gpt-4.1-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: transcript },
-      ],
+      model: 'gpt-4o-mini',
+      messages,
+      max_tokens: 500,
     });
 
     const reply = completion.choices[0]?.message?.content?.trim() ?? '';
@@ -82,7 +90,7 @@ export class OpenAIService {
   ): Promise<VoiceProcessResult> {
     try {
       const transcript = await this.transcribeAudio(file, options.language);
-      const reply = await this.generateResponse(transcript, options.context);
+      const reply = await this.generateResponse(transcript, [], options.context);
 
       return {
         transcript,
@@ -91,6 +99,50 @@ export class OpenAIService {
     } catch (error) {
       this.logger.error('Failed to process voice input', error as Error);
       throw new InternalServerErrorException('Failed to process voice input');
+    }
+  }
+
+  async transcribeAndRespondWithHistory(
+    file: AudioFile,
+    chatHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [],
+    options: VoiceProcessOptions = {},
+  ): Promise<VoiceProcessResult> {
+    try {
+      const transcript = await this.transcribeAudio(file, options.language);
+      const reply = await this.generateResponse(transcript, chatHistory, options.context);
+
+      return {
+        transcript,
+        reply,
+      };
+    } catch (error) {
+      this.logger.error('Failed to process voice input with history', error as Error);
+      throw new InternalServerErrorException('Failed to process voice input');
+    }
+  }
+
+  async generateChatTitle(firstMessage: string): Promise<string> {
+    try {
+      const prompt = `Stwórz krótki, zwięzły tytuł (maksymalnie 5-6 słów) dla następującej wiadomości użytkownika. Tytuł powinien być po polsku i opisywać główny temat wiadomości. Odpowiedz tylko tytułem, bez dodatkowych słów.\n\nWiadomość: "${firstMessage}"`;
+
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'Jesteś asystentem, który tworzy krótkie, zwięzłe tytuły dla wiadomości. Odpowiadaj tylko tytułem, bez dodatkowych słów.',
+          },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: 30,
+        temperature: 0.7,
+      });
+
+      const title = completion.choices[0]?.message?.content?.trim() ?? 'Nowa rozmowa';
+      return title.length > 60 ? title.substring(0, 60) : title;
+    } catch (error) {
+      this.logger.error('Error generating chat title:', error);
+      return 'Nowa rozmowa';
     }
   }
 }

@@ -116,10 +116,13 @@ type ChatCardProps = {
 };
 
 const ChatCard: React.FC<ChatCardProps> = ({ chat }) => {
+  const navigation = useNavigation<SearchChatsScreenNavigationProp>();
+
   return (
     <TouchableOpacity
       activeOpacity={0.7}
       className="mb-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+      onPress={() => navigation.navigate('ChatDetail', { chatId: chat.id })}
     >
       <View className="flex-row items-start">
         {/* Icon */}

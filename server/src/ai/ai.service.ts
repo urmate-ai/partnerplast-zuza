@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { OpenAIService } from './services/openai.service';
 import { ChatService } from './services/chat.service';
-import type { AudioFile, VoiceProcessOptions, VoiceProcessResult, ChatHistoryItem } from './types/ai.types';
+import type { AudioFile, VoiceProcessOptions, VoiceProcessResult, ChatHistoryItem, ChatWithMessages } from './types/ai.types';
 
 @Injectable()
 export class AiService {
@@ -12,9 +12,19 @@ export class AiService {
 
   async transcribeAndRespond(
     file: AudioFile,
+    userId: string,
     options: VoiceProcessOptions = {},
   ): Promise<VoiceProcessResult> {
-    return this.openaiService.transcribeAndRespond(file, options);
+    const chatId = await this.chatService.getOrCreateCurrentChat(userId);
+    
+    const chat = await this.chatService.getChatById(chatId, userId);
+    
+    const messages = chat.messages.map((msg) => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content,
+    }));
+
+    return this.openaiService.transcribeAndRespondWithHistory(file, messages, options);
   }
 
   async saveChat(userId: string, transcript: string, reply: string): Promise<void> {
@@ -27,6 +37,10 @@ export class AiService {
 
   async searchChats(userId: string, query: string): Promise<ChatHistoryItem[]> {
     return this.chatService.searchChats(userId, query);
+  }
+
+  async getChatById(chatId: string, userId: string): Promise<ChatWithMessages> {
+    return this.chatService.getChatById(chatId, userId);
   }
 }
 

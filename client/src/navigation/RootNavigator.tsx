@@ -14,6 +14,7 @@ import { EditProfileScreen } from '../screens/EditProfileScreen.component';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen.component';
 import { IntegrationsScreen } from '../screens/IntegrationsScreen.component';
 import { SearchChatsScreen } from '../screens/SearchChatsScreen.component';
+import { ChatDetailScreen } from '../screens/ChatDetailScreen.component';
 import { useAuthStore } from '../stores/authStore';
 import { ToastProvider } from '../shared/components/Toast.component';
 
@@ -28,6 +29,7 @@ export type RootStackParamList = {
   ChangePassword: undefined;
   Integrations: undefined;
   SearchChats: undefined;
+  ChatDetail: { chatId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -108,6 +110,7 @@ export const RootNavigator: React.FC = () => {
             <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
             <Stack.Screen name="Integrations" component={IntegrationsScreen} />
             <Stack.Screen name="SearchChats" component={SearchChatsScreen} />
+            <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </ToastProvider>

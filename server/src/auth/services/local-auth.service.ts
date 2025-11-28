@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../common/services/email.service';
+import { ChatService } from '../../ai/services/chat.service';
 import { User } from '@prisma/client';
 import type { AuthResponse, JwtPayload } from '../types/auth.types';
 
@@ -17,6 +18,7 @@ export class LocalAuthService {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    private readonly chatService: ChatService,
   ) {}
 
   async register(name: string, email: string, password: string): Promise<AuthResponse> {
@@ -65,6 +67,13 @@ export class LocalAuthService {
     }
 
     this.logger.log(`User logged in: ${email}`);
+    
+    try {
+      await this.chatService.createNewChat(user.id);
+    } catch (error) {
+      this.logger.warn(`Failed to create new chat for user ${user.id}, but login succeeded:`, error);
+    }
+    
     return this.generateTokens(user);
   }
 

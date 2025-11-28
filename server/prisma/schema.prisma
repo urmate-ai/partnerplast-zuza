@@ -20,12 +20,14 @@ model User {
   lastLogoutAt          DateTime? // Timestamp ostatniego wylogowania - unieważnia wszystkie tokeny wydane przed tą datą
   resetPasswordToken   String? // Token do resetu hasła
   resetPasswordExpires  DateTime? // Data wygaśnięcia tokenu resetu hasła
+  currentChatId         String? // ID aktywnego chatu użytkownika
   pushNotifications     Boolean   @default(true)
   emailNotifications    Boolean  @default(false)
   soundEnabled          Boolean   @default(true)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   chats                 Chat[]
+  currentChat           Chat?     @relation("UserCurrentChat", fields: [currentChatId], references: [id], onDelete: SetNull)
 
   @@map("users")
 }
@@ -47,15 +49,30 @@ model Integration {
 model Chat {
   id        String   @id @default(uuid())
   userId    String
-  title     String   // Tytuł czatu (pierwsze 50 znaków transkrypcji)
-  transcript String  // Pełna transkrypcja wiadomości użytkownika
-  reply     String   // Odpowiedź AI
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  title     String?  // Tytuł czatu generowany z pierwszego prompta
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentUsers User[] @relation("UserCurrentChat")
 
   @@index([userId])
   @@index([title])
+  @@index([createdAt])
   @@map("chats")
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  chatId    String
+  role      String   // 'user' | 'assistant'
+  content   String   // Treść wiadomości
+  createdAt DateTime @default(now())
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId])
+  @@index([createdAt])
+  @@map("messages")
 }
