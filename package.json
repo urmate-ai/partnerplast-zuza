@@ -1,0 +1,13 @@
+{
+  "name": "urmate-ai-zuza",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ZUZA AI Voice Assistant - Monorepo",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7"
+  }
+}

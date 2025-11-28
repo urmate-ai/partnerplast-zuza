@@ -1,8 +1,6 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-echo "🔍 starting lint-staged"
+echo "🔍 Running lint-staged..."
 
-npx lint-staged
-
-echo "✅ lint-staged completed successfully"
+cd server && npm run lint-staged
