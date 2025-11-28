@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLogin } from './useAuth.hook';
 import { useAuthStore } from '../../stores/authStore';
-import { loginWithGoogle } from '../../services/oauth.service';
+import { useGoogleAuth } from '../../services/oauth.service';
+import { apiClient } from '../utils/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 
@@ -28,6 +29,7 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
   const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const loginMutation = useLogin();
+  const { request, response, promptAsync } = useGoogleAuth();
 
   const {
     control,
@@ -95,18 +97,51 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
     }
   };
 
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      console.log('Google OAuth success:', authentication);
+      
+      handleGoogleAuthSuccess(authentication?.accessToken);
+    } else if (response?.type === 'error') {
+      console.error('Google OAuth error:', response.error);
+      setGoogleError('Błąd logowania Google: ' + response.error?.message);
+    } else if (response?.type === 'cancel') {
+      console.log('Google OAuth cancelled');
+    }
+  }, [response]);
+
+  const handleGoogleAuthSuccess = async (googleAccessToken?: string) => {
+    if (!googleAccessToken) {
+      setGoogleError('Nie otrzymano tokena z Google');
+      return;
+    }
+
+    try {
+      const result = await apiClient.post('/auth/google/verify', {
+        accessToken: googleAccessToken,
+      });
+      
+      await useAuthStore.getState().setAuth(result.data.user, result.data.accessToken);
+      navigation.replace('Home');
+    } catch (error: any) {
+      console.error('Google auth verification error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Nieznany błąd';
+      setGoogleError('Błąd weryfikacji Google: ' + errorMessage);
+    }
+  };
+
   const handleGoogleLogin = async () => {
     try {
-      setGoogleError(null); 
-      const response = await loginWithGoogle();
-      await useAuthStore.getState().setAuth(response.user, response.accessToken);
-      navigation.replace('Home');
+      setGoogleError(null);
+      if (!request) {
+        setGoogleError('Google OAuth nie jest jeszcze gotowy');
+        return;
+      }
+      await promptAsync();
     } catch (error) {
       console.error('Google login error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
-      if (errorMessage.includes('cancelled')) { 
-        return;
-      }
       setGoogleError('Błąd logowania Google: ' + errorMessage);
     }
   };

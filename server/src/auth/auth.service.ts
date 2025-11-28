@@ -60,4 +60,8 @@ export class AuthService {
   async resetPassword(token: string, newPassword: string) {
     return this.localAuthService.resetPassword(token, newPassword);
   }
+
+  async verifyGoogleToken(accessToken: string) {
+    return this.oauthService.verifyGoogleToken(accessToken);
+  }
 }

@@ -38,7 +38,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         />
       );
     case 'email':
-      return (
+  return (
         <EmailStep
           control={control as Control<Record<string, string>>}
           errors={errors as FieldErrors<Record<string, string>>}
@@ -57,7 +57,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
           buttonText={buttonText}
           registerError={registerError}
         />
-      );
+  );
     default:
       return null;
   }

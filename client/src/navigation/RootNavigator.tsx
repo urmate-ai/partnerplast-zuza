@@ -58,13 +58,35 @@ export const RootNavigator: React.FC = () => {
   }, [isAuthenticated, isLoading]);
 
   useEffect(() => {
-    const handleDeepLink = (event: { url: string }) => {
+    const handleDeepLink = async (event: { url: string }) => {
       const { path, queryParams } = Linking.parse(event.url);
       
       if (path === 'reset-password' && queryParams?.token) {
         navigationRef.current?.navigate('ResetPassword', {
           token: queryParams.token as string,
         });
+      } else if (path === 'auth/google/callback') {
+        const token = queryParams?.token as string;
+        const userJson = queryParams?.user as string;
+        const error = queryParams?.error as string;
+        
+        if (error) {
+          console.error('Google OAuth error:', error);
+          return;
+        }
+        
+        if (token && userJson) {
+          try {
+            const user = JSON.parse(decodeURIComponent(userJson));
+            await useAuthStore.getState().setAuth(user, token);
+            navigationRef.current?.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            });
+          } catch (err) {
+            console.error('Failed to parse user data:', err);
+          }
+        }
       }
     };
 
