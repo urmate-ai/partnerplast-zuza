@@ -4,7 +4,7 @@ import { ChatService } from './chat.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OpenAIChatTitleService } from '../openai/openai-chat-title.service';
 import type { Chat, Message, User } from '@prisma/client';
-import type { PrismaUpdateResult } from '../../common/types/test.types';
+import type { PrismaUpdateResult } from '../../../common/types/test.types';
 
 describe('ChatService', () => {
   let service: ChatService;

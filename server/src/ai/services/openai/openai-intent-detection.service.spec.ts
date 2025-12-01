@@ -5,7 +5,7 @@ import OpenAI from 'openai';
 import { IntentParser } from '../../utils/intent.parser';
 
 jest.mock('openai');
-jest.mock('../utils/intent.parser');
+jest.mock('../../utils/intent.parser');
 
 describe('OpenAIIntentDetectionService', () => {
   let service: OpenAIIntentDetectionService;
