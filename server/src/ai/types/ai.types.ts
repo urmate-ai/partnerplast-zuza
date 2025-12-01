@@ -43,7 +43,7 @@ export type WebSearchTool = {
   type: 'web_search';
 };
 
-export type ReasoningEffort = 'low' | 'medium' | 'high';
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
 
 export interface ResponsesCreateParams {
   model: string;
