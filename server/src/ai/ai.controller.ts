@@ -56,6 +56,7 @@ export class AiController {
     return {
       transcript: result.transcript,
       reply: result.reply,
+      emailIntent: result.emailIntent,
     };
   }
 
