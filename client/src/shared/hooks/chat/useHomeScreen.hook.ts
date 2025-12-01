@@ -5,7 +5,7 @@ import { useVoiceAi } from './useVoiceAi.hook';
 import { useAuthStore } from '../../../stores/authStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { getApproximateLocation, formatLocationForAi } from '../../utils/location.utils';
-import type { EmailIntent } from '../../types/ai.types';
+import type { EmailIntent, CalendarIntent } from '../../types/ai.types';
 
 type Message = {
   id: string;
@@ -22,6 +22,7 @@ export const useHomeScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const [emailIntent, setEmailIntent] = useState<EmailIntent | null>(null);
+  const [calendarIntent, setCalendarIntent] = useState<CalendarIntent | null>(null);
 
   const voiceAiMutation = useVoiceAi();
   const { state: ttsState, speak, stop: stopTTS } = useTextToSpeech();
@@ -88,6 +89,13 @@ export const useHomeScreen = () => {
           setEmailIntent(result.emailIntent);
         }
 
+        if (result.calendarIntent?.shouldCreateEvent) {
+          console.log('[useHomeScreen] 📅 Wykryto intencję dodania wydarzenia:', result.calendarIntent);
+          setCalendarIntent(result.calendarIntent);
+        } else {
+          console.log('[useHomeScreen] 📅 Brak intencji kalendarza lub shouldCreateEvent = false:', result.calendarIntent);
+        }
+
         queryClient.invalidateQueries({ queryKey: ['chats'] });
       } catch (err) {
         setError(
@@ -133,6 +141,10 @@ export const useHomeScreen = () => {
     setEmailIntent(null);
   }, []);
 
+  const clearCalendarIntent = useCallback(() => {
+    setCalendarIntent(null);
+  }, []);
+
   return {
     user,
     isDrawerOpen,
@@ -151,5 +163,7 @@ export const useHomeScreen = () => {
     handleNewChat,
     emailIntent,
     clearEmailIntent,
+    calendarIntent,
+    clearCalendarIntent,
   };
 };

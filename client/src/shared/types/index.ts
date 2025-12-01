@@ -1,9 +1,10 @@
-import type { EmailIntent } from './ai.types';
+import type { EmailIntent, CalendarIntent } from './ai.types';
 
 export type VoiceAiResponse = {
   transcript: string;
   reply: string;
   emailIntent?: EmailIntent;
+  calendarIntent?: CalendarIntent;
 };
 
 export type ChatHistoryItem = {

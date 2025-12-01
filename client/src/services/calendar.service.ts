@@ -223,3 +223,27 @@ export async function deleteEvent(
   }
 }
 
+export type CalendarContextResponse = {
+  context: string;
+};
+
+export async function getCalendarContext(
+  daysAhead = 7,
+): Promise<CalendarContextResponse> {
+  try {
+    const response = await apiClient.get<CalendarContextResponse>(
+      '/integrations/calendar/context',
+      {
+        params: { daysAhead },
+      },
+    );
+    return response.data;
+  } catch (error: unknown) {
+    const errorMessage = getApiErrorMessage(
+      error,
+      'Błąd podczas pobierania kontekstu kalendarza',
+    );
+    throw new Error(errorMessage);
+  }
+}
+

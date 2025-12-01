@@ -111,7 +111,10 @@ export class CalendarService {
       }
 
       this.oauth2Client.setCredentials(tokens);
-      const calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
+      const calendar = google.calendar({
+        version: 'v3',
+        auth: this.oauth2Client,
+      });
 
       const calendarList = await calendar.calendarList.list();
       const primaryCalendar = calendarList.data.items?.find(
@@ -137,7 +140,8 @@ export class CalendarService {
         integration = await this.prisma.integration.create({
           data: {
             name: 'Google Calendar',
-            description: 'Integracja z Google Calendar - zarządzaj wydarzeniami',
+            description:
+              'Integracja z Google Calendar - zarządzaj wydarzeniami',
             icon: 'calendar',
             category: 'productivity',
             isActive: true,
@@ -237,9 +241,7 @@ export class CalendarService {
     this.logger.log(`Calendar disconnected for user ${userId}`);
   }
 
-  async getConnectionStatus(
-    userId: string,
-  ): Promise<CalendarConnectionStatus> {
+  async getConnectionStatus(userId: string): Promise<CalendarConnectionStatus> {
     const integration = await this.prisma.integration.findFirst({
       where: { name: 'Google Calendar' },
     });
@@ -352,7 +354,9 @@ export class CalendarService {
                 displayName: event.organizer.displayName || undefined,
               }
             : undefined,
-          status: (event.status as 'confirmed' | 'tentative' | 'cancelled') || 'confirmed',
+          status:
+            (event.status as 'confirmed' | 'tentative' | 'cancelled') ||
+            'confirmed',
           htmlLink: event.htmlLink || undefined,
           recurringEventId: event.recurringEventId || undefined,
           isAllDay: !event.start?.dateTime && !!event.start?.date,
@@ -427,7 +431,9 @@ export class CalendarService {
               displayName: event.organizer.displayName || undefined,
             }
           : undefined,
-        status: (event.status as 'confirmed' | 'tentative' | 'cancelled') || 'confirmed',
+        status:
+          (event.status as 'confirmed' | 'tentative' | 'cancelled') ||
+          'confirmed',
         htmlLink: event.htmlLink || undefined,
         isAllDay: !event.start?.dateTime && !!event.start?.date,
       };
@@ -508,7 +514,9 @@ export class CalendarService {
               displayName: event.organizer.displayName || undefined,
             }
           : undefined,
-        status: (event.status as 'confirmed' | 'tentative' | 'cancelled') || 'confirmed',
+        status:
+          (event.status as 'confirmed' | 'tentative' | 'cancelled') ||
+          'confirmed',
         htmlLink: event.htmlLink || undefined,
         isAllDay: !event.start?.dateTime && !!event.start?.date,
       };
@@ -655,6 +663,77 @@ export class CalendarService {
     return decrypted;
   }
 
+  async getEventsForAiContext(userId: string, daysAhead = 7): Promise<string> {
+    try {
+      const now = new Date();
+      const timeMin = now.toISOString();
+      const timeMax = new Date(
+        now.getTime() + daysAhead * 24 * 60 * 60 * 1000,
+      ).toISOString();
+
+      const events = await this.getEvents(
+        userId,
+        'primary',
+        timeMin,
+        timeMax,
+        20,
+      );
+
+      if (events.length === 0) {
+        return `Brak wydarzeń w kalendarzu w najbliższych ${daysAhead} dniach.`;
+      }
+
+      const formattedEvents = events.map((event, index) => {
+        const startDate = event.start.dateTime
+          ? new Date(event.start.dateTime)
+          : event.start.date
+            ? new Date(event.start.date)
+            : null;
+
+        const endDate = event.end.dateTime
+          ? new Date(event.end.dateTime)
+          : event.end.date
+            ? new Date(event.end.date)
+            : null;
+
+        const dateStr = startDate
+          ? startDate.toLocaleString('pl-PL', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour:
+                startDate.getHours() !== 0 || startDate.getMinutes() !== 0
+                  ? '2-digit'
+                  : undefined,
+              minute: startDate.getMinutes() !== 0 ? '2-digit' : undefined,
+            })
+          : 'Data nieznana';
+
+        const timeStr =
+          startDate && !event.isAllDay
+            ? `${startDate.toLocaleTimeString('pl-PL', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })} - ${endDate?.toLocaleTimeString('pl-PL', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}`
+            : event.isAllDay
+              ? 'Cały dzień'
+              : '';
+
+        return `${index + 1}. ${event.summary}
+   Data: ${dateStr}${timeStr ? `\n   Godzina: ${timeStr}` : ''}${event.location ? `\n   Miejsce: ${event.location}` : ''}${event.description ? `\n   Opis: ${event.description.substring(0, 100)}${event.description.length > 100 ? '...' : ''}` : ''}`;
+      });
+
+      return `Nadchodzące wydarzenia w kalendarzu (${events.length}):\n\n${formattedEvents.join('\n\n')}`;
+    } catch (error) {
+      this.logger.error('Failed to get events for AI context:', error);
+      return 'Nie udało się pobrać wydarzeń z kalendarza.';
+    }
+  }
+
   private cleanupExpiredStates(): void {
     const now = Date.now();
     for (const [state, data] of this.stateStore.entries()) {
@@ -664,4 +743,3 @@ export class CalendarService {
     }
   }
 }
-
