@@ -44,6 +44,7 @@ export class AiController {
     const result = await this.aiService.transcribeAndRespond(audio, user.id, {
       language: body.language ?? 'pl',
       context: body.context,
+      location: body.location,
     });
 
     this.aiService

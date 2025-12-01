@@ -6,7 +6,7 @@ export type { VoiceAiResponse, ChatHistoryItem };
 
 export async function sendVoiceToAi(
   uri: string,
-  options?: { language?: string; context?: string },
+  options?: { language?: string; context?: string; location?: string },
 ): Promise<VoiceAiResponse> {
   if (!uri) {
     throw new Error('Brak ścieżki do nagrania audio');
@@ -24,6 +24,9 @@ export async function sendVoiceToAi(
   }
   if (options?.context) {
     form.append('context', options.context);
+  }
+  if (options?.location) {
+    form.append('location', options.location);
   }
 
   try {

@@ -4,6 +4,7 @@ import { useTextToSpeech } from '../../../hooks/useTextToSpeech.hook';
 import { useVoiceAi } from './useVoiceAi.hook';
 import { useAuthStore } from '../../../stores/authStore';
 import { useQueryClient } from '@tanstack/react-query';
+import { getApproximateLocation, formatLocationForAi } from '../../utils/location.utils';
 
 type Message = {
   id: string;
@@ -41,10 +42,24 @@ export const useHomeScreen = () => {
 
         setIsTyping(true);
 
+        console.log('[useHomeScreen] 📍 Pobieram lokalizację przed wysłaniem do AI...');
+        const location = await getApproximateLocation();
+        console.log('[useHomeScreen] 📍 Pobrana lokalizacja:', location);
+        
+        const locationLabel = formatLocationForAi(location);
+        console.log('[useHomeScreen] 📍 Lokalizacja dla AI:', locationLabel);
+
+        console.log('[useHomeScreen] 🚀 Wysyłam do AI z opcjami:', {
+          language: 'pl',
+          location: locationLabel,
+        });
+
         const result = await voiceAiMutation.mutateAsync({
           uri,
-          options: { language: 'pl' },
+          options: { language: 'pl', location: locationLabel },
         });
+
+        console.log('[useHomeScreen] ✅ Odpowiedź z AI:', result);
 
         setMessages((prev) => 
           prev.map(msg => 
