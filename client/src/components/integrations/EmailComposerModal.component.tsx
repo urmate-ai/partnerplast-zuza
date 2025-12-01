@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -112,41 +113,37 @@ export function EmailComposerModal({
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <SafeAreaView className="flex-1 bg-white dark:bg-gray-900">
+      <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          className="flex-1"
+          style={styles.keyboardView}
         >
-          <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <View style={styles.header}>
             <TouchableOpacity
               onPress={handleClose}
               disabled={isLoading}
-              className="p-2"
+              style={styles.closeButton}
             >
               <Ionicons name="close" size={24} color="#6B7280" />
             </TouchableOpacity>
-            <Text className="text-lg font-semibold text-gray-900 dark:text-white">
-              Nowy email
-            </Text>
+            <Text style={styles.headerTitle}>Nowy email</Text>
             <TouchableOpacity
               onPress={handleSend}
               disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 rounded-lg disabled:opacity-50"
+              style={[styles.sendButton, isLoading && styles.sendButtonDisabled]}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text className="text-white font-semibold">Wyślij</Text>
+                <Text style={styles.sendButtonText}>Wyślij</Text>
               )}
             </TouchableOpacity>
           </View>
 
-          <ScrollView className="flex-1">
-            <View className="border-b border-gray-200 dark:border-gray-700">
-              <View className="flex-row items-center px-4 py-3">
-                <Text className="w-16 text-gray-600 dark:text-gray-400">
-                  Do:
-                </Text>
+          <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+            <View style={styles.fieldContainer}>
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>Do:</Text>
                 <TextInput
                   value={to}
                   onChangeText={setTo}
@@ -156,30 +153,26 @@ export function EmailComposerModal({
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={!isLoading}
-                  className="flex-1 text-gray-900 dark:text-white"
+                  style={styles.textInput}
                 />
               </View>
             </View>
 
             {!showCcBcc && (
-              <View className="px-4 py-2">
+              <View style={styles.addCcBccContainer}>
                 <TouchableOpacity
                   onPress={() => setShowCcBcc(true)}
                   disabled={isLoading}
                 >
-                  <Text className="text-blue-600 dark:text-blue-400">
-                    + Dodaj DW/UDW
-                  </Text>
+                  <Text style={styles.addCcBccText}>+ Dodaj DW/UDW</Text>
                 </TouchableOpacity>
               </View>
             )}
 
             {showCcBcc && (
-              <View className="border-b border-gray-200 dark:border-gray-700">
-                <View className="flex-row items-center px-4 py-3">
-                  <Text className="w-16 text-gray-600 dark:text-gray-400">
-                    DW:
-                  </Text>
+              <View style={styles.fieldContainer}>
+                <View style={styles.fieldRow}>
+                  <Text style={styles.fieldLabel}>DW:</Text>
                   <TextInput
                     value={cc}
                     onChangeText={setCc}
@@ -189,18 +182,16 @@ export function EmailComposerModal({
                     autoCapitalize="none"
                     autoCorrect={false}
                     editable={!isLoading}
-                    className="flex-1 text-gray-900 dark:text-white"
+                    style={styles.textInput}
                   />
                 </View>
               </View>
             )}
 
             {showCcBcc && (
-              <View className="border-b border-gray-200 dark:border-gray-700">
-                <View className="flex-row items-center px-4 py-3">
-                  <Text className="w-16 text-gray-600 dark:text-gray-400">
-                    UDW:
-                  </Text>
+              <View style={styles.fieldContainer}>
+                <View style={styles.fieldRow}>
+                  <Text style={styles.fieldLabel}>UDW:</Text>
                   <TextInput
                     value={bcc}
                     onChangeText={setBcc}
@@ -210,17 +201,15 @@ export function EmailComposerModal({
                     autoCapitalize="none"
                     autoCorrect={false}
                     editable={!isLoading}
-                    className="flex-1 text-gray-900 dark:text-white"
+                    style={styles.textInput}
                   />
                 </View>
               </View>
             )}
 
-            <View className="border-b border-gray-200 dark:border-gray-700">
-              <View className="flex-row items-center px-4 py-3">
-                <Text className="w-16 text-gray-600 dark:text-gray-400">
-                  Temat:
-                </Text>
+            <View style={styles.fieldContainer}>
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>Temat:</Text>
                 <TextInput
                   value={subject}
                   onChangeText={setSubject}
@@ -228,12 +217,12 @@ export function EmailComposerModal({
                   placeholderTextColor="#9CA3AF"
                   autoCapitalize="sentences"
                   editable={!isLoading}
-                  className="flex-1 text-gray-900 dark:text-white"
+                  style={styles.textInput}
                 />
               </View>
             </View>
 
-            <View className="px-4 py-3">
+            <View style={styles.bodyContainer}>
               <TextInput
                 value={body}
                 onChangeText={setBody}
@@ -244,7 +233,7 @@ export function EmailComposerModal({
                 textAlignVertical="top"
                 autoCapitalize="sentences"
                 editable={!isLoading}
-                className="min-h-[200px] text-gray-900 dark:text-white"
+                style={styles.bodyInput}
               />
             </View>
           </ScrollView>
@@ -253,4 +242,88 @@ export function EmailComposerModal({
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  sendButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#2563EB',
+    borderRadius: 8,
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
+  },
+  sendButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 32,
+  },
+  fieldContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  fieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  fieldLabel: {
+    width: 64,
+    color: '#4B5563',
+    fontSize: 16,
+  },
+  textInput: {
+    flex: 1,
+    color: '#111827',
+    fontSize: 16,
+  },
+  addCcBccContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  addCcBccText: {
+    color: '#2563EB',
+    fontSize: 16,
+  },
+  bodyContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  bodyInput: {
+    minHeight: 200,
+    color: '#111827',
+    fontSize: 16,
+    textAlignVertical: 'top',
+  },
+});
 
