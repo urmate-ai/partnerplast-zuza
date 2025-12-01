@@ -1,7 +1,7 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ChatService } from '../../ai/services/chat.service';
+import { ChatService } from '../../ai/services/chat/chat.service';
 import { TokenService } from '../../common/services/token.service';
 import { UserUtils } from '../utils/user.utils';
 import { OAuth2Client } from 'google-auth-library';
