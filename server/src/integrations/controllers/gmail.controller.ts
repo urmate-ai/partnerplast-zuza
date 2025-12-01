@@ -1,8 +1,17 @@
-import { Controller, Get, Delete, Query, UseGuards, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Delete,
+  Post,
+  Query,
+  Body,
+  UseGuards,
+  Res,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 import { GmailService } from '../services/gmail.service';
-import { GmailCallbackDto } from '../dto/gmail.dto';
+import { GmailCallbackDto, GmailSendMessageDto } from '../dto/gmail.dto';
 import {
   CurrentUser,
   type CurrentUserPayload,
@@ -233,5 +242,35 @@ export class GmailController {
   ) {
     const max = maxResults ? parseInt(maxResults, 10) : 10;
     return this.gmailService.getRecentMessages(user.id, max);
+  }
+
+  @Post('send')
+  @UseGuards(AuthGuard('jwt'))
+  async sendEmail(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() sendMessageDto: GmailSendMessageDto,
+  ) {
+    return this.gmailService.sendEmail(
+      user.id,
+      sendMessageDto.to,
+      sendMessageDto.subject,
+      sendMessageDto.body,
+      sendMessageDto.cc,
+      sendMessageDto.bcc,
+    );
+  }
+
+  @Get('context')
+  @UseGuards(AuthGuard('jwt'))
+  async getContextForAi(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('maxResults') maxResults?: string,
+  ) {
+    const max = maxResults ? parseInt(maxResults, 10) : 20;
+    const context = await this.gmailService.getMessagesForAiContext(
+      user.id,
+      max,
+    );
+    return { context };
   }
 }

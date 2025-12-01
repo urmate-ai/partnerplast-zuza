@@ -32,9 +32,10 @@ export class GmailService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    const explicitRedirectUri = this.configService.get<string>('GMAIL_REDIRECT_URI');
+    const explicitRedirectUri =
+      this.configService.get<string>('GMAIL_REDIRECT_URI');
     const publicUrl = this.configService.get<string>('PUBLIC_URL');
-    
+
     let redirectUri: string;
     if (explicitRedirectUri) {
       redirectUri = explicitRedirectUri;
@@ -295,6 +296,88 @@ export class GmailService {
     } catch (error) {
       this.logger.error('Failed to fetch Gmail messages:', error);
       throw new BadRequestException('Failed to fetch messages');
+    }
+  }
+
+  async sendEmail(
+    userId: string,
+    to: string,
+    subject: string,
+    body: string,
+    cc?: string[],
+    bcc?: string[],
+  ): Promise<{ messageId: string; success: boolean }> {
+    const client = await this.getAuthenticatedClient(userId);
+    const gmail = google.gmail({ version: 'v1', auth: client });
+
+    try {
+      const profile = await gmail.users.getProfile({ userId: 'me' });
+      const fromEmail = profile.data.emailAddress;
+
+      const messageParts = [
+        `From: ${fromEmail}`,
+        `To: ${to}`,
+        cc && cc.length > 0 ? `Cc: ${cc.join(', ')}` : '',
+        bcc && bcc.length > 0 ? `Bcc: ${bcc.join(', ')}` : '',
+        `Subject: ${subject}`,
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=utf-8',
+        '',
+        body,
+      ].filter(Boolean);
+
+      const message = messageParts.join('\r\n');
+      const encodedMessage = Buffer.from(message)
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+      const response = await gmail.users.messages.send({
+        userId: 'me',
+        requestBody: {
+          raw: encodedMessage,
+        },
+      });
+
+      this.logger.log(
+        `Email sent successfully for user ${userId}, messageId: ${response.data.id}`,
+      );
+
+      return {
+        messageId: response.data.id || '',
+        success: true,
+      };
+    } catch (error) {
+      this.logger.error('Failed to send email:', error);
+      throw new BadRequestException('Failed to send email');
+    }
+  }
+
+  async getMessagesForAiContext(
+    userId: string,
+    maxResults = 20,
+  ): Promise<string> {
+    try {
+      const messages = await this.getRecentMessages(userId, maxResults);
+
+      if (messages.length === 0) {
+        return 'Brak wiadomości email w skrzynce odbiorczej.';
+      }
+
+      const formattedMessages = messages.map((msg, index) => {
+        const dateStr = new Date(msg.date).toLocaleString('pl-PL');
+        const unreadFlag = msg.isUnread ? '[NIEPRZECZYTANA] ' : '';
+        return `${index + 1}. ${unreadFlag}Od: ${msg.from}
+   Temat: ${msg.subject}
+   Data: ${dateStr}
+   Podgląd: ${msg.snippet}`;
+      });
+
+      return `Ostatnie wiadomości email użytkownika (${messages.length}):\n\n${formattedMessages.join('\n\n')}`;
+    } catch (error) {
+      this.logger.error('Failed to get messages for AI context:', error);
+      return 'Nie udało się pobrać wiadomości email.';
     }
   }
 

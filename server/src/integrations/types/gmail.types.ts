@@ -47,6 +47,23 @@ export type GmailThread = {
   subject: string;
 };
 
+export type SendEmailRequest = {
+  to: string;
+  subject: string;
+  body: string;
+  cc?: string[];
+  bcc?: string[];
+};
+
+export type SendEmailResponse = {
+  messageId: string;
+  success: boolean;
+};
+
+export type GmailContextResponse = {
+  context: string;
+};
+
 export const GMAIL_SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/gmail.send',

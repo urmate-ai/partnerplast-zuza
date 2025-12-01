@@ -5,6 +5,7 @@ import { useVoiceAi } from './useVoiceAi.hook';
 import { useAuthStore } from '../../../stores/authStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { getApproximateLocation, formatLocationForAi } from '../../utils/location.utils';
+import type { EmailIntent } from '../../types/ai.types';
 
 type Message = {
   id: string;
@@ -20,6 +21,7 @@ export const useHomeScreen = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [emailIntent, setEmailIntent] = useState<EmailIntent | null>(null);
 
   const voiceAiMutation = useVoiceAi();
   const { state: ttsState, speak, stop: stopTTS } = useTextToSpeech();
@@ -81,6 +83,11 @@ export const useHomeScreen = () => {
         setIsTyping(false);
         speak(result.reply);
 
+        if (result.emailIntent?.shouldSendEmail) {
+          console.log('[useHomeScreen] 📧 Wykryto intencję wysłania emaila:', result.emailIntent);
+          setEmailIntent(result.emailIntent);
+        }
+
         queryClient.invalidateQueries({ queryKey: ['chats'] });
       } catch (err) {
         setError(
@@ -122,6 +129,10 @@ export const useHomeScreen = () => {
     }
   }, [stopTTS, queryClient]);
 
+  const clearEmailIntent = useCallback(() => {
+    setEmailIntent(null);
+  }, []);
+
   return {
     user,
     isDrawerOpen,
@@ -138,5 +149,7 @@ export const useHomeScreen = () => {
     stopTTS,
     handleTypingComplete,
     handleNewChat,
+    emailIntent,
+    clearEmailIntent,
   };
 };
