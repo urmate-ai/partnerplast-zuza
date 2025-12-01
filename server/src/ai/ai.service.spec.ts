@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AiService } from './ai.service';
-import { ChatService } from './services/chat.service';
-import { OpenAIService } from './services/openai.service';
-import { GmailService } from '../integrations/services/gmail.service';
-import { CalendarService } from '../integrations/services/calendar.service';
+import { ChatService } from './services/chat/chat.service';
+import { OpenAIService } from './services/openai/openai.service';
+import { GmailService } from '../integrations/services/gmail/gmail.service';
+import { CalendarService } from '../integrations/services/calendar/calendar.service';
 import type {
   AudioFile,
   VoiceProcessResult,

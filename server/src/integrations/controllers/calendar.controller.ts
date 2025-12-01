@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
-import { CalendarService } from '../services/calendar.service';
+import { CalendarService } from '../services/calendar/calendar.service';
 import {
   CalendarCallbackDto,
   GetEventsDto,

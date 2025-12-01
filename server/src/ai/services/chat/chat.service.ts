@@ -1,9 +1,9 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { OpenAIChatTitleService } from './openai-chat-title.service';
-import { ChatMapper } from '../utils/chat.mapper';
-import type { ChatHistoryItem, ChatWithMessages } from '../types/ai.types';
-import type { ChatRole } from '../types/chat.types';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { OpenAIChatTitleService } from '../openai/openai-chat-title.service';
+import { ChatMapper } from '../../utils/chat.mapper';
+import type { ChatHistoryItem, ChatWithMessages } from '../../types/ai.types';
+import type { ChatRole } from '../../types/chat.types';
 
 @Injectable()
 export class ChatService {

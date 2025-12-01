@@ -2,13 +2,13 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AiService } from './ai.service';
 import { AiController } from './ai.controller';
-import { OpenAIService } from './services/openai.service';
-import { ChatService } from './services/chat.service';
-import { OpenAITranscriptionService } from './services/openai-transcription.service';
-import { OpenAIResponseService } from './services/openai-response.service';
-import { OpenAIIntentDetectionService } from './services/openai-intent-detection.service';
-import { OpenAIChatTitleService } from './services/openai-chat-title.service';
-import { ResponseCacheService } from './services/response-cache.service';
+import { OpenAIService } from './services/openai/openai.service';
+import { ChatService } from './services/chat/chat.service';
+import { OpenAITranscriptionService } from './services/openai/openai-transcription.service';
+import { OpenAIResponseService } from './services/openai/openai-response.service';
+import { OpenAIIntentDetectionService } from './services/openai/openai-intent-detection.service';
+import { OpenAIChatTitleService } from './services/openai/openai-chat-title.service';
+import { ResponseCacheService } from './services/cache/response-cache.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import OpenAI from 'openai';
@@ -20,7 +20,10 @@ import type { OpenAIConfig, OpenAIResponsesClient } from './types/ai.types';
   providers: [
     AiService,
     ChatService,
-    ResponseCacheService,
+    {
+      provide: ResponseCacheService,
+      useFactory: () => new ResponseCacheService(),
+    },
     {
       provide: OpenAITranscriptionService,
       useFactory: (configService: ConfigService) => {

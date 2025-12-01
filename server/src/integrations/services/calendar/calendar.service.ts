@@ -1,18 +1,18 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { google } from 'googleapis';
-import { PrismaService } from '../../prisma/prisma.service';
-import { GoogleOAuthService } from './google-oauth.service';
-import { GoogleIntegrationService } from './google-integration.service';
-import { CalendarMapper } from '../utils/calendar.mapper';
-import { CalendarFormatter } from '../utils/calendar-formatter.utils';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { GoogleOAuthService } from '../oauth/google-oauth.service';
+import { GoogleIntegrationService } from '../google/google-integration.service';
+import { CalendarMapper } from '../../utils/calendar.mapper';
+import { CalendarFormatter } from '../../utils/calendar-formatter.utils';
 import type {
   CalendarAuthUrlResponse,
   CalendarConnectionStatus,
   CalendarEvent,
   CalendarList,
-} from '../types/calendar.types';
-import { CALENDAR_SCOPES } from '../types/calendar.types';
-import type { UserIntegrationData } from '../types/google-oauth.types';
+} from '../../types/calendar.types';
+import { CALENDAR_SCOPES } from '../../types/calendar.types';
+import type { UserIntegrationData } from '../../types/google-oauth.types';
 
 @Injectable()
 export class CalendarService {

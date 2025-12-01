@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
-import { GmailService } from '../services/gmail.service';
+import { GmailService } from '../services/gmail/gmail.service';
 import { GmailCallbackDto, GmailSendMessageDto } from '../dto/gmail.dto';
 import {
   CurrentUser,

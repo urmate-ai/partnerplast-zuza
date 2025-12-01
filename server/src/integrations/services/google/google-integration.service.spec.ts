@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GoogleIntegrationService } from './google-integration.service';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import type { Integration, UserIntegration } from '@prisma/client';
 
 describe('GoogleIntegrationService', () => {

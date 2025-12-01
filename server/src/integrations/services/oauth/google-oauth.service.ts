@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { google } from 'googleapis';
 import type { OAuth2Client } from 'google-auth-library';
 import { TokenEncryptionService } from './token-encryption.service';
@@ -16,7 +16,7 @@ import type {
   GoogleTokens,
   UserIntegrationData,
   AuthenticatedClientResult,
-} from '../types/google-oauth.types';
+} from '../../types/google-oauth.types';
 import type { Prisma } from '@prisma/client';
 @Injectable()
 export class GoogleOAuthService {

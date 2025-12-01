@@ -6,7 +6,7 @@ import { OpenAITranscriptionService } from './openai-transcription.service';
 import { OpenAIResponseService } from './openai-response.service';
 import { OpenAIIntentDetectionService } from './openai-intent-detection.service';
 import { OpenAIChatTitleService } from './openai-chat-title.service';
-import type { AudioFile } from '../types/ai.types';
+import type { AudioFile } from '../../types/ai.types';
 
 describe('OpenAIService', () => {
   let service: OpenAIService;
