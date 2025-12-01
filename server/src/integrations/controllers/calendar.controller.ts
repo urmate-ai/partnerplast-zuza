@@ -1,30 +1,50 @@
-import { Controller, Get, Delete, Query, UseGuards, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Query,
+  Body,
+  UseGuards,
+  Res,
+  Param,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
-import { GmailService } from '../services/gmail.service';
-import { GmailCallbackDto } from '../dto/gmail.dto';
+import { CalendarService } from '../services/calendar.service';
+import {
+  CalendarCallbackDto,
+  GetEventsDto,
+  CreateEventDto,
+  UpdateEventDto,
+  DeleteEventDto,
+} from '../dto/calendar.dto';
 import {
   CurrentUser,
   type CurrentUserPayload,
 } from '../../auth/decorators/current-user.decorator';
 
-@Controller('integrations/gmail')
-export class GmailController {
-  constructor(private readonly gmailService: GmailService) {}
+@Controller('integrations/calendar')
+export class CalendarController {
+  constructor(private readonly calendarService: CalendarService) {}
 
   @Get('auth')
   @UseGuards(AuthGuard('jwt'))
   initiateAuth(@CurrentUser() user: CurrentUserPayload) {
-    const { authUrl } = this.gmailService.generateAuthUrl(user.id);
+    const { authUrl } = this.calendarService.generateAuthUrl(user.id);
     return { authUrl };
   }
 
   @Get('callback')
-  async handleCallback(@Query() query: GmailCallbackDto, @Res() res: Response) {
+  async handleCallback(
+    @Query() query: CalendarCallbackDto,
+    @Res() res: Response,
+  ) {
     try {
-      await this.gmailService.handleCallback(query.code, query.state);
+      await this.calendarService.handleCallback(query.code, query.state);
 
-      const deepLink = 'urmate-ai-zuza://integrations?gmail=success';
+      const deepLink = 'urmate-ai-zuza://integrations?calendar=success';
 
       return res.send(`
         <!DOCTYPE html>
@@ -33,7 +53,7 @@ export class GmailController {
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <meta http-equiv="refresh" content="0;url=${deepLink}">
-            <title>Gmail połączony</title>
+            <title>Google Calendar połączony</title>
             <style>
               body {
                 margin: 0;
@@ -71,7 +91,7 @@ export class GmailController {
           <body>
             <div class="container">
               <h1 style="color: #10b981; margin-bottom: 10px;">✓</h1>
-              <p style="font-size: 18px; margin-bottom: 10px;">Gmail został pomyślnie połączony!</p>
+              <p style="font-size: 18px; margin-bottom: 10px;">Google Calendar został pomyślnie połączony!</p>
               <p style="color: #6b7280; margin-bottom: 20px;">Przekierowywanie do aplikacji...</p>
               <a href="${deepLink}" class="link">Otwórz aplikację</a>
             </div>
@@ -116,9 +136,9 @@ export class GmailController {
         </html>
       `);
     } catch (error) {
-      console.error('Error in Gmail callback:', error);
+      console.error('Error in Calendar callback:', error);
 
-      const deepLink = 'urmate-ai-zuza://integrations?gmail=error';
+      const deepLink = 'urmate-ai-zuza://integrations?calendar=error';
 
       return res.send(`
         <!DOCTYPE html>
@@ -127,7 +147,7 @@ export class GmailController {
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <meta http-equiv="refresh" content="0;url=${deepLink}">
-            <title>Błąd połączenia Gmail</title>
+            <title>Błąd połączenia Google Calendar</title>
             <style>
               body {
                 margin: 0;
@@ -165,7 +185,7 @@ export class GmailController {
           <body>
             <div class="container">
               <h1 style="color: #DC2626; margin-bottom: 10px;">✗</h1>
-              <p style="font-size: 18px; margin-bottom: 10px; color: #DC2626;">Wystąpił błąd podczas łączenia z Gmail</p>
+              <p style="font-size: 18px; margin-bottom: 10px; color: #DC2626;">Wystąpił błąd podczas łączenia z Google Calendar</p>
               <p style="color: #6b7280; margin-bottom: 20px;">Przekierowywanie do aplikacji...</p>
               <a href="${deepLink}" class="link">Otwórz aplikację</a>
             </div>
@@ -215,23 +235,88 @@ export class GmailController {
   @Get('status')
   @UseGuards(AuthGuard('jwt'))
   async getStatus(@CurrentUser() user: CurrentUserPayload) {
-    return this.gmailService.getConnectionStatus(user.id);
+    return this.calendarService.getConnectionStatus(user.id);
   }
 
   @Delete('disconnect')
   @UseGuards(AuthGuard('jwt'))
   async disconnect(@CurrentUser() user: CurrentUserPayload) {
-    await this.gmailService.disconnectGmail(user.id);
-    return { message: 'Gmail disconnected successfully' };
+    await this.calendarService.disconnectCalendar(user.id);
+    return { message: 'Google Calendar disconnected successfully' };
   }
 
-  @Get('messages')
+  @Get('calendars')
   @UseGuards(AuthGuard('jwt'))
-  async getMessages(
+  async getCalendars(@CurrentUser() user: CurrentUserPayload) {
+    return this.calendarService.getCalendars(user.id);
+  }
+
+  @Get('events')
+  @UseGuards(AuthGuard('jwt'))
+  async getEvents(
     @CurrentUser() user: CurrentUserPayload,
-    @Query('maxResults') maxResults?: string,
+    @Query() query: GetEventsDto,
   ) {
-    const max = maxResults ? parseInt(maxResults, 10) : 10;
-    return this.gmailService.getRecentMessages(user.id, max);
+    return this.calendarService.getEvents(
+      user.id,
+      query.calendarId || 'primary',
+      query.timeMin,
+      query.timeMax,
+      query.maxResults || 50,
+    );
+  }
+
+  @Post('events')
+  @UseGuards(AuthGuard('jwt'))
+  async createEvent(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() body: CreateEventDto,
+  ) {
+    return this.calendarService.createEvent(user.id, body.calendarId, {
+      summary: body.summary,
+      description: body.description,
+      location: body.location,
+      start: body.start,
+      end: body.end,
+      attendees: body.attendees,
+    });
+  }
+
+  @Put('events/:eventId')
+  @UseGuards(AuthGuard('jwt'))
+  async updateEvent(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('eventId') eventId: string,
+    @Body() body: UpdateEventDto,
+  ) {
+    return this.calendarService.updateEvent(
+      user.id,
+      body.calendarId,
+      eventId,
+      {
+        summary: body.summary,
+        description: body.description,
+        location: body.location,
+        start: body.start,
+        end: body.end,
+        attendees: body.attendees,
+      },
+    );
+  }
+
+  @Delete('events/:eventId')
+  @UseGuards(AuthGuard('jwt'))
+  async deleteEvent(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('eventId') eventId: string,
+    @Query('calendarId') calendarId: string,
+  ) {
+    await this.calendarService.deleteEvent(
+      user.id,
+      calendarId || 'primary',
+      eventId,
+    );
+    return { message: 'Event deleted successfully' };
   }
 }
+

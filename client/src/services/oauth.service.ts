@@ -1,29 +1,64 @@
 import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { makeRedirectUri } from 'expo-auth-session';
+import * as Linking from 'expo-linking';
 
 WebBrowser.maybeCompleteAuthSession();
 
-export const googleAuthConfig = {
-  expoClientId: process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,
-  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-  androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-};
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://urmate-ai-zuza.onrender.com';
 
 export const useGoogleAuth = () => {
-  const redirectUri = makeRedirectUri({
-    scheme: 'urmate-ai-zuza',
-    path: 'auth/google/callback',
-  });
+  const handleGoogleLogin = async (): Promise<{
+    type: 'success' | 'cancel' | 'error';
+    token?: string;
+    user?: unknown;
+    error?: string;
+  }> => {
+    return new Promise((resolve) => {
+      // Nasłuchuj na deep link przed otwarciem przeglądarki
+      const subscription = Linking.addEventListener('url', (event) => {
+        const { path, queryParams } = Linking.parse(event.url);
+        
+        if (path === 'auth/google/callback') {
+          subscription.remove();
+          WebBrowser.dismissBrowser();
+          
+          const token = queryParams?.token as string;
+          const userJson = queryParams?.user as string;
+          const error = queryParams?.error as string;
+          
+          if (error) {
+            resolve({ type: 'error', error });
+            return;
+          }
+          
+          if (token && userJson) {
+            try {
+              const user = JSON.parse(decodeURIComponent(userJson));
+              resolve({ type: 'success', token, user });
+            } catch (err) {
+              resolve({ type: 'error', error: 'Failed to parse user data' });
+            }
+          } else {
+            resolve({ type: 'error', error: 'Missing token or user data' });
+          }
+        }
+      });
 
-  console.log('Google OAuth Redirect URI:', redirectUri);
+      // Otwórz przeglądarkę
+      WebBrowser.openBrowserAsync(`${API_URL}/api/v1/auth/google`)
+        .then((result) => {
+          // Jeśli przeglądarka została zamknięta bez deep linka
+          if (result.type === 'cancel' || result.type === 'dismiss') {
+            subscription.remove();
+            resolve({ type: 'cancel' });
+          }
+        })
+        .catch((error) => {
+          subscription.remove();
+          resolve({ type: 'error', error: error instanceof Error ? error.message : 'Unknown error' });
+        });
+    });
+  };
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    ...googleAuthConfig,
-    redirectUri,
-  });
-
-  return { request, response, promptAsync };
+  return { handleGoogleLogin };
 };
 
