@@ -208,7 +208,7 @@ describe('OpenAIService', () => {
         mockOpenAI.chat.completions.create as jest.Mock,
       ).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-5',
+          model: 'gpt-4o',
           max_tokens: 30,
         }),
       );
