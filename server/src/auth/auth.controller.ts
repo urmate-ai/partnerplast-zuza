@@ -83,16 +83,22 @@ export class AuthController {
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1">
-              <title>Logowanie...</title>
+              <title>Błąd logowania</title>
             </head>
             <body>
               <script>
-                window.location.href = '${errorUrl}';
+                const url = '${errorUrl}';
+                window.location.href = url;
                 setTimeout(function() {
-                  window.close();
-                }, 1000);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.style.display = 'none';
+                  document.body.appendChild(link);
+                  link.click();
+                }, 100);
               </script>
-              <p>Przekierowywanie...</p>
+              <p>Błąd logowania. Przekierowywanie...</p>
+              <p><a href="${errorUrl}">Kliknij tutaj jeśli przekierowanie nie działa</a></p>
             </body>
           </html>
         `);
@@ -111,12 +117,51 @@ export class AuthController {
           </head>
           <body>
             <script>
-              window.location.href = '${redirectUrl}';
+              // Próbuj różne metody otwarcia deep linka
+              function openDeepLink() {
+                const url = '${redirectUrl}';
+                
+                // Metoda 1: window.location
+                try {
+                  window.location.href = url;
+                } catch (e) {
+                  console.error('window.location failed:', e);
+                }
+                
+                // Metoda 2: window.open (fallback)
+                setTimeout(function() {
+                  try {
+                    window.open(url, '_self');
+                  } catch (e) {
+                    console.error('window.open failed:', e);
+                  }
+                }, 100);
+                
+                // Metoda 3: Kliknięcie w link (fallback)
+                setTimeout(function() {
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.style.display = 'none';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }, 200);
+              }
+              
+              // Uruchom natychmiast
+              openDeepLink();
+              
+              // Próbuj zamknąć okno po 2 sekundach
               setTimeout(function() {
-                window.close();
-              }, 1000);
+                try {
+                  window.close();
+                } catch (e) {
+                  // Nie można zamknąć okna (normalne w niektórych przeglądarkach)
+                }
+              }, 2000);
             </script>
-            <p>Logowanie zakończone. Zamykanie okna...</p>
+            <p>Logowanie zakończone. Przekierowywanie do aplikacji...</p>
+            <p><a href="${redirectUrl}">Kliknij tutaj jeśli przekierowanie nie działa</a></p>
           </body>
         </html>
       `);

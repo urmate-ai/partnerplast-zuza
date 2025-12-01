@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,6 +8,7 @@ import { useGoogleAuth } from '../../../services/oauth.service';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../navigation/RootNavigator';
 import { getApiErrorMessage } from '../../types/api.types';
+import type { User } from '../../types';
 
 const loginSchema = z.object({
   email: z
@@ -104,7 +105,7 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
       const result = await googleLogin();
       
       if (result.type === 'success' && result.token && result.user) {
-        await useAuthStore.getState().setAuth(result.user, result.token);
+        await useAuthStore.getState().setAuth(result.user as unknown as User, result.token);
         navigation.replace('Home');
       } else if (result.type === 'error' || result.error) {
         setGoogleError('Błąd logowania Google: ' + (result.error || 'Nieznany błąd'));
