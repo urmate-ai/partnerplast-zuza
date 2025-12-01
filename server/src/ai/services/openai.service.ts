@@ -217,7 +217,12 @@ Odpowiedz w formacie JSON:
         return { shouldSendEmail: false };
       }
 
-      const parsed = JSON.parse(responseText);
+      const parsed = JSON.parse(responseText) as {
+        shouldSendEmail?: boolean;
+        to?: string | null;
+        subject?: string | null;
+        body?: string | null;
+      };
       this.logger.log(`Parsed email intent: ${JSON.stringify(parsed)}`);
 
       const result = {
@@ -241,6 +246,174 @@ Odpowiedz w formacie JSON:
     } catch (error) {
       this.logger.error('Failed to detect email intent:', error);
       return { shouldSendEmail: false };
+    }
+  }
+
+  async detectCalendarIntent(transcript: string): Promise<{
+    shouldCreateEvent: boolean;
+    summary?: string;
+    description?: string;
+    location?: string;
+    startDateTime?: string;
+    endDateTime?: string;
+    isAllDay?: boolean;
+    attendees?: string[];
+  }> {
+    try {
+      const lowerTranscript = transcript.toLowerCase();
+      const calendarKeywords = [
+        'dodaj',
+        'zapisz',
+        'kalendarz',
+        'kalendarzu',
+        'wydarzenie',
+        'spotkanie',
+        'termin',
+        'przypomnienie',
+        'przypom',
+        'dentyst',
+        'wizyta',
+      ];
+
+      const hasCalendarKeyword =
+        lowerTranscript.includes('kalendarz') ||
+        lowerTranscript.includes('kalendarzu') ||
+        (calendarKeywords.some((keyword) =>
+          lowerTranscript.includes(keyword),
+        ) &&
+          (lowerTranscript.includes('jutro') ||
+            lowerTranscript.includes('dzisiaj') ||
+            lowerTranscript.includes('dzis') ||
+            lowerTranscript.includes('pojutrze') ||
+            lowerTranscript.includes('termin') ||
+            lowerTranscript.includes('spotkanie') ||
+            lowerTranscript.includes('przypomnienie') ||
+            /na godzin[ęe]?\s+\d+/.test(lowerTranscript) ||
+            /\d{1,2}:\d{2}/.test(lowerTranscript)));
+
+      if (!hasCalendarKeyword) {
+        this.logger.debug(`No calendar keywords found in: "${transcript}"`);
+        return { shouldCreateEvent: false };
+      }
+
+      this.logger.debug(
+        `Calendar keywords found in transcript: "${transcript}"`,
+      );
+
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const prompt = `Użytkownik powiedział: "${transcript}"
+
+Czy użytkownik chce dodać wydarzenie do kalendarza? Jeśli tak, wyodrębnij:
+- Tytuł wydarzenia (summary) - np. "dentysta", "spotkanie z Janem", "wizyta u dentysty"
+- Opis (description) - jeśli podany
+- Miejsce (location) - jeśli podane
+- Data i godzina rozpoczęcia (startDateTime) - w formacie ISO 8601, np. "2025-12-02T17:00:00"
+- Data i godzina zakończenia (endDateTime) - w formacie ISO 8601, jeśli podana (domyślnie +1h od start)
+- Czy cały dzień (isAllDay) - true jeśli nie ma godziny, false jeśli jest godzina
+- Uczestnicy (attendees) - lista emaili jeśli podana
+
+WAŻNE: 
+- Jeśli użytkownik mówi "dodaj do kalendarza", "zapisz w kalendarzu", "przypomnienie", "dodaj mi" w kontekście kalendarza to ZAWSZE shouldCreateEvent = true!
+- Dla dat użyj: "jutro" = ${tomorrow.toISOString().split('T')[0]}, "dzisiaj" = ${now.toISOString().split('T')[0]}
+- Jeśli jest godzina (np. "na 17", "o 17:00"), ustaw isAllDay = false i startDateTime z godziną
+- Jeśli nie ma godziny, ustaw isAllDay = true i użyj tylko daty
+
+Odpowiedz w formacie JSON:
+{
+  "shouldCreateEvent": true,
+  "summary": "tytuł lub null",
+  "description": "opis lub null",
+  "location": "miejsce lub null",
+  "startDateTime": "2025-12-02T17:00:00 lub null",
+  "endDateTime": "2025-12-02T18:00:00 lub null",
+  "isAllDay": false,
+  "attendees": ["email1@example.com"] lub null
+}`;
+
+      const completion = await this.openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Jesteś ekspertem w rozpoznawaniu intencji. Odpowiadaj TYLKO czystym JSON bez markdown.',
+          },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: 300,
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+      });
+
+      const responseText = completion.choices[0]?.message?.content?.trim();
+      this.logger.debug(`Calendar intent detection response: ${responseText}`);
+
+      if (!responseText) {
+        this.logger.warn('Empty response from calendar intent detection');
+        return { shouldCreateEvent: false };
+      }
+
+      const parsed = JSON.parse(responseText) as {
+        shouldCreateEvent?: boolean;
+        summary?: string | null;
+        description?: string | null;
+        location?: string | null;
+        startDateTime?: string | null;
+        endDateTime?: string | null;
+        isAllDay?: boolean;
+        attendees?: Array<string | null> | null;
+      };
+      this.logger.log(`Parsed calendar intent: ${JSON.stringify(parsed)}`);
+
+      const result = {
+        shouldCreateEvent: parsed.shouldCreateEvent === true,
+        summary:
+          parsed.summary && parsed.summary !== 'null' && parsed.summary !== null
+            ? String(parsed.summary)
+            : undefined,
+        description:
+          parsed.description &&
+          parsed.description !== 'null' &&
+          parsed.description !== null
+            ? String(parsed.description)
+            : undefined,
+        location:
+          parsed.location &&
+          parsed.location !== 'null' &&
+          parsed.location !== null
+            ? String(parsed.location)
+            : undefined,
+        startDateTime:
+          parsed.startDateTime &&
+          parsed.startDateTime !== 'null' &&
+          parsed.startDateTime !== null
+            ? String(parsed.startDateTime)
+            : undefined,
+        endDateTime:
+          parsed.endDateTime &&
+          parsed.endDateTime !== 'null' &&
+          parsed.endDateTime !== null
+            ? String(parsed.endDateTime)
+            : undefined,
+        isAllDay: parsed.isAllDay === true,
+        attendees:
+          parsed.attendees && Array.isArray(parsed.attendees)
+            ? parsed.attendees
+                .filter((a): a is string => a !== null && a !== 'null')
+                .map(String)
+            : undefined,
+      };
+
+      this.logger.log(
+        `Final calendar intent result: ${JSON.stringify(result)}`,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to detect calendar intent:', error);
+      return { shouldCreateEvent: false };
     }
   }
 

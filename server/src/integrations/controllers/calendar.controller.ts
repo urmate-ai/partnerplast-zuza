@@ -18,7 +18,6 @@ import {
   GetEventsDto,
   CreateEventDto,
   UpdateEventDto,
-  DeleteEventDto,
 } from '../dto/calendar.dto';
 import {
   CurrentUser,
@@ -289,19 +288,14 @@ export class CalendarController {
     @Param('eventId') eventId: string,
     @Body() body: UpdateEventDto,
   ) {
-    return this.calendarService.updateEvent(
-      user.id,
-      body.calendarId,
-      eventId,
-      {
-        summary: body.summary,
-        description: body.description,
-        location: body.location,
-        start: body.start,
-        end: body.end,
-        attendees: body.attendees,
-      },
-    );
+    return this.calendarService.updateEvent(user.id, body.calendarId, eventId, {
+      summary: body.summary,
+      description: body.description,
+      location: body.location,
+      start: body.start,
+      end: body.end,
+      attendees: body.attendees,
+    });
   }
 
   @Delete('events/:eventId')
@@ -318,5 +312,18 @@ export class CalendarController {
     );
     return { message: 'Event deleted successfully' };
   }
-}
 
+  @Get('context')
+  @UseGuards(AuthGuard('jwt'))
+  async getContextForAi(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('daysAhead') daysAhead?: string,
+  ) {
+    const days = daysAhead ? parseInt(daysAhead, 10) : 7;
+    const context = await this.calendarService.getEventsForAiContext(
+      user.id,
+      days,
+    );
+    return { context };
+  }
+}

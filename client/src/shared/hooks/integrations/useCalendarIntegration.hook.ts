@@ -16,6 +16,7 @@ import {
 } from '../../../services/calendar.service';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import { Alert } from 'react-native';
 
 export const CALENDAR_QUERY_KEYS = {
   status: ['calendar', 'status'] as const,
@@ -96,10 +97,14 @@ export function useCalendarDisconnect() {
 export function useCreateEvent() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<CalendarEvent, Error, CreateEventRequest>({
     mutationFn: (eventData: CreateEventRequest) => createEvent(eventData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendar', 'events'] });
+      Alert.alert('Sukces', 'Wydarzenie zostało dodane do kalendarza!');
+    },
+    onError: (error) => {
+      Alert.alert('Błąd', error.message || 'Nie udało się dodać wydarzenia');
     },
   });
 }
