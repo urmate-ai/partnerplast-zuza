@@ -95,8 +95,13 @@ export class OpenAIService {
       content: string;
     }> = [],
     context?: string,
+    location?: string,
   ): Promise<string> {
-    const systemPrompt = context ?? PromptUtils.DEFAULT_SYSTEM_PROMPT;
+    const basePrompt = context ?? PromptUtils.DEFAULT_SYSTEM_PROMPT;
+    const systemPrompt = location
+      ? `${basePrompt} Aktualna (przybliżona) lokalizacja użytkownika: ${location}.`
+      : basePrompt;
+
     const messages = PromptUtils.buildMessages(
       systemPrompt,
       chatHistory,
@@ -154,6 +159,7 @@ export class OpenAIService {
         transcript,
         [],
         options.context,
+        options.location,
       );
       return { transcript, reply };
     } catch (error) {
@@ -173,6 +179,7 @@ export class OpenAIService {
         transcript,
         chatHistory,
         options.context,
+        options.location,
       );
       return { transcript, reply };
     } catch (error) {
