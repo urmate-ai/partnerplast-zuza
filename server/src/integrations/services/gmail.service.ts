@@ -46,7 +46,9 @@ export class GmailService {
       this.config.clientSecret,
       this.config.redirectUri,
     );
-
+    this.logger.debug(
+      `Gmail OAuth configured with redirect URI: ${this.config.redirectUri}`,
+    );
     setInterval(() => this.cleanupExpiredStates(), 10 * 60 * 1000);
   }
 
@@ -66,6 +68,7 @@ export class GmailService {
     });
 
     this.logger.log(`Generated auth URL for user ${userId}`);
+    this.logger.debug(`Full auth URL: ${authUrl}`);
     return { authUrl, state };
   }
 
