@@ -8,8 +8,8 @@ export class ResponseCacheService {
   private readonly cache = new Map<CacheKey, CacheValue>();
   private readonly maxSize: number;
 
-  constructor(maxSize = 100) {
-    this.maxSize = maxSize;
+  constructor(maxSize?: number) {
+    this.maxSize = maxSize ?? 100;
   }
 
   get(key: CacheKey): CacheValue | undefined {
