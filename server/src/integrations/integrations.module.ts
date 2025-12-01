@@ -5,16 +5,30 @@ import { CalendarController } from './controllers/calendar.controller';
 import { IntegrationsService } from './integrations.service';
 import { GmailService } from './services/gmail.service';
 import { CalendarService } from './services/calendar.service';
+import { GoogleOAuthService } from './services/google-oauth.service';
+import { GoogleIntegrationService } from './services/google-integration.service';
+import { TokenEncryptionService } from './services/token-encryption.service';
+import { OAuthStateService } from './services/oauth-state.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [
-    IntegrationsController,
-    GmailController,
-    CalendarController,
+  controllers: [IntegrationsController, GmailController, CalendarController],
+  providers: [
+    IntegrationsService,
+    GmailService,
+    CalendarService,
+    GoogleOAuthService,
+    GoogleIntegrationService,
+    TokenEncryptionService,
+    OAuthStateService,
   ],
-  providers: [IntegrationsService, GmailService, CalendarService],
-  exports: [IntegrationsService, GmailService, CalendarService],
+  exports: [
+    IntegrationsService,
+    GmailService,
+    CalendarService,
+    GoogleOAuthService,
+    GoogleIntegrationService,
+  ],
 })
 export class IntegrationsModule {}
