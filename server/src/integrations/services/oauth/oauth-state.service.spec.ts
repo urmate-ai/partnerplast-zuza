@@ -15,6 +15,9 @@ describe('OAuthStateService', () => {
   afterEach(() => {
     jest.clearAllMocks();
     jest.useRealTimers();
+    if (service) {
+      service.onModuleDestroy();
+    }
   });
 
   describe('generate', () => {
@@ -74,8 +77,7 @@ describe('OAuthStateService', () => {
       jest.useFakeTimers();
       const userId = 'user-123';
       const state = service.generate(userId);
-
-      // Fast-forward time beyond expiration (10 minutes + 1 second)
+      
       jest.advanceTimersByTime(10 * 60 * 1000 + 1000);
 
       expect(() => service.validateAndConsume(state)).toThrow(
@@ -100,14 +102,10 @@ describe('OAuthStateService', () => {
       const userId = 'user-123';
       const state = service.generate(userId);
 
-      // Fast-forward time beyond expiration
       jest.advanceTimersByTime(10 * 60 * 1000 + 1000);
 
-      // Trigger cleanup (it runs on interval, but we can test the logic)
-      // Since cleanup runs on interval, we need to wait for it
       jest.advanceTimersByTime(10 * 60 * 1000);
 
-      // When state is expired, it throws "State parameter has expired"
       expect(() => service.validateAndConsume(state)).toThrow(
         'State parameter has expired',
       );
