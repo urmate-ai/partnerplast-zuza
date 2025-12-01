@@ -51,7 +51,6 @@ export type CalendarEvent = {
 
 export type CalendarAuthResponse = {
   authUrl: string;
-  state: string;
 };
 
 export type CreateEventRequest = {

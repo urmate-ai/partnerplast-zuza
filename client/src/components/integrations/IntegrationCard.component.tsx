@@ -7,6 +7,7 @@ import {
   type IntegrationPermission,
 } from './BaseIntegrationCard.component';
 import { useGmailIntegration } from './hooks/useGmailIntegration';
+import { useCalendarIntegration } from './hooks/useCalendarIntegration';
 
 type IntegrationCardProps = {
   integration: Integration;
@@ -50,12 +51,14 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
   integration,
 }) => {
   const gmailIntegration = useGmailIntegration(integration.name === 'Gmail');
-  
+  const calendarIntegration = useCalendarIntegration(
+    integration.name === 'Google Calendar',
+  );
+
   const iconName = getSafeIconName(integration.icon);
   const colors = getCategoryColor(integration.category);
   const permissions = getDefaultPermissions(integration.name);
 
-  // Obsługa Gmail
   if (integration.name === 'Gmail') {
     return (
       <BaseIntegrationCard
@@ -78,7 +81,28 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
     );
   }
 
-  // Obsługa innych integracji (placeholder)
+  if (integration.name === 'Google Calendar') {
+    return (
+      <BaseIntegrationCard
+        name={integration.name}
+        description={integration.description || 'Integracja'}
+        icon={iconName}
+        iconColor={colors.iconColor}
+        iconBackgroundColor={colors.backgroundColor}
+        isConnected={calendarIntegration.isConnected}
+        connectedEmail={calendarIntegration.connectedEmail}
+        isLoading={calendarIntegration.isLoading}
+        permissions={permissions}
+        onConnect={calendarIntegration.handleConnect}
+        onDisconnect={calendarIntegration.handleDisconnect}
+        connectButtonText="Połącz z Google Calendar"
+        disconnectButtonText="Rozłącz Google Calendar"
+        connectedDescription="Twoje konto Google Calendar jest połączone. Możesz teraz zarządzać wydarzeniami przez asystenta."
+        disconnectedDescription="Połącz swoje konto Google Calendar, aby asystent mógł czytać i tworzyć wydarzenia w Twoim imieniu."
+      />
+    );
+  }
+
   const handleConnect = () => {
     Alert.alert(
       'Wkrótce dostępne',
