@@ -106,7 +106,12 @@ export class AiService {
           this.logger.log(`Email intent detected for user ${userId}`);
           return {
             ...result,
-            emailIntent,
+            emailIntent: {
+              shouldSendEmail: emailIntent.shouldSendEmail,
+              to: emailIntent.to,
+              subject: emailIntent.subject,
+              body: emailIntent.body,
+            },
           };
         }
       } catch (error) {

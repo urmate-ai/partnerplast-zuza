@@ -1,8 +1,9 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { OpenAIService } from './openai.service';
-import { DateUtils } from '../../common/utils/date.utils';
+import { OpenAIChatTitleService } from './openai-chat-title.service';
+import { ChatMapper } from '../utils/chat.mapper';
 import type { ChatHistoryItem, ChatWithMessages } from '../types/ai.types';
+import type { ChatRole } from '../types/chat.types';
 
 @Injectable()
 export class ChatService {
@@ -10,7 +11,7 @@ export class ChatService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly openaiService: OpenAIService,
+    private readonly chatTitleService: OpenAIChatTitleService,
   ) {}
 
   async createNewChat(userId: string): Promise<string> {
@@ -45,7 +46,7 @@ export class ChatService {
 
   async addMessage(
     chatId: string,
-    role: 'user' | 'assistant',
+    role: ChatRole,
     content: string,
   ): Promise<void> {
     try {
@@ -91,7 +92,7 @@ export class ChatService {
         throw new NotFoundException('Chat not found');
       }
 
-      return this.mapChatToDto(chat);
+      return ChatMapper.toDto(chat);
     } catch (error) {
       this.logger.error('Error fetching chat by id:', error);
       throw error;
@@ -107,7 +108,7 @@ export class ChatService {
         select: { id: true, title: true, updatedAt: true },
       });
 
-      return chats.map((chat) => this.mapChatToHistoryItem(chat));
+      return chats.map((chat) => ChatMapper.toHistoryItem(chat));
     } catch (error) {
       this.logger.error('Error fetching chat history:', error);
       return [];
@@ -133,7 +134,7 @@ export class ChatService {
         select: { id: true, title: true, updatedAt: true },
       });
 
-      return chats.map((chat) => this.mapChatToHistoryItem(chat));
+      return chats.map((chat) => ChatMapper.toHistoryItem(chat));
     } catch (error) {
       this.logger.error('Error searching chats:', error);
       return [];
@@ -180,7 +181,7 @@ export class ChatService {
         where: { chatId },
       });
       if (messageCount === 1) {
-        const title = await this.openaiService.generateChatTitle(content);
+        const title = await this.chatTitleService.generate(content);
         await this.prisma.chat.update({
           where: { id: chatId },
           data: { title },
@@ -195,43 +196,5 @@ export class ChatService {
       where: { id: chatId },
       data: { updatedAt: new Date() },
     });
-  }
-
-  private mapChatToDto(chat: {
-    id: string;
-    title: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    messages: Array<{
-      id: string;
-      role: string;
-      content: string;
-      createdAt: Date;
-    }>;
-  }): ChatWithMessages {
-    return {
-      id: chat.id,
-      title: chat.title ?? 'Bez tytułu',
-      messages: chat.messages.map((msg) => ({
-        id: msg.id,
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-        createdAt: msg.createdAt,
-      })),
-      createdAt: chat.createdAt,
-      updatedAt: chat.updatedAt,
-    };
-  }
-
-  private mapChatToHistoryItem(chat: {
-    id: string;
-    title: string | null;
-    updatedAt: Date;
-  }): ChatHistoryItem {
-    return {
-      id: chat.id,
-      title: chat.title ?? 'Bez tytułu',
-      timestamp: DateUtils.formatRelativeTimestamp(chat.updatedAt),
-    };
   }
 }
