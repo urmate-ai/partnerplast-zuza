@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AiService } from './ai.service';
-import { ChatService } from './services/chat.service';
-import { OpenAIService } from './services/openai.service';
+import { ChatService } from './services/chat/chat.service';
+import { OpenAIService } from './services/openai/openai.service';
+import { GmailService } from '../integrations/services/gmail/gmail.service';
+import { CalendarService } from '../integrations/services/calendar/calendar.service';
 import type {
   AudioFile,
   VoiceProcessResult,
@@ -11,8 +13,11 @@ import type {
 
 describe('AiService', () => {
   let service: AiService;
+  let module: TestingModule;
   let chatService: jest.Mocked<ChatService>;
   let openaiService: jest.Mocked<OpenAIService>;
+  let gmailService: jest.Mocked<GmailService>;
+  let calendarService: jest.Mocked<CalendarService>;
 
   const mockUserId = 'user-123';
   const mockChatId = 'chat-123';
@@ -22,7 +27,7 @@ describe('AiService', () => {
   } as AudioFile;
 
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         AiService,
         {
@@ -42,12 +47,28 @@ describe('AiService', () => {
             transcribeAndRespondWithHistory: jest.fn(),
           },
         },
+        {
+          provide: GmailService,
+          useValue: {
+            getConnectionStatus: jest.fn(),
+            getMessagesForAiContext: jest.fn(),
+          },
+        },
+        {
+          provide: CalendarService,
+          useValue: {
+            getConnectionStatus: jest.fn(),
+            getEventsForAiContext: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<AiService>(AiService);
     chatService = module.get(ChatService);
     openaiService = module.get(OpenAIService);
+    gmailService = module.get(GmailService);
+    calendarService = module.get(CalendarService);
   });
 
   afterEach(() => {
@@ -84,6 +105,12 @@ describe('AiService', () => {
 
       chatService.getOrCreateCurrentChat.mockResolvedValue(mockChatId);
       chatService.getChatById.mockResolvedValue(mockChat);
+      gmailService.getConnectionStatus.mockResolvedValue({
+        isConnected: false,
+      });
+      calendarService.getConnectionStatus.mockResolvedValue({
+        isConnected: false,
+      });
       openaiService.transcribeAndRespondWithHistory.mockResolvedValue(
         mockResult,
       );
@@ -111,7 +138,12 @@ describe('AiService', () => {
           { role: 'user', content: 'Hello' },
           { role: 'assistant', content: 'Hi!' },
         ],
-        { language: 'pl' },
+        expect.objectContaining({
+          language: 'pl',
+          context: expect.stringContaining(
+            'UWAGA: Użytkownik NIE MA połączonego konta Google Calendar',
+          ),
+        }),
       );
       expect(result).toEqual(mockResult);
     });

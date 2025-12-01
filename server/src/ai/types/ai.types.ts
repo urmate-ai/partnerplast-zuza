@@ -1,44 +1,66 @@
 import type { Multer } from 'multer';
 
-export interface VoiceProcessOptions {
+export type VoiceProcessOptions = {
   language?: string;
   context?: string;
   location?: string;
-}
+};
 
-export interface VoiceProcessResult {
+export type EmailIntent = {
+  shouldSendEmail: boolean;
+  to?: string;
+  subject?: string;
+  body?: string;
+  cc?: string[];
+  bcc?: string[];
+};
+
+export type CalendarIntent = {
+  shouldCreateEvent: boolean;
+  summary?: string;
+  description?: string;
+  location?: string;
+  startDateTime?: string;
+  endDateTime?: string;
+  isAllDay?: boolean;
+  attendees?: string[];
+};
+
+export type VoiceProcessResult = {
   transcript: string;
   reply: string;
-}
+  emailIntent?: EmailIntent;
+  calendarIntent?: CalendarIntent;
+};
 
-export interface ChatHistoryItem {
+export type ChatHistoryItem = {
   id: string;
   title: string;
   timestamp: string;
-}
+};
 
-export interface ChatMessage {
+export type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   createdAt: Date;
-}
+};
 
-export interface ChatWithMessages {
+export type ChatWithMessages = {
   id: string;
   title: string;
   messages: ChatMessage[];
   createdAt: Date;
   updatedAt: Date;
-}
+};
 
 export type AudioFile = Multer.File;
 
-export interface OpenAIConfig {
+export type OpenAIConfig = {
   model: string;
   maxTokens: number;
   temperature: number;
-}
+};
 
 export type WebSearchTool = {
   type: 'web_search';
@@ -46,30 +68,30 @@ export type WebSearchTool = {
 
 export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
 
-export interface ResponsesCreateParams {
+export type ResponsesCreateParams = {
   model: string;
   input: string;
   tools?: WebSearchTool[];
   reasoning?: {
     effort: ReasoningEffort;
   };
-}
+};
 
-export interface OpenAITextBlock {
+export type OpenAITextBlock = {
   type: 'output_text';
   text: string | { value: string };
-}
+};
 
-export interface OpenAIMessageLike {
+export type OpenAIMessageLike = {
   content?: string;
-}
+};
 
-export interface OpenAIResponseVariant {
+export type OpenAIResponseVariant = {
   content?: OpenAITextBlock[];
   message?: OpenAIMessageLike;
-}
+};
 
-export interface OpenAIResponsePayload {
+export type OpenAIResponsePayload = {
   output_text?: string;
   output?: OpenAIResponseVariant[];
   choices?: OpenAIResponseVariant[];
@@ -77,8 +99,8 @@ export interface OpenAIResponsePayload {
   incomplete_details?: {
     reason?: string;
   };
-}
+};
 
-export interface OpenAIResponsesClient {
+export type OpenAIResponsesClient = {
   create(params: ResponsesCreateParams): Promise<OpenAIResponsePayload>;
-}
+};

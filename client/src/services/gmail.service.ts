@@ -24,6 +24,23 @@ export type GmailAuthResponse = {
   authUrl: string;
 }
 
+export type SendEmailRequest = {
+  to: string;
+  subject: string;
+  body: string;
+  cc?: string[];
+  bcc?: string[];
+}
+
+export type SendEmailResponse = {
+  messageId: string;
+  success: boolean;
+}
+
+export type GmailContextResponse = {
+  context: string;
+}
+
 export async function getGmailAuthUrl(): Promise<GmailAuthResponse> {
   try {
     const response = await apiClient.get<GmailAuthResponse>(
@@ -86,3 +103,40 @@ export async function getGmailMessages(
   }
 }
 
+export async function sendEmail(
+  emailData: SendEmailRequest,
+): Promise<SendEmailResponse> {
+  try {
+    const response = await apiClient.post<SendEmailResponse>(
+      '/integrations/gmail/send',
+      emailData,
+    );
+    return response.data;
+  } catch (error: unknown) {
+    const errorMessage = getApiErrorMessage(
+      error,
+      'Błąd podczas wysyłania emaila',
+    );
+    throw new Error(errorMessage);
+  }
+}
+
+export async function getGmailContext(
+  maxResults = 20,
+): Promise<GmailContextResponse> {
+  try {
+    const response = await apiClient.get<GmailContextResponse>(
+      '/integrations/gmail/context',
+      {
+        params: { maxResults },
+      },
+    );
+    return response.data;
+  } catch (error: unknown) {
+    const errorMessage = getApiErrorMessage(
+      error,
+      'Błąd podczas pobierania kontekstu Gmail',
+    );
+    throw new Error(errorMessage);
+  }
+}

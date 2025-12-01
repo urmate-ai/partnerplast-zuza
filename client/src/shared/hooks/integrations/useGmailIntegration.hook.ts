@@ -4,16 +4,24 @@ import {
   getGmailStatus,
   disconnectGmail,
   getGmailMessages,
+  sendEmail,
+  getGmailContext,
   type GmailConnectionStatus,
   type GmailMessage,
+  type SendEmailRequest,
+  type SendEmailResponse,
+  type GmailContextResponse,
 } from '../../../services/gmail.service';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import { Alert } from 'react-native';
 
 export const GMAIL_QUERY_KEYS = {
   status: ['gmail', 'status'] as const,
   messages: (maxResults?: number) =>
     ['gmail', 'messages', maxResults] as const,
+  context: (maxResults?: number) =>
+    ['gmail', 'context', maxResults] as const,
 };
 
 export function useGmailStatus() {
@@ -65,6 +73,30 @@ export function useGmailDisconnect() {
     onSuccess: () => {  
       queryClient.invalidateQueries({ queryKey: ['gmail'] });
     },
+  });
+}
+
+export function useGmailSend() {
+  const queryClient = useQueryClient();
+
+  return useMutation<SendEmailResponse, Error, SendEmailRequest>({
+    mutationFn: sendEmail,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: GMAIL_QUERY_KEYS.messages() });
+      Alert.alert('Sukces', 'Email został wysłany pomyślnie!');
+    },
+    onError: (error) => {
+      Alert.alert('Błąd', error.message || 'Nie udało się wysłać emaila');
+    },
+  });
+}
+
+export function useGmailContext(maxResults = 20) {
+  return useQuery<GmailContextResponse>({
+    queryKey: GMAIL_QUERY_KEYS.context(maxResults),
+    queryFn: () => getGmailContext(maxResults),
+    enabled: false,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
