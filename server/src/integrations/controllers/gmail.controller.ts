@@ -32,53 +32,86 @@ export class GmailController {
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta http-equiv="refresh" content="0;url=${deepLink}">
             <title>Gmail połączony</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 20px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                background: #f5f5f5;
+              }
+              .container {
+                text-align: center;
+                background: white;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+              }
+              .link {
+                display: inline-block;
+                margin-top: 20px;
+                padding: 12px 24px;
+                background: #2563EB;
+                color: white;
+                text-decoration: none;
+                border-radius: 6px;
+                font-weight: 500;
+              }
+              .link:hover {
+                background: #1d4ed8;
+              }
+            </style>
           </head>
           <body>
+            <div class="container">
+              <h1 style="color: #10b981; margin-bottom: 10px;">✓</h1>
+              <p style="font-size: 18px; margin-bottom: 10px;">Gmail został pomyślnie połączony!</p>
+              <p style="color: #6b7280; margin-bottom: 20px;">Przekierowywanie do aplikacji...</p>
+              <a href="${deepLink}" class="link">Otwórz aplikację</a>
+            </div>
             <script>
-              function openDeepLink() {
+              (function() {
                 const url = '${deepLink}';
                 
+                // Metoda 1: Natychmiastowe przekierowanie przez location.replace (działa lepiej w Safari)
                 try {
-                  window.location.href = url;
+                  window.location.replace(url);
                 } catch (e) {
-                  console.error('window.location failed:', e);
+                  console.error('location.replace failed:', e);
                 }
                 
-                setTimeout(function() {
-                  try {
-                    window.open(url, '_self');
-                  } catch (e) {
-                    console.error('window.open failed:', e);
-                  }
-                }, 100);
-                
+                // Metoda 2: Fallback - kliknięcie w link (działa w większości przypadków)
                 setTimeout(function() {
                   const link = document.createElement('a');
                   link.href = url;
                   link.style.display = 'none';
                   document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                }, 200);
-              }
-              
-              openDeepLink();
-              
-              setTimeout(function() {
-                try {
-                  window.close();
-                } catch (e) { 
-                  console.error('window.close failed:', e);
-                }
-              }, 2000);
+                  try {
+                    link.click();
+                  } catch (e) {
+                    console.error('link.click failed:', e);
+                  }
+                  setTimeout(function() {
+                    document.body.removeChild(link);
+                  }, 100);
+                }, 100);
+                
+                // Metoda 3: Ostatnia próba przez window.location.href
+                setTimeout(function() {
+                  try {
+                    window.location.href = url;
+                  } catch (e) {
+                    console.error('location.href failed:', e);
+                  }
+                }, 300);
+              })();
             </script>
-            <p style="text-align: center; padding: 20px; font-family: system-ui;">
-              Gmail został pomyślnie połączony! Przekierowywanie do aplikacji...
-            </p>
-            <p style="text-align: center;">
-              <a href="${deepLink}" style="color: #2563EB;">Kliknij tutaj jeśli przekierowanie nie działa</a>
-            </p>
           </body>
         </html>
       `);
@@ -93,26 +126,86 @@ export class GmailController {
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta http-equiv="refresh" content="0;url=${deepLink}">
             <title>Błąd połączenia Gmail</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 20px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                background: #f5f5f5;
+              }
+              .container {
+                text-align: center;
+                background: white;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+              }
+              .link {
+                display: inline-block;
+                margin-top: 20px;
+                padding: 12px 24px;
+                background: #2563EB;
+                color: white;
+                text-decoration: none;
+                border-radius: 6px;
+                font-weight: 500;
+              }
+              .link:hover {
+                background: #1d4ed8;
+              }
+            </style>
           </head>
           <body>
+            <div class="container">
+              <h1 style="color: #DC2626; margin-bottom: 10px;">✗</h1>
+              <p style="font-size: 18px; margin-bottom: 10px; color: #DC2626;">Wystąpił błąd podczas łączenia z Gmail</p>
+              <p style="color: #6b7280; margin-bottom: 20px;">Przekierowywanie do aplikacji...</p>
+              <a href="${deepLink}" class="link">Otwórz aplikację</a>
+            </div>
             <script>
-              const url = '${deepLink}';
-              window.location.href = url;
-              setTimeout(function() {
-                const link = document.createElement('a');
-                link.href = url;
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click();
-              }, 100);
+              (function() {
+                const url = '${deepLink}';
+                
+                // Metoda 1: Natychmiastowe przekierowanie przez location.replace
+                try {
+                  window.location.replace(url);
+                } catch (e) {
+                  console.error('location.replace failed:', e);
+                }
+                
+                // Metoda 2: Fallback - kliknięcie w link
+                setTimeout(function() {
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.style.display = 'none';
+                  document.body.appendChild(link);
+                  try {
+                    link.click();
+                  } catch (e) {
+                    console.error('link.click failed:', e);
+                  }
+                  setTimeout(function() {
+                    document.body.removeChild(link);
+                  }, 100);
+                }, 100);
+                
+                // Metoda 3: Ostatnia próba przez window.location.href
+                setTimeout(function() {
+                  try {
+                    window.location.href = url;
+                  } catch (e) {
+                    console.error('location.href failed:', e);
+                  }
+                }, 300);
+              })();
             </script>
-            <p style="text-align: center; padding: 20px; font-family: system-ui; color: #DC2626;">
-              Wystąpił błąd podczas łączenia z Gmail. Przekierowywanie do aplikacji...
-            </p>
-            <p style="text-align: center;">
-              <a href="${deepLink}" style="color: #2563EB;">Kliknij tutaj jeśli przekierowanie nie działa</a>
-            </p>
           </body>
         </html>
       `);
