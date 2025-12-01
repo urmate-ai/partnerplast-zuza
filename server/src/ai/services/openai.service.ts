@@ -156,53 +156,88 @@ export class OpenAIService {
     body?: string;
   }> {
     try {
-      const prompt = `Przeanalizuj poniższą wypowiedź użytkownika i określ, czy użytkownik chce wysłać email.
-Jeśli tak, wyodrębnij następujące informacje:
-- Adres email odbiorcy (to)
-- Temat wiadomości (subject)
-- Treść wiadomości (body)
+      const lowerTranscript = transcript.toLowerCase();
+      const emailKeywords = [
+        'wyślij',
+        'wyslij',
+        'napisz',
+        'mail',
+        'email',
+        'e-mail',
+        'wiadomość',
+        'wiadomosc',
+      ];
+      const hasEmailKeyword = emailKeywords.some((keyword) =>
+        lowerTranscript.includes(keyword),
+      );
 
-Wypowiedź użytkownika: "${transcript}"
+      if (!hasEmailKeyword) {
+        this.logger.debug(`No email keywords found in: "${transcript}"`);
+        return { shouldSendEmail: false };
+      }
 
-Odpowiedz TYLKO w formacie JSON bez żadnego dodatkowego tekstu:
+      const prompt = `Użytkownik powiedział: "${transcript}"
+
+Czy użytkownik chce wysłać email? Jeśli tak, wyodrębnij:
+- Adres email odbiorcy (to) - jeśli podany wprost, np. "jan@example.com"
+- Imię/nazwisko odbiorcy (to) - jeśli podane, np. "do Oliwiera", "do Jana"
+- Temat (subject) - jeśli podany
+- Treść (body) - jeśli podana
+
+WAŻNE: Jeśli użytkownik mówi "wyślij mail do [imię]" to ZAWSZE shouldSendEmail = true!
+
+Odpowiedz w formacie JSON:
 {
-  "shouldSendEmail": true/false,
-  "to": "email@example.com lub null",
+  "shouldSendEmail": true,
+  "to": "adres email lub imię odbiorcy lub null",
   "subject": "temat lub null",
-  "body": "treść wiadomości lub null"
+  "body": "treść lub null"
 }`;
 
       const completion = await this.openai.chat.completions.create({
-        model: this.config.model,
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
             content:
-              'Jesteś asystentem AI specjalizującym się w analizie intencji użytkownika. Odpowiadaj TYLKO w formacie JSON.',
+              'Jesteś ekspertem w rozpoznawaniu intencji. Odpowiadaj TYLKO czystym JSON bez markdown.',
           },
           { role: 'user', content: prompt },
         ],
-        max_tokens: 300,
-        temperature: 0.3,
+        max_tokens: 200,
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
       });
 
       const responseText = completion.choices[0]?.message?.content?.trim();
+      this.logger.debug(`Email intent detection response: ${responseText}`);
+
       if (!responseText) {
+        this.logger.warn('Empty response from email intent detection');
         return { shouldSendEmail: false };
       }
 
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        return { shouldSendEmail: false };
-      }
+      const parsed = JSON.parse(responseText);
+      this.logger.log(`Parsed email intent: ${JSON.stringify(parsed)}`);
 
-      const parsed = JSON.parse(jsonMatch[0]);
-      return {
-        shouldSendEmail: parsed.shouldSendEmail || false,
-        to: parsed.to || undefined,
-        subject: parsed.subject || undefined,
-        body: parsed.body || undefined,
+      const result = {
+        shouldSendEmail: parsed.shouldSendEmail === true,
+        to:
+          parsed.to && parsed.to !== 'null' && parsed.to !== null
+            ? String(parsed.to)
+            : undefined,
+        subject:
+          parsed.subject && parsed.subject !== 'null' && parsed.subject !== null
+            ? String(parsed.subject)
+            : undefined,
+        body:
+          parsed.body && parsed.body !== 'null' && parsed.body !== null
+            ? String(parsed.body)
+            : undefined,
       };
+
+      this.logger.log(`Final email intent result: ${JSON.stringify(result)}`);
+      return result;
     } catch (error) {
       this.logger.error('Failed to detect email intent:', error);
       return { shouldSendEmail: false };
@@ -256,7 +291,7 @@ Odpowiedz TYLKO w formacie JSON bez żadnego dodatkowego tekstu:
       const prompt = PromptUtils.generateTitlePrompt(firstMessage);
 
       const completion = await this.openai.chat.completions.create({
-        model: this.config.model,
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -265,7 +300,7 @@ Odpowiedz TYLKO w formacie JSON bez żadnego dodatkowego tekstu:
           { role: 'user', content: prompt },
         ],
         max_tokens: 30,
-        temperature: this.config.temperature,
+        temperature: 0.7,
       });
 
       const title =
