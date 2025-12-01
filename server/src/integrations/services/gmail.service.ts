@@ -1,170 +1,82 @@
-import {
-  Injectable,
-  Logger,
-  BadRequestException,
-  UnauthorizedException,
-  NotFoundException,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { google } from 'googleapis';
-import type { OAuth2Client } from 'google-auth-library';
+import { PrismaService } from '../../prisma/prisma.service';
+import { GoogleOAuthService } from './google-oauth.service';
+import { GoogleIntegrationService } from './google-integration.service';
+import { GmailMapper } from '../utils/gmail.mapper';
+import { GmailFormatter } from '../utils/gmail-formatter.utils';
 import type {
-  GmailOAuthConfig,
   GmailAuthUrlResponse,
   GmailConnectionStatus,
   GmailMessage,
 } from '../types/gmail.types';
 import { GMAIL_SCOPES } from '../types/gmail.types';
-import * as crypto from 'crypto';
+import type { UserIntegrationData } from '../types/google-oauth.types';
 
 @Injectable()
 export class GmailService {
   private readonly logger = new Logger(GmailService.name);
-  private readonly oauth2Client: OAuth2Client;
-  private readonly config: GmailOAuthConfig;
-  private readonly stateStore = new Map<
-    string,
-    { userId: string; expiresAt: number }
-  >();
+  private readonly integrationName = 'Gmail';
 
   constructor(
-    private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
-  ) {
-    const explicitRedirectUri =
-      this.configService.get<string>('GMAIL_REDIRECT_URI');
-    const publicUrl = this.configService.get<string>('PUBLIC_URL');
-
-    let redirectUri: string;
-    if (explicitRedirectUri) {
-      redirectUri = explicitRedirectUri;
-    } else if (publicUrl) {
-      redirectUri = `${publicUrl}/api/v1/integrations/gmail/callback`;
-    } else {
-      redirectUri = 'http://localhost:3000/api/v1/integrations/gmail/callback';
-    }
-
-    this.config = {
-      clientId: this.configService.get<string>('GOOGLE_CLIENT_ID') || '',
-      clientSecret:
-        this.configService.get<string>('GOOGLE_CLIENT_SECRET') || '',
-      redirectUri,
-    };
-
-    this.oauth2Client = new google.auth.OAuth2(
-      this.config.clientId,
-      this.config.clientSecret,
-      this.config.redirectUri,
-    );
-    this.logger.debug(
-      `Gmail OAuth configured with redirect URI: ${this.config.redirectUri}`,
-    );
-    setInterval(() => this.cleanupExpiredStates(), 10 * 60 * 1000);
-  }
+    private readonly oauthService: GoogleOAuthService,
+    private readonly integrationService: GoogleIntegrationService,
+  ) {}
 
   generateAuthUrl(userId: string): GmailAuthUrlResponse {
-    const state = this.generateState();
-
-    this.stateStore.set(state, {
+    return this.oauthService.generateAuthUrl(
       userId,
-      expiresAt: Date.now() + 10 * 60 * 1000,
-    });
-
-    const authUrl = this.oauth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: [...GMAIL_SCOPES],
-      state,
-      prompt: 'consent',
-    });
-
-    this.logger.log(`Generated auth URL for user ${userId}`);
-    this.logger.debug(`Full auth URL: ${authUrl}`);
-    return { authUrl, state };
+      GMAIL_SCOPES,
+      '/api/v1/integrations/gmail/callback',
+    );
   }
 
   async handleCallback(
     code: string,
     state: string,
   ): Promise<{ userId: string }> {
-    const stateData = this.stateStore.get(state);
-    if (!stateData) {
-      throw new BadRequestException('Invalid or expired state parameter');
-    }
-
-    if (Date.now() > stateData.expiresAt) {
-      this.stateStore.delete(state);
-      throw new BadRequestException('State parameter has expired');
-    }
-
-    const userId = stateData.userId;
-    this.stateStore.delete(state);
+    const { userId, tokens } = await this.oauthService.handleCallback(
+      code,
+      state,
+    );
 
     try {
-      const { tokens } = await this.oauth2Client.getToken(code);
-
-      if (!tokens.access_token) {
-        throw new BadRequestException('No access token received from Google');
-      }
-
-      this.oauth2Client.setCredentials(tokens);
-      const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
+      const client = new google.auth.OAuth2();
+      client.setCredentials({
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token ?? undefined,
+        expiry_date: tokens.expiry_date ?? undefined,
+        scope: tokens.scope ?? undefined,
+      });
+      const gmail = google.gmail({ version: 'v1', auth: client });
       const profile = await gmail.users.getProfile({ userId: 'me' });
 
-      let integration = await this.prisma.integration.findFirst({
-        where: { name: 'Gmail' },
-      });
-
-      if (!integration) {
-        integration = await this.prisma.integration.create({
-          data: {
-            name: 'Gmail',
-            description: 'Integracja z Gmail - czytaj i wysyłaj emaile',
-            icon: 'mail',
-            category: 'communication',
-            isActive: true,
-          },
+      const { id: integrationId } =
+        await this.integrationService.findOrCreateIntegration({
+          name: this.integrationName,
+          description: 'Integracja z Gmail - czytaj i wysyłaj emaile',
+          icon: 'mail',
+          category: 'communication',
         });
-      }
 
       const expiresAt = tokens.expiry_date
         ? new Date(tokens.expiry_date)
         : new Date(Date.now() + 3600 * 1000);
 
-      await this.prisma.userIntegration.upsert({
-        where: {
-          userId_integrationId: {
-            userId,
-            integrationId: integration.id,
-          },
+      const userIntegrationData: UserIntegrationData = {
+        userId,
+        integrationId,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token || null,
+        tokenExpiresAt: expiresAt,
+        scopes: tokens.scope?.split(' ').filter(Boolean) || [],
+        metadata: {
+          email: profile.data.emailAddress || userId,
         },
-        create: {
-          userId,
-          integrationId: integration.id,
-          isConnected: true,
-          accessToken: this.encryptToken(tokens.access_token),
-          refreshToken: tokens.refresh_token
-            ? this.encryptToken(tokens.refresh_token)
-            : null,
-          tokenExpiresAt: expiresAt,
-          scopes: tokens.scope?.split(' ') || [],
-          metadata: {
-            email: profile.data.emailAddress,
-          },
-        },
-        update: {
-          isConnected: true,
-          accessToken: this.encryptToken(tokens.access_token),
-          refreshToken: tokens.refresh_token
-            ? this.encryptToken(tokens.refresh_token)
-            : null,
-          tokenExpiresAt: expiresAt,
-          scopes: tokens.scope?.split(' ') || [],
-          metadata: {
-            email: profile.data.emailAddress,
-          },
-        },
-      });
+      };
+
+      await this.oauthService.saveUserIntegration(userIntegrationData);
 
       this.logger.log(`Gmail connected successfully for user ${userId}`);
       return { userId };
@@ -175,75 +87,20 @@ export class GmailService {
   }
 
   async disconnectGmail(userId: string): Promise<void> {
-    const integration = await this.prisma.integration.findFirst({
-      where: { name: 'Gmail' },
-    });
-
-    if (!integration) {
-      throw new NotFoundException('Gmail integration not found');
-    }
-
-    const userIntegration = await this.prisma.userIntegration.findUnique({
-      where: {
-        userId_integrationId: {
-          userId,
-          integrationId: integration.id,
-        },
-      },
-    });
-
-    if (!userIntegration) {
-      throw new NotFoundException('Gmail connection not found');
-    }
-
-    if (userIntegration?.accessToken) {
-      try {
-        const decryptedToken = this.decryptToken(userIntegration.accessToken);
-        await this.oauth2Client.revokeToken(decryptedToken);
-      } catch (error) {
-        this.logger.warn('Failed to revoke Google token:', error);
-      }
-    }
-
-    await this.prisma.userIntegration.delete({
-      where: {
-        userId_integrationId: {
-          userId,
-          integrationId: integration.id,
-        },
-      },
-    });
-
-    this.logger.log(`Gmail disconnected for user ${userId}`);
+    await this.oauthService.disconnect(userId, this.integrationName);
   }
 
   async getConnectionStatus(userId: string): Promise<GmailConnectionStatus> {
-    const integration = await this.prisma.integration.findFirst({
-      where: { name: 'Gmail' },
-    });
-
-    if (!integration) {
-      return { isConnected: false };
-    }
-
-    const userIntegration = await this.prisma.userIntegration.findUnique({
-      where: {
-        userId_integrationId: {
-          userId,
-          integrationId: integration.id,
-        },
-      },
-    });
-
-    if (!userIntegration || !userIntegration.isConnected) {
-      return { isConnected: false };
-    }
+    const status = await this.integrationService.getConnectionStatus(
+      userId,
+      this.integrationName,
+    );
 
     return {
-      isConnected: true,
-      email: (userIntegration.metadata as { email?: string })?.email,
-      connectedAt: userIntegration.createdAt,
-      scopes: userIntegration.scopes,
+      isConnected: status.isConnected,
+      email: status.email,
+      connectedAt: status.connectedAt,
+      scopes: status.scopes,
     };
   }
 
@@ -251,7 +108,10 @@ export class GmailService {
     userId: string,
     maxResults = 10,
   ): Promise<GmailMessage[]> {
-    const client = await this.getAuthenticatedClient(userId);
+    const { client } = await this.oauthService.getAuthenticatedClient(
+      userId,
+      this.integrationName,
+    );
     const gmail = google.gmail({ version: 'v1', auth: client });
 
     try {
@@ -273,23 +133,7 @@ export class GmailService {
           format: 'full',
         });
 
-        const headers = detail.data.payload?.headers || [];
-        const getHeader = (name: string) =>
-          headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())
-            ?.value || '';
-
-        detailedMessages.push({
-          id: detail.data.id || '',
-          threadId: detail.data.threadId || '',
-          subject: getHeader('subject'),
-          from: getHeader('from'),
-          to: getHeader('to')
-            .split(',')
-            .map((e) => e.trim()),
-          date: new Date(parseInt(detail.data.internalDate || '0')),
-          snippet: detail.data.snippet || '',
-          isUnread: detail.data.labelIds?.includes('UNREAD') || false,
-        });
+        detailedMessages.push(GmailMapper.toMessageDto(detail.data));
       }
 
       return detailedMessages;
@@ -307,24 +151,25 @@ export class GmailService {
     cc?: string[],
     bcc?: string[],
   ): Promise<{ messageId: string; success: boolean }> {
-    const client = await this.getAuthenticatedClient(userId);
+    const { client } = await this.oauthService.getAuthenticatedClient(
+      userId,
+      this.integrationName,
+    );
     const gmail = google.gmail({ version: 'v1', auth: client });
 
     try {
       const profile = await gmail.users.getProfile({ userId: 'me' });
       const fromEmail = profile.data.emailAddress;
 
+      if (!fromEmail) {
+        throw new BadRequestException('Unable to get sender email address');
+      }
+
       this.logger.debug(
         `Sending email - To: ${to}, Subject: ${subject}, Body length: ${body?.length || 0}`,
       );
 
-      const htmlBody =
-        body.includes('<') && body.includes('>')
-          ? body
-          : body
-              .split('\n')
-              .map((line) => `<p>${line || '<br>'}</p>`)
-              .join('');
+      const htmlBody = this.formatEmailBody(body);
 
       const messageParts = [
         `From: ${fromEmail}`,
@@ -343,11 +188,7 @@ export class GmailService {
         `Email message length: ${message.length}, Body in message: ${message.includes(htmlBody)}`,
       );
 
-      const encodedMessage = Buffer.from(message)
-        .toString('base64')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
+      const encodedMessage = this.encodeMessage(message);
 
       const response = await gmail.users.messages.send({
         userId: 'me',
@@ -376,151 +217,29 @@ export class GmailService {
   ): Promise<string> {
     try {
       const messages = await this.getRecentMessages(userId, maxResults);
-
-      if (messages.length === 0) {
-        return 'Brak wiadomości email w skrzynce odbiorczej.';
-      }
-
-      const formattedMessages = messages.map((msg, index) => {
-        const dateStr = new Date(msg.date).toLocaleString('pl-PL');
-        const unreadFlag = msg.isUnread ? '[NIEPRZECZYTANA] ' : '';
-        return `${index + 1}. ${unreadFlag}Od: ${msg.from}
-   Temat: ${msg.subject}
-   Data: ${dateStr}
-   Podgląd: ${msg.snippet}`;
-      });
-
-      return `Ostatnie wiadomości email użytkownika (${messages.length}):\n\n${formattedMessages.join('\n\n')}`;
+      return GmailFormatter.formatForAiContext(messages);
     } catch (error) {
       this.logger.error('Failed to get messages for AI context:', error);
       return 'Nie udało się pobrać wiadomości email.';
     }
   }
 
-  private async getAuthenticatedClient(userId: string): Promise<OAuth2Client> {
-    const integration = await this.prisma.integration.findFirst({
-      where: { name: 'Gmail' },
-    });
-
-    if (!integration) {
-      throw new NotFoundException('Gmail integration not found');
+  private formatEmailBody(body: string): string {
+    if (body.includes('<') && body.includes('>')) {
+      return body;
     }
 
-    const userIntegration = await this.prisma.userIntegration.findUnique({
-      where: {
-        userId_integrationId: {
-          userId,
-          integrationId: integration.id,
-        },
-      },
-    });
-
-    if (!userIntegration || !userIntegration.isConnected) {
-      throw new UnauthorizedException('Gmail not connected');
-    }
-
-    if (!userIntegration.accessToken) {
-      throw new UnauthorizedException('No access token available');
-    }
-
-    const accessToken = this.decryptToken(userIntegration.accessToken);
-    const refreshToken = userIntegration.refreshToken
-      ? this.decryptToken(userIntegration.refreshToken)
-      : undefined;
-
-    const client = new google.auth.OAuth2(
-      this.config.clientId,
-      this.config.clientSecret,
-      this.config.redirectUri,
-    );
-
-    client.setCredentials({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      expiry_date: userIntegration.tokenExpiresAt?.getTime(),
-    });
-
-    if (
-      userIntegration.tokenExpiresAt &&
-      userIntegration.tokenExpiresAt < new Date()
-    ) {
-      try {
-        const { credentials } = await client.refreshAccessToken();
-
-        if (credentials.access_token) {
-          await this.prisma.userIntegration.update({
-            where: {
-              userId_integrationId: {
-                userId,
-                integrationId: integration.id,
-              },
-            },
-            data: {
-              accessToken: this.encryptToken(credentials.access_token),
-              tokenExpiresAt: credentials.expiry_date
-                ? new Date(credentials.expiry_date)
-                : undefined,
-            },
-          });
-        }
-      } catch (error) {
-        this.logger.error('Failed to refresh Gmail token:', error);
-        throw new UnauthorizedException('Failed to refresh access token');
-      }
-    }
-
-    return client;
+    return body
+      .split('\n')
+      .map((line) => `<p>${line || '<br>'}</p>`)
+      .join('');
   }
 
-  private generateState(): string {
-    return crypto.randomBytes(32).toString('hex');
-  }
-
-  private encryptToken(token: string): string {
-    const encryptionKey = this.configService.get<string>('ENCRYPTION_KEY');
-    if (!encryptionKey) {
-      throw new Error('ENCRYPTION_KEY not configured');
-    }
-
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv(
-      'aes-256-cbc',
-      Buffer.from(encryptionKey, 'hex'),
-      iv,
-    );
-
-    let encrypted = cipher.update(token, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-
-    return `${iv.toString('hex')}:${encrypted}`;
-  }
-
-  private decryptToken(encryptedToken: string): string {
-    const encryptionKey = this.configService.get<string>('ENCRYPTION_KEY');
-    if (!encryptionKey) {
-      throw new Error('ENCRYPTION_KEY not configured');
-    }
-
-    const [ivHex, encrypted] = encryptedToken.split(':');
-    const iv = Buffer.from(ivHex, 'hex');
-    const decipher = crypto.createDecipheriv(
-      'aes-256-cbc',
-      Buffer.from(encryptionKey, 'hex'),
-      iv,
-    );
-
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-
-    return decrypted;
-  }
-
-  private cleanupExpiredStates(): void {
-    const now = Date.now();
-    for (const [state, data] of this.stateStore.entries()) {
-      if (now > data.expiresAt) {
-        this.stateStore.delete(state);
-      }
-    }
+  private encodeMessage(message: string): string {
+    return Buffer.from(message)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
   }
 }
