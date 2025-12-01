@@ -141,6 +141,12 @@ describe('OpenAIService', () => {
         expect.objectContaining({
           model: 'gpt-5',
           input: expect.stringContaining(transcript),
+          reasoning: { effort: 'low' },
+          tools: [
+            expect.objectContaining({
+              type: 'web_search',
+            }),
+          ],
         }),
       );
       expect(result).toBe('Cześć!');

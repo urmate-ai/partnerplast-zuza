@@ -10,7 +10,6 @@ import { PromptUtils } from '../utils/prompt.utils';
 import {
   extractReplyFromResponse,
   postprocessReply,
-  shouldUseWebSearch,
 } from '../utils/openai.utils';
 import type { AudioFile } from '../types/ai.types';
 import type {
@@ -114,13 +113,11 @@ export class OpenAIService {
       return cached;
     }
 
-    const shouldUseWeb = shouldUseWebSearch(transcript);
-
     const requestBody: ResponsesCreateParams = {
       model: this.config.model,
       input,
       reasoning: { effort: 'low' },
-      tools: shouldUseWeb ? [{ type: 'web_search' }] : undefined,
+      tools: [{ type: 'web_search' }],
     };
 
     const response = await this.responsesClient.create(requestBody);
@@ -138,12 +135,10 @@ export class OpenAIService {
 
     const finalReply = postprocessReply(reply);
 
-    if (!shouldUseWeb) {
-      this.responseCache.set(cacheKey, finalReply);
-      if (this.responseCache.size > 100) {
-        const firstKey = this.responseCache.keys().next().value as string;
-        this.responseCache.delete(firstKey);
-      }
+    this.responseCache.set(cacheKey, finalReply);
+    if (this.responseCache.size > 100) {
+      const firstKey = this.responseCache.keys().next().value as string;
+      this.responseCache.delete(firstKey);
     }
 
     return finalReply;
