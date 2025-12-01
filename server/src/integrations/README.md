@@ -336,11 +336,257 @@ npx expo run:ios  # lub run:android
 - Uruchom PostgreSQL: `docker compose up -d postgres-zuza`
 - Sprawdź `DATABASE_URL` w `.env`
 
+## Integracja z AI
+
+### Kontekst wiadomości Gmail
+
+Gdy użytkownik ma połączone konto Gmail, AI automatycznie otrzymuje kontekst ostatnich wiadomości email:
+
+```typescript
+// Backend automatycznie dodaje kontekst Gmail do każdego zapytania AI
+const gmailContext = await gmailService.getMessagesForAiContext(userId, 20);
+```
+
+Kontekst zawiera:
+
+- Nadawcę wiadomości
+- Temat
+- Datę
+- Podgląd treści
+- Status (przeczytana/nieprzeczytana)
+
+### Detekcja intencji wysłania emaila
+
+AI automatycznie wykrywa, gdy użytkownik chce wysłać email:
+
+**Przykładowe komendy:**
+
+- "Wyślij email do jan@example.com z tematem Spotkanie"
+- "Napisz email do Marii o jutrzejszym spotkaniu"
+- "Wyślij wiadomość do zespołu z informacją o nowym projekcie"
+
+Gdy AI wykryje intencję wysłania emaila:
+
+1. Analizuje transkrypt i wyodrębnia:
+   - Adres email odbiorcy
+   - Temat wiadomości
+   - Treść wiadomości
+2. Zwraca `emailIntent` w odpowiedzi
+3. Frontend automatycznie otwiera modal z formularzem
+4. Użytkownik może edytować dane lub od razu wysłać
+
+### Formularz wysyłania emaila
+
+Po wykryciu intencji, w aplikacji pojawia się modal z formularzem:
+
+```typescript
+<EmailComposerModal
+  visible={!!emailIntent?.shouldSendEmail}
+  onClose={clearEmailIntent}
+  onSend={handleSendEmail}
+  initialData={emailIntent}
+  isLoading={gmailSendMutation.isPending}
+/>
+```
+
+Formularz zawiera:
+
+- **Do:** Adres email odbiorcy (wymagane)
+- **Temat:** Temat wiadomości (wymagane)
+- **Treść:** Treść wiadomości (wymagane)
+- **DW/UDW:** Opcjonalne pola CC/BCC
+
+Jeśli AI nie wyodrębniło wszystkich danych, użytkownik uzupełnia je ręcznie.
+
+## API Endpoints - Rozszerzone
+
+### POST `/api/v1/integrations/gmail/send`
+
+Wysyła email przez Gmail.
+
+**Headers:**
+
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Request Body:**
+
+```json
+{
+  "to": "recipient@example.com",
+  "subject": "Temat wiadomości",
+  "body": "Treść wiadomości w HTML lub plain text",
+  "cc": ["cc1@example.com", "cc2@example.com"],
+  "bcc": ["bcc@example.com"]
+}
+```
+
+**Response:**
+
+```json
+{
+  "messageId": "18d4f2e3a1b5c6d7",
+  "success": true
+}
+```
+
+### GET `/api/v1/integrations/gmail/context`
+
+Pobiera kontekst wiadomości Gmail dla AI.
+
+**Query params:**
+
+- `maxResults`: Liczba wiadomości (default: 20)
+
+**Response:**
+
+```json
+{
+  "context": "Ostatnie wiadomości email użytkownika (10):\n\n1. [NIEPRZECZYTANA] Od: jan@example.com\n   Temat: Spotkanie\n   Data: 01.12.2025, 10:30\n   Podgląd: Cześć, czy możemy się spotkać jutro?..."
+}
+```
+
+## Użycie w React Native - Rozszerzone
+
+### Hook useGmailSend
+
+```typescript
+import { useGmailSend } from '@/shared/hooks/integrations/useGmailIntegration.hook';
+
+function SendEmailButton() {
+  const sendMutation = useGmailSend();
+
+  const handleSend = async () => {
+    try {
+      await sendMutation.mutateAsync({
+        to: 'recipient@example.com',
+        subject: 'Test',
+        body: 'Hello World!',
+      });
+      // Sukces - automatyczny alert
+    } catch (error) {
+      // Błąd - automatyczny alert
+    }
+  };
+
+  return (
+    <TouchableOpacity onPress={handleSend} disabled={sendMutation.isPending}>
+      <Text>Wyślij Email</Text>
+    </TouchableOpacity>
+  );
+}
+```
+
+### Komponent EmailComposerModal
+
+```typescript
+import { EmailComposerModal } from '@/components/integrations/EmailComposerModal.component';
+
+function MyComponent() {
+  const [modalVisible, setModalVisible] = useState(false);
+  const sendMutation = useGmailSend();
+
+  return (
+    <EmailComposerModal
+      visible={modalVisible}
+      onClose={() => setModalVisible(false)}
+      onSend={async (emailData) => {
+        await sendMutation.mutateAsync(emailData);
+      }}
+      initialData={{
+        to: 'preset@example.com',
+        subject: 'Preset Subject',
+        body: 'Preset body text',
+      }}
+      isLoading={sendMutation.isPending}
+    />
+  );
+}
+```
+
+### Integracja z AI w HomeScreen
+
+```typescript
+// Hook useHomeScreen automatycznie obsługuje emailIntent
+const {
+  emailIntent,      // Wykryta intencja wysłania emaila
+  clearEmailIntent, // Funkcja czyszcząca intencję
+} = useHomeScreen();
+
+// Modal automatycznie się otwiera gdy emailIntent jest ustawiony
+<EmailComposerModal
+  visible={!!emailIntent?.shouldSendEmail}
+  onClose={clearEmailIntent}
+  onSend={handleSendEmail}
+  initialData={emailIntent}
+/>
+```
+
+## Przepływ wysyłania emaila
+
+1. **Użytkownik mówi:** "Wyślij email do jan@example.com z tematem Spotkanie"
+2. **AI przetwarza:** Transkrybuje mowę i wykrywa intencję
+3. **Backend analizuje:** `detectEmailIntent()` wyodrębnia dane
+4. **Frontend reaguje:** Otwiera modal z formularzem
+5. **Użytkownik weryfikuje:** Sprawdza/edytuje dane w formularzu
+6. **Wysyłka:** Kliknięcie "Wyślij" → `POST /api/v1/integrations/gmail/send`
+7. **Potwierdzenie:** Alert sukcesu i zamknięcie modala
+
+## Bezpieczeństwo - Rozszerzone
+
+### Walidacja danych emaila
+
+Backend waliduje wszystkie pola przed wysyłką:
+
+```typescript
+// DTO z walidacją
+export class GmailSendMessageDto {
+  @IsString()
+  @IsNotEmpty()
+  to: string;
+
+  @IsString()
+  @IsNotEmpty()
+  subject: string;
+
+  @IsString()
+  @IsNotEmpty()
+  body: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  cc?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  bcc?: string[];
+}
+```
+
+### Encoding wiadomości
+
+Wiadomości są prawidłowo kodowane w base64url przed wysyłką:
+
+```typescript
+const encodedMessage = Buffer.from(message)
+  .toString('base64')
+  .replace(/\+/g, '-')
+  .replace(/\//g, '_')
+  .replace(/=+$/, '');
+```
+
 ## Roadmap
 
-- [ ] Wysyłanie emaili
+- [x] Wysyłanie emaili
+- [x] Integracja z AI (kontekst wiadomości)
+- [x] Detekcja intencji wysłania emaila
+- [x] Formularz kompozycji emaila
 - [ ] Tworzenie wersji roboczych
 - [ ] Wyszukiwanie wiadomości
 - [ ] Zarządzanie etykietami
 - [ ] Załączniki
-- [ ] Integracja z AI (automatyczne odpowiedzi)
+- [ ] Odpowiadanie na wiadomości (reply)
+- [ ] Przekazywanie wiadomości (forward)

@@ -49,13 +49,17 @@ export class AiController {
 
     this.aiService
       .saveChat(user.id, result.transcript, result.reply)
-      .catch((error) => {
-        console.error('Failed to save chat:', error);
+      .catch((error: unknown) => {
+        if (error instanceof Error) {
+          console.error('Failed to save chat:', error.message);
+        }
       });
 
     return {
       transcript: result.transcript,
       reply: result.reply,
+      emailIntent: result.emailIntent,
+      calendarIntent: result.calendarIntent,
     };
   }
 
