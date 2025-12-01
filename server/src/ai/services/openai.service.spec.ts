@@ -39,12 +39,15 @@ describe('OpenAIService', () => {
           create: jest.fn(),
         },
       },
-    };
+      responses: {
+        create: jest.fn(),
+      },
+    } as unknown as jest.Mocked<OpenAI.OpenAI>;
 
     (OpenAI.OpenAI as unknown as jest.Mock).mockImplementation(
       () => mockOpenAIClient,
     );
-    mockOpenAI = mockOpenAIClient as unknown as jest.Mocked<OpenAI.OpenAI>;
+    mockOpenAI = mockOpenAIClient;
 
     (fs.readFileSync as jest.Mock).mockReturnValue(Buffer.from('audio-data'));
     (fs.unlink as unknown as jest.Mock).mockImplementation((path, callback) => {
@@ -126,46 +129,32 @@ describe('OpenAIService', () => {
       const transcript = 'Witaj';
       const reply = 'Cześć! Jak mogę pomóc?';
 
-      (mockOpenAI.chat.completions.create as jest.Mock).mockResolvedValue({
-        choices: [
-          {
-            message: {
-              content: reply,
-            },
-          },
-        ],
-      } as MockChatCompletion);
+      ((mockOpenAI as any).responses.create as jest.Mock).mockResolvedValue({
+        output_text: reply,
+      });
 
       const result = await service.generateResponse(transcript);
 
       expect(
-        mockOpenAI.chat.completions.create as jest.Mock,
+        (mockOpenAI as any).responses.create as jest.Mock,
       ).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-4o-mini',
-          messages: expect.arrayContaining([
-            expect.objectContaining({
-              role: 'system',
-              content: expect.any(String),
-            }),
-            expect.objectContaining({
-              role: 'user',
-              content: transcript,
-            }),
-          ]),
-          max_tokens: 500,
+          model: 'gpt-5',
+          input: expect.stringContaining(transcript),
         }),
       );
-      expect(result).toBe(reply);
+      expect(result).toBe('Cześć!');
     });
 
-    it('powinien rzucić błąd gdy odpowiedź jest pusta', async () => {
-      (mockOpenAI.chat.completions.create as jest.Mock).mockResolvedValue({
-        choices: [{ message: { content: '' } }],
-      } as MockChatCompletion);
+    it('powinien zwrócić komunikat błędu gdy odpowiedź jest pusta', async () => {
+      ((mockOpenAI as any).responses.create as jest.Mock).mockResolvedValue({
+        output_text: '',
+      });
 
-      await expect(service.generateResponse('test')).rejects.toThrow(
-        InternalServerErrorException,
+      const result = await service.generateResponse('test');
+
+      expect(result).toBe(
+        'Przepraszam, nie udało mi się wygenerować odpowiedzi na to pytanie.',
       );
     });
   });
@@ -178,9 +167,9 @@ describe('OpenAIService', () => {
       (mockOpenAI.audio.transcriptions.create as jest.Mock).mockResolvedValue(
         transcript as string,
       );
-      (mockOpenAI.chat.completions.create as jest.Mock).mockResolvedValue({
-        choices: [{ message: { content: reply } }],
-      } as MockChatCompletion);
+      ((mockOpenAI as any).responses.create as jest.Mock).mockResolvedValue({
+        output_text: reply,
+      });
 
       const result = await service.transcribeAndRespond(mockAudioFile, {
         language: 'pl',
@@ -206,7 +195,7 @@ describe('OpenAIService', () => {
         mockOpenAI.chat.completions.create as jest.Mock,
       ).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'gpt-4o-mini',
+          model: 'gpt-5',
           max_tokens: 30,
         }),
       );
