@@ -35,8 +35,9 @@ export class OpenAIChatTitleService {
         temperature: 0.7,
       });
 
+      const rawTitle = completion.choices[0]?.message?.content?.trim();
       const title =
-        completion.choices[0]?.message?.content?.trim() ?? this.defaultTitle;
+        rawTitle && rawTitle.length > 0 ? rawTitle : this.defaultTitle;
 
       return this.truncateTitle(title);
     } catch (error) {

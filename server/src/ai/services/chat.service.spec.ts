@@ -2,14 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { OpenAIService } from './openai.service';
+import { OpenAIChatTitleService } from './openai-chat-title.service';
 import type { Chat, Message, User } from '@prisma/client';
 import type { PrismaUpdateResult } from '../../common/types/test.types';
 
 describe('ChatService', () => {
   let service: ChatService;
   let prismaService: jest.Mocked<PrismaService>;
-  let openaiService: jest.Mocked<OpenAIService>;
+  let chatTitleService: jest.Mocked<OpenAIChatTitleService>;
 
   const mockUserId = 'user-123';
   const mockChatId = 'chat-123';
@@ -33,8 +33,8 @@ describe('ChatService', () => {
       },
     };
 
-    const mockOpenAIService = {
-      generateChatTitle: jest.fn(),
+    const mockChatTitleService = {
+      generate: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -45,15 +45,15 @@ describe('ChatService', () => {
           useValue: mockPrismaService,
         },
         {
-          provide: OpenAIService,
-          useValue: mockOpenAIService,
+          provide: OpenAIChatTitleService,
+          useValue: mockChatTitleService,
         },
       ],
     }).compile();
 
     service = module.get<ChatService>(ChatService);
     prismaService = module.get(PrismaService);
-    openaiService = module.get(OpenAIService);
+    chatTitleService = module.get(OpenAIChatTitleService);
   });
 
   afterEach(() => {
@@ -206,7 +206,7 @@ describe('ChatService', () => {
         mockChatNullTitle as Chat | null,
       );
       (prismaService.message.count as jest.Mock).mockResolvedValue(1);
-      openaiService.generateChatTitle.mockResolvedValue('Nowy tytuł');
+      chatTitleService.generate.mockResolvedValue('Nowy tytuł');
       const mockChatUpdate2: PrismaUpdateResult = {
         id: mockChatId,
         title: 'Nowy tytuł',
@@ -217,7 +217,7 @@ describe('ChatService', () => {
 
       await service.addMessage(mockChatId, 'user', 'Pierwsza wiadomość');
 
-      expect(openaiService.generateChatTitle as jest.Mock).toHaveBeenCalledWith(
+      expect(chatTitleService.generate as jest.Mock).toHaveBeenCalledWith(
         'Pierwsza wiadomość',
       );
       expect(prismaService.chat.update as jest.Mock).toHaveBeenCalledWith({
