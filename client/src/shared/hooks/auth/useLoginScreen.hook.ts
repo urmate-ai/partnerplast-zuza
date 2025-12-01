@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLogin } from './useAuth.hook';
 import { useAuthStore } from '../../../stores/authStore';
 import { useGoogleAuth } from '../../../services/oauth.service';
-import { apiClient } from '../../utils/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../navigation/RootNavigator';
-import type { ApiError } from '../../types/api.types';
+import { getApiErrorMessage } from '../../types/api.types';
+import type { User } from '../../types';
 
 const loginSchema = z.object({
   email: z
@@ -30,7 +30,7 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
   const [emailSubmitted, setEmailSubmitted] = useState<boolean>(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const loginMutation = useLogin();
-  const { request, response, promptAsync } = useGoogleAuth();
+  const { handleGoogleLogin: googleLogin } = useGoogleAuth();
 
   const {
     control,
@@ -65,7 +65,7 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
       navigation.replace('Home');
     } catch (error: unknown) {
       console.error('Login error:', error);
-      const errorMessage = (error as ApiError).response?.data?.message || (error as Error).message || 'Nieznany błąd';
+      const errorMessage = getApiErrorMessage(error, 'Nieznany błąd');
       if (errorMessage.includes('Invalid credentials') || errorMessage.includes('401') || errorMessage.includes('Nieprawidłowy email lub hasło')) {
         setError('password', { type: 'manual', message: 'Nieprawidłowy email lub hasło' });
       } else if (errorMessage.includes('Network Error')) {
@@ -98,48 +98,20 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
     }
   };
 
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { authentication } = response;
-      console.log('Google OAuth success:', authentication);
-      
-      handleGoogleAuthSuccess(authentication?.accessToken);
-    } else if (response?.type === 'error') {
-      console.error('Google OAuth error:', response.error);
-      setGoogleError('Błąd logowania Google: ' + response.error?.message);
-    } else if (response?.type === 'cancel') {
-      console.log('Google OAuth cancelled');
-    }
-  }, [response]);
-
-  const handleGoogleAuthSuccess = async (googleAccessToken?: string) => {
-    if (!googleAccessToken) {
-      setGoogleError('Nie otrzymano tokena z Google');
-      return;
-    }
-
-    try {
-      const result = await apiClient.post('/auth/google/verify', {
-        accessToken: googleAccessToken,
-      });
-      
-      await useAuthStore.getState().setAuth(result.data.user, result.data.accessToken);
-      navigation.replace('Home');
-    } catch (error: unknown) {
-      console.error('Google auth verification error:', error);
-      const errorMessage = (error as ApiError).response?.data?.message || (error as Error).message || 'Nieznany błąd';
-      setGoogleError('Błąd weryfikacji Google: ' + errorMessage);
-    }
-  };
-
   const handleGoogleLogin = async () => {
     try {
       setGoogleError(null);
-      if (!request) {
-        setGoogleError('Google OAuth nie jest jeszcze gotowy');
-        return;
+      
+      const result = await googleLogin();
+      
+      if (result.type === 'success' && result.token && result.user) {
+        await useAuthStore.getState().setAuth(result.user as unknown as User, result.token);
+        navigation.replace('Home');
+      } else if (result.type === 'error' || result.error) {
+        setGoogleError('Błąd logowania Google: ' + (result.error || 'Nieznany błąd'));
+      } else if (result.type === 'cancel') {
+        console.log('Google login cancelled');
       }
-      await promptAsync();
     } catch (error: unknown) {
       console.error('Google login error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';

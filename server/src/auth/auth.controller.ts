@@ -73,19 +73,121 @@ export class AuthController {
     @Query('state') state?: string,
   ) {
     try {
+      const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
+
       if (!req.user) {
-        const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
-        return res.redirect(`${redirectUri}?error=authentication_failed`);
+        const errorUrl = `${redirectUri}?error=authentication_failed`;
+        return res.send(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>Błąd logowania</title>
+            </head>
+            <body>
+              <script>
+                const url = '${errorUrl}';
+                window.location.href = url;
+                setTimeout(function() {
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.style.display = 'none';
+                  document.body.appendChild(link);
+                  link.click();
+                }, 100);
+              </script>
+              <p>Błąd logowania. Przekierowywanie...</p>
+              <p><a href="${errorUrl}">Kliknij tutaj jeśli przekierowanie nie działa</a></p>
+            </body>
+          </html>
+        `);
       }
 
       const { accessToken, user: userData } = req.user;
-      const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
       const redirectUrl = `${redirectUri}?token=${encodeURIComponent(accessToken)}&user=${encodeURIComponent(JSON.stringify(userData))}`;
-      return res.redirect(redirectUrl);
+
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Logowanie zakończone</title>
+          </head>
+          <body>
+            <script>
+              // Próbuj różne metody otwarcia deep linka
+              function openDeepLink() {
+                const url = '${redirectUrl}';
+                
+                // Metoda 1: window.location
+                try {
+                  window.location.href = url;
+                } catch (e) {
+                  console.error('window.location failed:', e);
+                }
+                
+                // Metoda 2: window.open (fallback)
+                setTimeout(function() {
+                  try {
+                    window.open(url, '_self');
+                  } catch (e) {
+                    console.error('window.open failed:', e);
+                  }
+                }, 100);
+                
+                // Metoda 3: Kliknięcie w link (fallback)
+                setTimeout(function() {
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.style.display = 'none';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }, 200);
+              }
+              
+              // Uruchom natychmiast
+              openDeepLink();
+              
+              // Próbuj zamknąć okno po 2 sekundach
+              setTimeout(function() {
+                try {
+                  window.close();
+                } catch (e) {
+                  // Nie można zamknąć okna (normalne w niektórych przeglądarkach)
+                }
+              }, 2000);
+            </script>
+            <p>Logowanie zakończone. Przekierowywanie do aplikacji...</p>
+            <p><a href="${redirectUrl}">Kliknij tutaj jeśli przekierowanie nie działa</a></p>
+          </body>
+        </html>
+      `);
     } catch (error) {
       console.error('Google callback error:', error);
       const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
-      return res.redirect(`${redirectUri}?error=callback_failed`);
+      const errorUrl = `${redirectUri}?error=callback_failed`;
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Błąd logowania</title>
+          </head>
+          <body>
+            <script>
+              window.location.href = '${errorUrl}';
+              setTimeout(function() {
+                window.close();
+              }, 1000);
+            </script>
+            <p>Wystąpił błąd. Zamykanie okna...</p>
+          </body>
+        </html>
+      `);
     }
   }
 
