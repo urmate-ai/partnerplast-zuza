@@ -138,7 +138,12 @@ describe('AiService', () => {
           { role: 'user', content: 'Hello' },
           { role: 'assistant', content: 'Hi!' },
         ],
-        { language: 'pl' },
+        expect.objectContaining({
+          language: 'pl',
+          context: expect.stringContaining(
+            'UWAGA: Użytkownik NIE MA połączonego konta Google Calendar',
+          ),
+        }),
       );
       expect(result).toEqual(mockResult);
     });
