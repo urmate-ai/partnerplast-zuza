@@ -104,3 +104,4 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ isVisible }) =
 };
 
 
+

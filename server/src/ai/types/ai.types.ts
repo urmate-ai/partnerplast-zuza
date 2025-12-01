@@ -32,3 +32,52 @@ export interface ChatWithMessages {
 }
 
 export type AudioFile = Multer.File;
+
+export interface OpenAIConfig {
+  model: string;
+  maxTokens: number;
+  temperature: number;
+}
+
+export type WebSearchTool = {
+  type: 'web_search';
+};
+
+export type ReasoningEffort = 'low' | 'medium' | 'high';
+
+export interface ResponsesCreateParams {
+  model: string;
+  input: string;
+  tools?: WebSearchTool[];
+  reasoning?: {
+    effort: ReasoningEffort;
+  };
+}
+
+export interface OpenAITextBlock {
+  type: 'output_text';
+  text: string | { value: string };
+}
+
+export interface OpenAIMessageLike {
+  content?: string;
+}
+
+export interface OpenAIResponseVariant {
+  content?: OpenAITextBlock[];
+  message?: OpenAIMessageLike;
+}
+
+export interface OpenAIResponsePayload {
+  output_text?: string;
+  output?: OpenAIResponseVariant[];
+  choices?: OpenAIResponseVariant[];
+  status?: string;
+  incomplete_details?: {
+    reason?: string;
+  };
+}
+
+export interface OpenAIResponsesClient {
+  create(params: ResponsesCreateParams): Promise<OpenAIResponsePayload>;
+}
