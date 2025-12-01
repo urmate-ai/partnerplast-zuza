@@ -7,23 +7,27 @@ import { ConfigService } from '@nestjs/config';
 import OpenAI, { toFile } from 'openai';
 import * as fs from 'node:fs';
 import { PromptUtils } from '../utils/prompt.utils';
+import {
+  extractReplyFromResponse,
+  postprocessReply,
+  shouldUseWebSearch,
+} from '../utils/openai.utils';
 import type { AudioFile } from '../types/ai.types';
 import type {
   VoiceProcessOptions,
   VoiceProcessResult,
+  OpenAIConfig,
+  OpenAIResponsesClient,
+  ResponsesCreateParams,
 } from '../types/ai.types';
-
-interface OpenAIConfig {
-  model: string;
-  maxTokens: number;
-  temperature: number;
-}
 
 @Injectable()
 export class OpenAIService {
   private readonly logger = new Logger(OpenAIService.name);
   private readonly openai: OpenAI;
   private readonly config: OpenAIConfig;
+  private readonly responsesClient: OpenAIResponsesClient;
+  private readonly responseCache = new Map<string, string>();
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
@@ -33,9 +37,16 @@ export class OpenAIService {
       );
     }
 
-    this.openai = new OpenAI({ apiKey });
+    const openai = new OpenAI({ apiKey });
+    this.openai = openai;
+    this.responsesClient = (
+      openai as unknown as {
+        responses: OpenAIResponsesClient;
+      }
+    ).responses;
+
     this.config = {
-      model: 'gpt-4o-mini',
+      model: 'gpt-5',
       maxTokens: 500,
       temperature: 0.7,
     };
@@ -93,19 +104,49 @@ export class OpenAIService {
       transcript,
     );
 
-    const completion = await this.openai.chat.completions.create({
-      model: this.config.model,
-      messages,
-      max_tokens: this.config.maxTokens,
-    });
+    const input = messages
+      .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`)
+      .join('\n');
 
-    const reply = completion.choices[0]?.message?.content?.trim() ?? '';
-
-    if (!reply) {
-      throw new InternalServerErrorException('Empty AI reply');
+    const cacheKey = JSON.stringify({ systemPrompt, chatHistory, transcript });
+    const cached = this.responseCache.get(cacheKey);
+    if (cached) {
+      return cached;
     }
 
-    return reply;
+    const shouldUseWeb = shouldUseWebSearch(transcript);
+
+    const requestBody: ResponsesCreateParams = {
+      model: this.config.model,
+      input,
+      reasoning: { effort: 'low' },
+      tools: shouldUseWeb ? [{ type: 'web_search' }] : undefined,
+    };
+
+    const response = await this.responsesClient.create(requestBody);
+
+    let reply = extractReplyFromResponse(response);
+
+    if (!reply || !reply.trim()) {
+      this.logger.error(
+        'Empty AI reply, raw response:',
+        JSON.stringify(response),
+      );
+      reply =
+        'Przepraszam, nie udało mi się wygenerować odpowiedzi na to pytanie.';
+    }
+
+    const finalReply = postprocessReply(reply);
+
+    if (!shouldUseWeb) {
+      this.responseCache.set(cacheKey, finalReply);
+      if (this.responseCache.size > 100) {
+        const firstKey = this.responseCache.keys().next().value as string;
+        this.responseCache.delete(firstKey);
+      }
+    }
+
+    return finalReply;
   }
 
   async transcribeAndRespond(
