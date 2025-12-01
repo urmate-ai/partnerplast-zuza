@@ -27,6 +27,8 @@ export const IntegrationsScreen: React.FC = () => {
     searchQuery.trim() || undefined,
   );
 
+  console.log('integrations', integrations);
+
   const filteredIntegrations = useMemo(() => {
     if (!integrations) return [];
     return integrations;
@@ -45,7 +47,7 @@ export const IntegrationsScreen: React.FC = () => {
   return (
     <View className="flex-1 bg-white">
       <ScreenHeader title="Integracje" onBack={() => navigation.goBack()} />
-      <View className="px-6">
+      <View className="px-6 mt-6">
         <SearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -90,14 +92,12 @@ export const IntegrationsScreen: React.FC = () => {
                 <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
                   Dostępne integracje
                 </Text>
-                {inactiveIntegrations
-                  .filter((integration) => integration.name !== 'Gmail')
-                  .map((integration: Integration) => (
-                    <IntegrationCard
-                      key={integration.id}
-                      integration={integration}
-                    />
-                  ))}
+                {inactiveIntegrations.map((integration: Integration) => (
+                  <IntegrationCard
+                    key={integration.id}
+                    integration={integration}
+                  />
+                ))}
               </View>
             )}
           </View>
