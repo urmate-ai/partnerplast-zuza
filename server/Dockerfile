@@ -12,7 +12,6 @@ RUN npx prisma generate
 COPY . .
 RUN npm run build
 
-
 FROM node:20-alpine AS runner
 
 WORKDIR /app
