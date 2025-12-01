@@ -8,6 +8,18 @@ export class GmailCallbackDto {
   @IsString()
   @IsNotEmpty()
   state: string;
+
+  @IsOptional()
+  @IsString()
+  scope?: string;
+
+  @IsOptional()
+  @IsString()
+  authuser?: string;
+
+  @IsOptional()
+  @IsString()
+  prompt?: string;
 }
 
 export class GmailDisconnectDto {
