@@ -32,13 +32,23 @@ export class GmailService {
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
+    const explicitRedirectUri = this.configService.get<string>('GMAIL_REDIRECT_URI');
+    const publicUrl = this.configService.get<string>('PUBLIC_URL');
+    
+    let redirectUri: string;
+    if (explicitRedirectUri) {
+      redirectUri = explicitRedirectUri;
+    } else if (publicUrl) {
+      redirectUri = `${publicUrl}/api/v1/integrations/gmail/callback`;
+    } else {
+      redirectUri = 'http://localhost:3000/api/v1/integrations/gmail/callback';
+    }
+
     this.config = {
       clientId: this.configService.get<string>('GOOGLE_CLIENT_ID') || '',
       clientSecret:
         this.configService.get<string>('GOOGLE_CLIENT_SECRET') || '',
-      redirectUri:
-        this.configService.get<string>('GMAIL_REDIRECT_URI') ||
-        'http://localhost:3000/api/v1/integrations/gmail/callback',
+      redirectUri,
     };
 
     this.oauth2Client = new google.auth.OAuth2(
