@@ -3,6 +3,7 @@ import type { Multer } from 'multer';
 export interface VoiceProcessOptions {
   language?: string;
   context?: string;
+  location?: string;
 }
 
 export interface VoiceProcessResult {
