@@ -3,6 +3,7 @@ import { ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { View } from '../../shared/components/View.component';
+import { Text } from '../../shared/components/Text.component';
 import { ScreenHeader } from '../../shared/components/ScreenHeader.component';
 import { SearchBar } from '../../shared/components/SearchBar.component';
 import { LoadingState } from '../../shared/components/LoadingState.component';
@@ -31,6 +32,16 @@ export const IntegrationsScreen: React.FC = () => {
     return integrations;
   }, [integrations]);
 
+  const activeIntegrations = useMemo(
+    () => filteredIntegrations.filter((integration) => integration.isActive),
+    [filteredIntegrations],
+  );
+
+  const inactiveIntegrations = useMemo(
+    () => filteredIntegrations.filter((integration) => !integration.isActive),
+    [filteredIntegrations],
+  );
+
   return (
     <View className="flex-1 bg-white">
       <ScreenHeader title="Integracje" onBack={() => navigation.goBack()} />
@@ -51,20 +62,44 @@ export const IntegrationsScreen: React.FC = () => {
           <LoadingState message="Ładowanie integracji..." />
         ) : error ? (
           <ErrorState message={getErrorMessage(error)} />
-        ) : filteredIntegrations.length === 0 ? (
-          <EmptyState
-            icon="link-outline"
-            title={
-              searchQuery
-                ? 'Nie znaleziono integracji pasujących do wyszukiwania'
-                : 'Brak dostępnych integracji'
-            }
-          />
+        ) : filteredIntegrations.length === 0 && searchQuery ? (
+          <View className="px-6 pt-6">
+            <EmptyState
+              icon="search-outline"
+              title="Nie znaleziono integracji"
+            />
+          </View>
         ) : (
           <View className="px-6 pt-6">
-            {filteredIntegrations.map((integration: Integration) => (
-              <IntegrationCard key={integration.id} integration={integration} />
-            ))}
+            {activeIntegrations.length > 0 && (
+              <View className="mb-6">
+                <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                  Aktywne integracje
+                </Text>
+                {activeIntegrations.map((integration: Integration) => (
+                  <IntegrationCard
+                    key={integration.id}
+                    integration={integration}
+                  />
+                ))}
+              </View>
+            )}
+
+            {inactiveIntegrations.length > 0 && (
+              <View>
+                <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                  Dostępne integracje
+                </Text>
+                {inactiveIntegrations
+                  .filter((integration) => integration.name !== 'Gmail')
+                  .map((integration: Integration) => (
+                    <IntegrationCard
+                      key={integration.id}
+                      integration={integration}
+                    />
+                  ))}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
