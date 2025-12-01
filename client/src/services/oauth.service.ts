@@ -1,29 +1,41 @@
 import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { makeRedirectUri } from 'expo-auth-session';
+import * as Linking from 'expo-linking';
 
 WebBrowser.maybeCompleteAuthSession();
 
-export const googleAuthConfig = {
-  expoClientId: process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,
-  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-  androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-};
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://urmate-ai-zuza.onrender.com';
 
 export const useGoogleAuth = () => {
-  const redirectUri = makeRedirectUri({
-    scheme: 'urmate-ai-zuza',
-    path: 'auth/google/callback',
-  });
+  const handleGoogleLogin = async () => {
+    try {
+      const authUrl = `${API_URL}/api/v1/auth/google`;
+      
+      console.log('Opening Google OAuth URL:', authUrl);
+      
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        'urmate-ai-zuza://auth/google/callback'
+      );
 
-  console.log('Google OAuth Redirect URI:', redirectUri);
+      console.log('WebBrowser result:', result);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    ...googleAuthConfig,
-    redirectUri,
-  });
+      if (result.type === 'success' && result.url) {
+        const { queryParams } = Linking.parse(result.url);
+        return {
+          type: 'success',
+          token: queryParams?.token as string,
+          user: queryParams?.user ? JSON.parse(decodeURIComponent(queryParams.user as string)) : null,
+          error: queryParams?.error as string,
+        };
+      }
 
-  return { request, response, promptAsync };
+      return { type: result.type };
+    } catch (error) {
+      console.error('Google login error:', error);
+      return { type: 'error', error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  };
+
+  return { handleGoogleLogin };
 };
 

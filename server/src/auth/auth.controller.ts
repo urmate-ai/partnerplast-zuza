@@ -73,19 +73,76 @@ export class AuthController {
     @Query('state') state?: string,
   ) {
     try {
+      const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
+
       if (!req.user) {
-        const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
-        return res.redirect(`${redirectUri}?error=authentication_failed`);
+        const errorUrl = `${redirectUri}?error=authentication_failed`;
+        return res.send(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>Logowanie...</title>
+            </head>
+            <body>
+              <script>
+                window.location.href = '${errorUrl}';
+                setTimeout(function() {
+                  window.close();
+                }, 1000);
+              </script>
+              <p>Przekierowywanie...</p>
+            </body>
+          </html>
+        `);
       }
 
       const { accessToken, user: userData } = req.user;
-      const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
       const redirectUrl = `${redirectUri}?token=${encodeURIComponent(accessToken)}&user=${encodeURIComponent(JSON.stringify(userData))}`;
-      return res.redirect(redirectUrl);
+
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Logowanie zakończone</title>
+          </head>
+          <body>
+            <script>
+              window.location.href = '${redirectUrl}';
+              setTimeout(function() {
+                window.close();
+              }, 1000);
+            </script>
+            <p>Logowanie zakończone. Zamykanie okna...</p>
+          </body>
+        </html>
+      `);
     } catch (error) {
       console.error('Google callback error:', error);
       const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
-      return res.redirect(`${redirectUri}?error=callback_failed`);
+      const errorUrl = `${redirectUri}?error=callback_failed`;
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Błąd logowania</title>
+          </head>
+          <body>
+            <script>
+              window.location.href = '${errorUrl}';
+              setTimeout(function() {
+                window.close();
+              }, 1000);
+            </script>
+            <p>Wystąpił błąd. Zamykanie okna...</p>
+          </body>
+        </html>
+      `);
     }
   }
 
