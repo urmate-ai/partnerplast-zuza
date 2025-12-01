@@ -88,6 +88,13 @@ export function EmailComposerModal({
       bcc: bcc.trim() ? bcc.split(',').map((e) => e.trim()) : undefined,
     };
 
+    console.log('[EmailComposerModal] Sending email data:', {
+      to: emailData.to,
+      subject: emailData.subject,
+      bodyLength: emailData.body.length,
+      bodyPreview: emailData.body.substring(0, 50),
+    });
+
     try {
       await onSend(emailData);
       handleClose();

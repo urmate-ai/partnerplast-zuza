@@ -314,6 +314,18 @@ export class GmailService {
       const profile = await gmail.users.getProfile({ userId: 'me' });
       const fromEmail = profile.data.emailAddress;
 
+      this.logger.debug(
+        `Sending email - To: ${to}, Subject: ${subject}, Body length: ${body?.length || 0}`,
+      );
+
+      const htmlBody =
+        body.includes('<') && body.includes('>')
+          ? body
+          : body
+              .split('\n')
+              .map((line) => `<p>${line || '<br>'}</p>`)
+              .join('');
+
       const messageParts = [
         `From: ${fromEmail}`,
         `To: ${to}`,
@@ -323,10 +335,14 @@ export class GmailService {
         'MIME-Version: 1.0',
         'Content-Type: text/html; charset=utf-8',
         '',
-        body,
-      ].filter(Boolean);
+        htmlBody,
+      ].filter((part) => part !== '');
 
       const message = messageParts.join('\r\n');
+      this.logger.debug(
+        `Email message length: ${message.length}, Body in message: ${message.includes(htmlBody)}`,
+      );
+
       const encodedMessage = Buffer.from(message)
         .toString('base64')
         .replace(/\+/g, '-')
