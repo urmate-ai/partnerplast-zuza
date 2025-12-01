@@ -1,6 +1,9 @@
+import type { EmailIntent } from './ai.types';
+
 export type VoiceAiResponse = {
   transcript: string;
   reply: string;
+  emailIntent?: EmailIntent;
 };
 
 export type ChatHistoryItem = {

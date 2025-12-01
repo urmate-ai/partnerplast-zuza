@@ -9,6 +9,8 @@ import { useHomeScreen } from '../../shared/hooks/chat/useHomeScreen.hook';
 import { HomeHeader } from '../../components/home/components/HomeHeader.component';
 import { VoiceControl } from '../../components/home/VoiceControl.component';
 import { ChatMessages } from '../../components/home/components/ChatMessages.component';
+import { EmailComposerModal } from '../../components/integrations/EmailComposerModal.component';
+import { useGmailSend } from '../../shared/hooks/integrations/useGmailIntegration.hook';
 
 export const HomeScreen: React.FC = () => {
   const { user } = useAuthStore();
@@ -28,7 +30,11 @@ export const HomeScreen: React.FC = () => {
     stopTTS,
     handleTypingComplete,
     handleNewChat,
+    emailIntent,
+    clearEmailIntent,
   } = useHomeScreen();
+
+  const gmailSendMutation = useGmailSend();
 
   const handleLogout = async () => {
     try {
@@ -36,6 +42,16 @@ export const HomeScreen: React.FC = () => {
     } catch (error) {
       console.error('Logout error:', error);
     }
+  };
+
+  const handleSendEmail = async (emailData: {
+    to: string;
+    subject: string;
+    body: string;
+    cc?: string[];
+    bcc?: string[];
+  }) => {
+    await gmailSendMutation.mutateAsync(emailData);
   };
 
   return (
@@ -101,6 +117,14 @@ export const HomeScreen: React.FC = () => {
           </Button>
         </View>
       )}
+
+      <EmailComposerModal
+        visible={!!emailIntent?.shouldSendEmail}
+        onClose={clearEmailIntent}
+        onSend={handleSendEmail}
+        initialData={emailIntent || undefined}
+        isLoading={gmailSendMutation.isPending}
+      />
     </View>
   );
 };

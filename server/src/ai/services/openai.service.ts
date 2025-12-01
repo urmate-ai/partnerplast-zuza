@@ -149,6 +149,66 @@ export class OpenAIService {
     return finalReply;
   }
 
+  async detectEmailIntent(transcript: string): Promise<{
+    shouldSendEmail: boolean;
+    to?: string;
+    subject?: string;
+    body?: string;
+  }> {
+    try {
+      const prompt = `Przeanalizuj poniższą wypowiedź użytkownika i określ, czy użytkownik chce wysłać email.
+Jeśli tak, wyodrębnij następujące informacje:
+- Adres email odbiorcy (to)
+- Temat wiadomości (subject)
+- Treść wiadomości (body)
+
+Wypowiedź użytkownika: "${transcript}"
+
+Odpowiedz TYLKO w formacie JSON bez żadnego dodatkowego tekstu:
+{
+  "shouldSendEmail": true/false,
+  "to": "email@example.com lub null",
+  "subject": "temat lub null",
+  "body": "treść wiadomości lub null"
+}`;
+
+      const completion = await this.openai.chat.completions.create({
+        model: this.config.model,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Jesteś asystentem AI specjalizującym się w analizie intencji użytkownika. Odpowiadaj TYLKO w formacie JSON.',
+          },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: 300,
+        temperature: 0.3,
+      });
+
+      const responseText = completion.choices[0]?.message?.content?.trim();
+      if (!responseText) {
+        return { shouldSendEmail: false };
+      }
+
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return { shouldSendEmail: false };
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        shouldSendEmail: parsed.shouldSendEmail || false,
+        to: parsed.to || undefined,
+        subject: parsed.subject || undefined,
+        body: parsed.body || undefined,
+      };
+    } catch (error) {
+      this.logger.error('Failed to detect email intent:', error);
+      return { shouldSendEmail: false };
+    }
+  }
+
   async transcribeAndRespond(
     file: AudioFile,
     options: VoiceProcessOptions = {},
