@@ -11,39 +11,63 @@ datasource db {
 }
 
 model User {
-  id                    String    @id @default(uuid())
-  email                 String    @unique
+  id                    String              @id @default(uuid())
+  email                 String              @unique
   name                  String
   password              String? // Nullable for OAuth users
-  provider              String    @default("local") // 'local' | 'google'
+  provider              String              @default("local") // 'local' | 'google'
   providerId            String?
   lastLogoutAt          DateTime? // Timestamp ostatniego wylogowania - unieważnia wszystkie tokeny wydane przed tą datą
   resetPasswordToken   String? // Token do resetu hasła
   resetPasswordExpires  DateTime? // Data wygaśnięcia tokenu resetu hasła
   currentChatId         String? // ID aktywnego chatu użytkownika
-  pushNotifications     Boolean   @default(true)
-  emailNotifications    Boolean  @default(false)
-  soundEnabled          Boolean   @default(true)
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  pushNotifications     Boolean             @default(true)
+  emailNotifications    Boolean             @default(false)
+  soundEnabled          Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
   chats                 Chat[]
-  currentChat           Chat?     @relation("UserCurrentChat", fields: [currentChatId], references: [id], onDelete: SetNull)
+  currentChat           Chat?               @relation("UserCurrentChat", fields: [currentChatId], references: [id], onDelete: SetNull)
+  integrations          UserIntegration[]
 
   @@map("users")
 }
 
 model Integration {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  icon        String?  // URL do ikony lub nazwa ikony
-  category    String?  // Kategoria integracji (np. 'communication', 'productivity', 'social')
-  isActive    Boolean  @default(false) // Czy integracja jest dostępna
-  config      Json?    // Konfiguracja integracji (API keys, settings, etc.)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String              @id @default(uuid())
+  name             String              @unique
+  description      String?
+  icon             String?  // URL do ikony lub nazwa ikony
+  category         String?  // Kategoria integracji (np. 'communication', 'productivity', 'social')
+  isActive         Boolean             @default(false) // Czy integracja jest dostępna
+  config           Json?    // Konfiguracja integracji (API keys, settings, etc.)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  userIntegrations UserIntegration[]
 
   @@map("integrations")
+}
+
+model UserIntegration {
+  id             String    @id @default(uuid())
+  userId         String
+  integrationId  String
+  isConnected    Boolean   @default(false)
+  accessToken    String?   // Encrypted OAuth access token
+  refreshToken   String?   // Encrypted OAuth refresh token
+  tokenExpiresAt DateTime? // Token expiration time
+  scopes         String[]  // OAuth scopes granted
+  metadata       Json?     // Additional integration-specific data
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, integrationId])
+  @@index([userId])
+  @@index([integrationId])
+  @@map("user_integrations")
 }
 
 model Chat {
