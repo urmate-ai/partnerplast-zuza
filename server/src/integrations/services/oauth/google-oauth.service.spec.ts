@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { GoogleOAuthService } from './google-oauth.service';
 import { TokenEncryptionService } from './token-encryption.service';
 import { OAuthStateService } from './oauth-state.service';

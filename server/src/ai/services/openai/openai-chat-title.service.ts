@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
-import { PromptUtils } from '../utils/prompt.utils';
+import { PromptUtils } from '../../utils/prompt.utils';
 
 @Injectable()
 export class OpenAIChatTitleService {

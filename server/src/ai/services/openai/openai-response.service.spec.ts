@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OpenAIResponseService } from './openai-response.service';
-import { ResponseCacheService } from './response-cache.service';
+import { ResponseCacheService } from '../cache/response-cache.service';
 import type {
   OpenAIConfig,
   OpenAIResponsePayload,
   OpenAIResponsesClient,
-} from '../types/ai.types';
-import type { MessageRole } from '../types/chat.types';
+} from '../../types/ai.types';
+import type { MessageRole } from '../../types/chat.types';
 
-jest.mock('../utils/prompt.utils', () => ({
+jest.mock('../../utils/prompt.utils', () => ({
   PromptUtils: {
     DEFAULT_SYSTEM_PROMPT: 'Test system prompt',
     buildMessages: jest.fn(
@@ -24,7 +24,7 @@ jest.mock('../utils/prompt.utils', () => ({
     ),
   },
 }));
-jest.mock('../utils/openai.utils', () => ({
+jest.mock('../../utils/openai.utils', () => ({
   extractReplyFromResponse: jest.fn(
     (response: { output_text?: string }): string => {
       if (typeof response.output_text === 'string') {

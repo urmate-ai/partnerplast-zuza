@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Logger } from '@nestjs/common';
 import { OpenAIIntentDetectionService } from './openai-intent-detection.service';
 import OpenAI from 'openai';
-import { IntentParser } from '../utils/intent.parser';
+import { IntentParser } from '../../utils/intent.parser';
 
 jest.mock('openai');
 jest.mock('../utils/intent.parser');

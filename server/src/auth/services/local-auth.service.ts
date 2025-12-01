@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../../common/services/email.service';
-import { ChatService } from '../../ai/services/chat.service';
+import { ChatService } from '../../ai/services/chat/chat.service';
 import { TokenService } from '../../common/services/token.service';
 import { PasswordResetService } from './password-reset.service';
 import { PasswordUtils } from '../../common/utils/password.utils';

@@ -3,7 +3,7 @@ import { InternalServerErrorException } from '@nestjs/common';
 import { OpenAITranscriptionService } from './openai-transcription.service';
 import OpenAI, { toFile } from 'openai';
 import * as fs from 'node:fs';
-import type { AudioFile } from '../types/ai.types';
+import type { AudioFile } from '../../types/ai.types';
 
 jest.mock('openai');
 jest.mock('node:fs');

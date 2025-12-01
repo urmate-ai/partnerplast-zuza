@@ -12,12 +12,12 @@ import type {
   AudioFile,
   VoiceProcessOptions,
   VoiceProcessResult,
-} from '../types/ai.types';
+} from '../../types/ai.types';
 import type {
   EmailIntentResult,
   CalendarIntentResult,
-} from '../types/intent.types';
-import type { ChatMessageHistory } from '../types/chat.types';
+} from '../../types/intent.types';
+import type { ChatMessageHistory } from '../../types/chat.types';
 
 @Injectable()
 export class OpenAIService {

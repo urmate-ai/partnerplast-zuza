@@ -5,8 +5,8 @@ import {
 } from '@nestjs/common';
 import OpenAI, { toFile } from 'openai';
 import * as fs from 'node:fs';
-import type { AudioFile } from '../types/ai.types';
-import type { AudioFileInput, AudioFileWithPath } from '../types/file.types';
+import type { AudioFile } from '../../types/ai.types';
+import type { AudioFileInput, AudioFileWithPath } from '../../types/file.types';
 
 @Injectable()
 export class OpenAITranscriptionService {

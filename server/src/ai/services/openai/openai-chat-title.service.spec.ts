@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OpenAIChatTitleService } from './openai-chat-title.service';
 import OpenAI from 'openai';
-import { PromptUtils } from '../utils/prompt.utils';
+import { PromptUtils } from '../../utils/prompt.utils';
 
 jest.mock('openai');
 

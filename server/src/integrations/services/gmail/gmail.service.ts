@@ -1,17 +1,17 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { google } from 'googleapis';
-import { PrismaService } from '../../prisma/prisma.service';
-import { GoogleOAuthService } from './google-oauth.service';
-import { GoogleIntegrationService } from './google-integration.service';
-import { GmailMapper } from '../utils/gmail.mapper';
-import { GmailFormatter } from '../utils/gmail-formatter.utils';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { GoogleOAuthService } from '../oauth/google-oauth.service';
+import { GoogleIntegrationService } from '../google/google-integration.service';
+import { GmailMapper } from '../../utils/gmail.mapper';
+import { GmailFormatter } from '../../utils/gmail-formatter.utils';
 import type {
   GmailAuthUrlResponse,
   GmailConnectionStatus,
   GmailMessage,
-} from '../types/gmail.types';
-import { GMAIL_SCOPES } from '../types/gmail.types';
-import type { UserIntegrationData } from '../types/google-oauth.types';
+} from '../../types/gmail.types';
+import { GMAIL_SCOPES } from '../../types/gmail.types';
+import type { UserIntegrationData } from '../../types/google-oauth.types';
 
 @Injectable()
 export class GmailService {

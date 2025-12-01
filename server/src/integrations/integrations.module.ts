@@ -3,12 +3,12 @@ import { IntegrationsController } from './integrations.controller';
 import { GmailController } from './controllers/gmail.controller';
 import { CalendarController } from './controllers/calendar.controller';
 import { IntegrationsService } from './integrations.service';
-import { GmailService } from './services/gmail.service';
-import { CalendarService } from './services/calendar.service';
-import { GoogleOAuthService } from './services/google-oauth.service';
-import { GoogleIntegrationService } from './services/google-integration.service';
-import { TokenEncryptionService } from './services/token-encryption.service';
-import { OAuthStateService } from './services/oauth-state.service';
+import { GmailService } from './services/gmail/gmail.service';
+import { CalendarService } from './services/calendar/calendar.service';
+import { GoogleOAuthService } from './services/oauth/google-oauth.service';
+import { GoogleIntegrationService } from './services/google/google-integration.service';
+import { TokenEncryptionService } from './services/oauth/token-encryption.service';
+import { OAuthStateService } from './services/oauth/oauth-state.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({

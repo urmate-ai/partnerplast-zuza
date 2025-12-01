@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { ChatService } from './chat.service';
-import { PrismaService } from '../../prisma/prisma.service';
-import { OpenAIChatTitleService } from './openai-chat-title.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { OpenAIChatTitleService } from '../openai/openai-chat-title.service';
 import type { Chat, Message, User } from '@prisma/client';
 import type { PrismaUpdateResult } from '../../common/types/test.types';
 

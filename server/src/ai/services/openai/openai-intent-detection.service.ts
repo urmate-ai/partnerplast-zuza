@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import OpenAI from 'openai';
-import { IntentParser } from '../utils/intent.parser';
+import { IntentParser } from '../../utils/intent.parser';
 import type {
   EmailIntentResult,
   CalendarIntentResult,
   EmailIntentRaw,
   CalendarIntentRaw,
-} from '../types/intent.types';
+} from '../../types/intent.types';
 
 @Injectable()
 export class OpenAIIntentDetectionService {

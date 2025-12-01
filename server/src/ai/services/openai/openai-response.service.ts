@@ -1,17 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PromptUtils } from '../utils/prompt.utils';
+import { PromptUtils } from '../../utils/prompt.utils';
 import {
   extractReplyFromResponse,
   postprocessReply,
-} from '../utils/openai.utils';
-import { ResponseCacheService } from './response-cache.service';
+} from '../../utils/openai.utils';
+import { ResponseCacheService } from '../cache/response-cache.service';
 import type {
   OpenAIConfig,
   OpenAIResponsePayload,
   OpenAIResponsesClient,
   ResponsesCreateParams,
-} from '../types/ai.types';
-import type { MessageRole } from '../types/chat.types';
+} from '../../types/ai.types';
+import type { MessageRole } from '../../types/chat.types';
 
 type ChatHistoryMessage = {
   role: MessageRole;

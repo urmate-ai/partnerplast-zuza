@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { OpenAIService } from './services/openai.service';
-import { ChatService } from './services/chat.service';
-import { GmailService } from '../integrations/services/gmail.service';
-import { CalendarService } from '../integrations/services/calendar.service';
+import { OpenAIService } from './services/openai/openai.service';
+import { ChatService } from './services/chat/chat.service';
+import { GmailService } from '../integrations/services/gmail/gmail.service';
+import { CalendarService } from '../integrations/services/calendar/calendar.service';
 import type {
   AudioFile,
   VoiceProcessOptions,
