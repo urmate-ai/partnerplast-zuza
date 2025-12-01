@@ -10,4 +10,9 @@ export class VoiceRequestDto {
   @IsString()
   @MaxLength(1000)
   context?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  location?: string;
 }

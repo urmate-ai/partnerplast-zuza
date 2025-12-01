@@ -3,6 +3,7 @@ import type { Multer } from 'multer';
 export interface VoiceProcessOptions {
   language?: string;
   context?: string;
+  location?: string;
 }
 
 export interface VoiceProcessResult {
@@ -43,7 +44,7 @@ export type WebSearchTool = {
   type: 'web_search';
 };
 
-export type ReasoningEffort = 'low' | 'medium' | 'high';
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high';
 
 export interface ResponsesCreateParams {
   model: string;

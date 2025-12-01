@@ -1,5 +1,4 @@
 import type { OpenAIResponsePayload } from '../types/ai.types';
-import { WEB_SEARCH_KEYWORDS } from '../constants';
 
 export function extractReplyFromResponse(
   response: OpenAIResponsePayload,
@@ -50,10 +49,4 @@ export function postprocessReply(rawReply: string): string {
   const firstSentence = normalized.split(/(?<=[.!?])\s+/)[0] ?? normalized;
 
   return firstSentence.trim();
-}
-
-export function shouldUseWebSearch(message: string): boolean {
-  const text = message.toLowerCase();
-
-  return WEB_SEARCH_KEYWORDS.some((kw) => text.includes(kw));
 }

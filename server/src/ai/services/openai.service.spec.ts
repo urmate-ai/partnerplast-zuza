@@ -129,25 +129,36 @@ describe('OpenAIService', () => {
       const transcript = 'Witaj';
       const reply = 'Cześć! Jak mogę pomóc?';
 
-      ((mockOpenAI as any).responses.create as jest.Mock).mockResolvedValue({
+      (
+        mockOpenAI as unknown as { responses: { create: jest.Mock } }
+      ).responses.create.mockResolvedValue({
         output_text: reply,
       });
 
       const result = await service.generateResponse(transcript);
 
       expect(
-        (mockOpenAI as any).responses.create as jest.Mock,
+        (mockOpenAI as unknown as { responses: { create: jest.Mock } })
+          .responses.create,
       ).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'gpt-5',
           input: expect.stringContaining(transcript),
+          reasoning: { effort: 'low' },
+          tools: [
+            expect.objectContaining({
+              type: 'web_search',
+            }),
+          ],
         }),
       );
       expect(result).toBe('Cześć!');
     });
 
     it('powinien zwrócić komunikat błędu gdy odpowiedź jest pusta', async () => {
-      ((mockOpenAI as any).responses.create as jest.Mock).mockResolvedValue({
+      (
+        mockOpenAI as unknown as { responses: { create: jest.Mock } }
+      ).responses.create.mockResolvedValue({
         output_text: '',
       });
 
@@ -167,7 +178,9 @@ describe('OpenAIService', () => {
       (mockOpenAI.audio.transcriptions.create as jest.Mock).mockResolvedValue(
         transcript as string,
       );
-      ((mockOpenAI as any).responses.create as jest.Mock).mockResolvedValue({
+      (
+        mockOpenAI as unknown as { responses: { create: jest.Mock } }
+      ).responses.create.mockResolvedValue({
         output_text: reply,
       });
 

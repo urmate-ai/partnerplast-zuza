@@ -5,6 +5,7 @@ import type { VoiceAiResponse } from '../../../shared/types';
 type SendVoiceToAiOptions = {
   language?: string;
   context?: string;
+  location?: string;
 };
 
 const sendVoiceToAiRequest = async (
@@ -23,6 +24,9 @@ const sendVoiceToAiRequest = async (
   }
   if (options?.context) {
     form.append('context', options.context);
+  }
+  if (options?.location) {
+    form.append('location', options.location);
   }
 
   const response = await apiClient.post<VoiceAiResponse>('/ai/voice', form, {
