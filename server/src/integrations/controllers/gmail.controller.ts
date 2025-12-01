@@ -23,12 +23,99 @@ export class GmailController {
   async handleCallback(@Query() query: GmailCallbackDto, @Res() res: Response) {
     try {
       await this.gmailService.handleCallback(query.code, query.state);
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
-      res.redirect(`${frontendUrl}/integrations?gmail=success`);
+
+      const deepLink = 'urmate-ai-zuza://integrations?gmail=success';
+
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Gmail połączony</title>
+          </head>
+          <body>
+            <script>
+              function openDeepLink() {
+                const url = '${deepLink}';
+                
+                try {
+                  window.location.href = url;
+                } catch (e) {
+                  console.error('window.location failed:', e);
+                }
+                
+                setTimeout(function() {
+                  try {
+                    window.open(url, '_self');
+                  } catch (e) {
+                    console.error('window.open failed:', e);
+                  }
+                }, 100);
+                
+                setTimeout(function() {
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.style.display = 'none';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }, 200);
+              }
+              
+              openDeepLink();
+              
+              setTimeout(function() {
+                try {
+                  window.close();
+                } catch (e) { 
+                  console.error('window.close failed:', e);
+                }
+              }, 2000);
+            </script>
+            <p style="text-align: center; padding: 20px; font-family: system-ui;">
+              Gmail został pomyślnie połączony! Przekierowywanie do aplikacji...
+            </p>
+            <p style="text-align: center;">
+              <a href="${deepLink}" style="color: #2563EB;">Kliknij tutaj jeśli przekierowanie nie działa</a>
+            </p>
+          </body>
+        </html>
+      `);
     } catch (error) {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
       console.error('Error in Gmail callback:', error);
-      res.redirect(`${frontendUrl}/integrations?gmail=error`);
+
+      const deepLink = 'urmate-ai-zuza://integrations?gmail=error';
+
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Błąd połączenia Gmail</title>
+          </head>
+          <body>
+            <script>
+              const url = '${deepLink}';
+              window.location.href = url;
+              setTimeout(function() {
+                const link = document.createElement('a');
+                link.href = url;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+              }, 100);
+            </script>
+            <p style="text-align: center; padding: 20px; font-family: system-ui; color: #DC2626;">
+              Wystąpił błąd podczas łączenia z Gmail. Przekierowywanie do aplikacji...
+            </p>
+            <p style="text-align: center;">
+              <a href="${deepLink}" style="color: #2563EB;">Kliknij tutaj jeśli przekierowanie nie działa</a>
+            </p>
+          </body>
+        </html>
+      `);
     }
   }
 

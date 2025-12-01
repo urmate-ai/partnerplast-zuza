@@ -22,12 +22,10 @@ type IntegrationsScreenNavigationProp = NativeStackNavigationProp<
 
 export const IntegrationsScreen: React.FC = () => {
   const navigation = useNavigation<IntegrationsScreenNavigationProp>();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const { data: integrations, isLoading, error } = useIntegrations(
     searchQuery.trim() || undefined,
   );
-
-  console.log('integrations', integrations);
 
   const filteredIntegrations = useMemo(() => {
     if (!integrations) return [];
