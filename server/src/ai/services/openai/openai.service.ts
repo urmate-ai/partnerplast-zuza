@@ -16,6 +16,7 @@ import type {
 import type {
   EmailIntentResult,
   CalendarIntentResult,
+  SmsIntentResult,
 } from '../../types/intent.types';
 import type { ChatMessageHistory } from '../../types/chat.types';
 
@@ -66,6 +67,10 @@ export class OpenAIService {
     transcript: string,
   ): Promise<CalendarIntentResult> {
     return this.intentDetectionService.detectCalendarIntent(transcript);
+  }
+
+  async detectSmsIntent(transcript: string): Promise<SmsIntentResult> {
+    return this.intentDetectionService.detectSmsIntent(transcript);
   }
 
   async generateChatTitle(firstMessage: string): Promise<string> {

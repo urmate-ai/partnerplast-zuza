@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react';
+import * as SMS from 'expo-sms';
 import { useVoiceListener } from '../../../hooks/useVoiceListener.hook';
 import { useTextToSpeech } from '../../../hooks/useTextToSpeech.hook';
 import { useVoiceAi } from './useVoiceAi.hook';
 import { useAuthStore } from '../../../stores/authStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { getApproximateLocation, formatLocationForAi } from '../../utils/location.utils';
-import type { EmailIntent, CalendarIntent } from '../../types/ai.types';
+import type { EmailIntent, CalendarIntent, SmsIntent } from '../../types/ai.types';
 
 type Message = {
   id: string;
@@ -23,6 +24,7 @@ export const useHomeScreen = () => {
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const [emailIntent, setEmailIntent] = useState<EmailIntent | null>(null);
   const [calendarIntent, setCalendarIntent] = useState<CalendarIntent | null>(null);
+  const [smsIntent, setSmsIntent] = useState<SmsIntent | null>(null);
 
   const voiceAiMutation = useVoiceAi();
   const { state: ttsState, speak, stop: stopTTS } = useTextToSpeech();
@@ -96,6 +98,37 @@ export const useHomeScreen = () => {
           console.log('[useHomeScreen] 📅 Brak intencji kalendarza lub shouldCreateEvent = false:', result.calendarIntent);
         }
 
+        if (result.smsIntent?.shouldSendSms) {
+          console.log('[useHomeScreen] 📱 Wykryto intencję wysłania SMS:', result.smsIntent);
+          setSmsIntent(result.smsIntent);
+
+          const smsBody =
+            result.smsIntent.body && result.smsIntent.body.trim().length > 0
+              ? result.smsIntent.body
+              : '';
+
+          const isProbablyPhoneNumber =
+            typeof result.smsIntent.to === 'string' &&
+            /\d/.test(result.smsIntent.to);
+
+          const recipients =
+            result.smsIntent.to && isProbablyPhoneNumber
+              ? [result.smsIntent.to]
+              : [];
+
+          try {
+            const isSmsAvailable = await SMS.isAvailableAsync();
+            if (!isSmsAvailable) {
+              console.error('[useHomeScreen] ❌ SMS nie jest dostępny na tym urządzeniu');
+            } else {
+              console.log('[useHomeScreen] 📱 Otwieranie aplikacji SMS z odbiorcą:', recipients, 'i treścią:', smsBody);
+              await SMS.sendSMSAsync(recipients, smsBody);
+            }
+          } catch (smsError) {
+            console.error('[useHomeScreen] ❌ Błąd przy otwieraniu aplikacji SMS:', smsError);
+          }
+        }
+
         queryClient.invalidateQueries({ queryKey: ['chats'] });
       } catch (err) {
         setError(
@@ -145,6 +178,10 @@ export const useHomeScreen = () => {
     setCalendarIntent(null);
   }, []);
 
+  const clearSmsIntent = useCallback(() => {
+    setSmsIntent(null);
+  }, []);
+
   return {
     user,
     isDrawerOpen,
@@ -165,5 +202,7 @@ export const useHomeScreen = () => {
     clearEmailIntent,
     calendarIntent,
     clearCalendarIntent,
+    smsIntent,
+    clearSmsIntent,
   };
 };

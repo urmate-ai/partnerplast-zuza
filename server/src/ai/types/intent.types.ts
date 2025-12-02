@@ -16,6 +16,12 @@ export type CalendarIntentResult = {
   attendees?: string[];
 };
 
+export type SmsIntentResult = {
+  shouldSendSms: boolean;
+  to?: string;
+  body?: string;
+};
+
 export type EmailIntentRaw = {
   shouldSendEmail?: boolean;
   to?: string | null;
@@ -32,4 +38,10 @@ export type CalendarIntentRaw = {
   endDateTime?: string | null;
   isAllDay?: boolean;
   attendees?: Array<string | null> | null;
+};
+
+export type SmsIntentRaw = {
+  shouldSendSms?: boolean;
+  to?: string | null;
+  body?: string | null;
 };

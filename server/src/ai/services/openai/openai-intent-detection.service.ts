@@ -4,8 +4,10 @@ import { IntentParser } from '../../utils/intent.parser';
 import type {
   EmailIntentResult,
   CalendarIntentResult,
+  SmsIntentResult,
   EmailIntentRaw,
   CalendarIntentRaw,
+  SmsIntentRaw,
 } from '../../types/intent.types';
 
 @Injectable()
@@ -34,6 +36,17 @@ export class OpenAIIntentDetectionService {
     'przypom',
     'dentyst',
     'wizyta',
+  ];
+  private readonly smsKeywords = [
+    'sms',
+    'esemes',
+    'esemesa',
+    'esemesem',
+    'wiadomość sms',
+    'wiadomosc sms',
+    'esemesika',
+    'wiadomość tekstowa',
+    'wiadomosc tekstowa',
   ];
 
   constructor(apiKey: string | undefined) {
@@ -89,6 +102,27 @@ export class OpenAIIntentDetectionService {
     }
   }
 
+  async detectSmsIntent(transcript: string): Promise<SmsIntentResult> {
+    try {
+      if (!this.hasSmsKeywords(transcript)) {
+        this.logger.debug(`No SMS keywords found in: "${transcript}"`);
+        return { shouldSendSms: false };
+      }
+
+      this.logger.debug(`SMS keywords found in transcript: "${transcript}"`);
+
+      const prompt = this.buildSmsIntentPrompt(transcript);
+      const raw = await this.callOpenAIForIntent<SmsIntentRaw>(prompt);
+      const result = IntentParser.parseSmsIntent(raw);
+
+      this.logger.log(`SMS intent result: ${JSON.stringify(result)}`);
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to detect SMS intent:', error);
+      return { shouldSendSms: false };
+    }
+  }
+
   private hasEmailKeywords(transcript: string): boolean {
     const lowerTranscript = transcript.toLowerCase();
     return this.emailKeywords.some((keyword) =>
@@ -113,6 +147,13 @@ export class OpenAIIntentDetectionService {
           lowerTranscript.includes('przypomnienie') ||
           /na godzin[ęe]?\s+\d+/.test(lowerTranscript) ||
           /\d{1,2}:\d{2}/.test(lowerTranscript)))
+    );
+  }
+
+  private hasSmsKeywords(transcript: string): boolean {
+    const lowerTranscript = transcript.toLowerCase();
+    return this.smsKeywords.some((keyword) =>
+      lowerTranscript.includes(keyword),
     );
   }
 
@@ -171,8 +212,27 @@ Odpowiedz w formacie JSON:
 }`;
   }
 
+  private buildSmsIntentPrompt(transcript: string): string {
+    return `Użytkownik powiedział: "${transcript}"
+
+Czy użytkownik chce wysłać SMS? Jeśli tak, wyodrębnij:
+- Odbiorcę (to) - numer telefonu lub opis odbiorcy, jeśli padł w wypowiedzi
+- Treść wiadomości (body) - to, co powinno znaleźć się w SMS-ie
+
+WAŻNE:
+- Jeśli użytkownik mówi np. "wyślij sms", "napisz sms", "wyślij esemesa" lub podobnie, to ZAWSZE shouldSendSms = true.
+- Jeśli nie jesteś pewien treści SMS-a, ustaw body na null.
+
+Odpowiedz w formacie JSON:
+{
+  "shouldSendSms": true,
+  "to": "numer telefonu lub opis odbiorcy lub null",
+  "body": "treść wiadomości lub null"
+}`;
+  }
+
   private async callOpenAIForIntent<
-    T extends EmailIntentRaw | CalendarIntentRaw,
+    T extends EmailIntentRaw | CalendarIntentRaw | SmsIntentRaw,
   >(prompt: string): Promise<T> {
     const completion = await this.openai.chat.completions.create({
       model: 'gpt-4o',
