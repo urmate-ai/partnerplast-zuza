@@ -9,8 +9,8 @@ import { useHomeScreen } from '../../shared/hooks/chat/useHomeScreen.hook';
 import { HomeHeader } from '../../components/home/components/HomeHeader.component';
 import { VoiceControl } from '../../components/home/VoiceControl.component';
 import { ChatMessages } from '../../components/home/components/ChatMessages.component';
-import { EmailComposerModal } from '../../components/integrations/EmailComposerModal.component';
-import { EventComposerModal } from '../../components/integrations/EventComposerModal.component';
+import { EmailComposerModal } from '../../components/integrations/components/EmailComposerModal.component';
+import { EventComposerModal } from '../../components/integrations/components/EventComposerModal.component';
 import { useGmailSend } from '../../shared/hooks/integrations/useGmailIntegration.hook';
 import { useCreateEvent } from '../../shared/hooks/integrations/useCalendarIntegration.hook';
 
