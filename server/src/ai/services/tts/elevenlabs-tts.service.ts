@@ -74,7 +74,28 @@ export class ElevenLabsTtsService {
       throw new Error('Failed to synthesize speech with ElevenLabs.');
     }
 
+    const contentType = response.headers.get('content-type') || '';
+    this.logger.debug(
+      `ElevenLabs response: status=${response.status}, content-type=${contentType}`,
+    );
+
+    if (!contentType.includes('audio')) {
+      const errorText = await response.text().catch(() => '');
+      this.logger.error(
+        `ElevenLabs returned non-audio content-type: ${contentType}, body: ${errorText.substring(0, 500)}`,
+      );
+      throw new Error(
+        'ElevenLabs did not return audio - check API key and voice ID.',
+      );
+    }
+
     const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
+    const audioBuffer = Buffer.from(arrayBuffer);
+
+    this.logger.debug(
+      `ElevenLabs TTS successful: ${audioBuffer.length} bytes of audio`,
+    );
+
+    return audioBuffer;
   }
 }

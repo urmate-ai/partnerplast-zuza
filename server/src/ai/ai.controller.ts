@@ -10,7 +10,9 @@ import {
   UseGuards,
   BadRequestException,
   StreamableFile,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
 import { diskStorage } from 'multer';
@@ -70,15 +72,11 @@ export class AiController {
     };
   }
 
-  /**
-   * Strumieniowe TTS przez ElevenLabs (Alice).
-   * Zwraca audio/mpeg, które frontend może odtworzyć jako zdalne źródło.
-   *
-   * Uwaga: endpoint jest celowo bez AuthGuard, aby uprościć odtwarzanie po stronie mobile
-   * (brak wsparcia na custom headers w źródłach audio).
-   */
   @Get('tts')
-  async getTts(@Query('text') text?: string): Promise<StreamableFile> {
+  async getTts(
+    @Query('text') text?: string,
+    @Res({ passthrough: true }) res?: Response,
+  ): Promise<StreamableFile> {
     const trimmed = text?.trim();
     if (!trimmed) {
       throw new BadRequestException('Query parameter "text" is required.');
@@ -89,6 +87,14 @@ export class AiController {
 
     if (!audioBuffer.length) {
       throw new BadRequestException('Failed to synthesize speech.');
+    }
+
+    if (res) {
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': audioBuffer.length.toString(),
+        'Accept-Ranges': 'bytes',
+      });
     }
 
     return new StreamableFile(audioBuffer, {
