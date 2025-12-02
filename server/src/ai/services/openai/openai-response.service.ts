@@ -89,8 +89,14 @@ export class OpenAIResponseService {
       input,
       reasoning: { effort: 'low' },
       tools: [{ type: 'web_search' }],
-      max_output_tokens: this.config.maxTokens,
     };
+
+    if (
+      typeof this.config.maxTokens === 'number' &&
+      this.config.maxTokens > 0
+    ) {
+      requestBody.max_output_tokens = this.config.maxTokens;
+    }
 
     return this.responsesClient.create(requestBody);
   }
