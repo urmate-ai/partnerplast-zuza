@@ -3,6 +3,7 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
+  StreamableFile,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -18,6 +19,10 @@ export class ResponseInterceptor<T>
   ): Observable<ApiSuccessResponse<T>> {
     return next.handle().pipe(
       map((data: T) => {
+        if (data instanceof StreamableFile) {
+          return data as unknown as ApiSuccessResponse<T>;
+        }
+
         if (
           data &&
           typeof data === 'object' &&
