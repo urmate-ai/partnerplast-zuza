@@ -1,152 +1,90 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { AiService } from './ai.service';
 import { ChatService } from './services/chat/chat.service';
 import { OpenAIService } from './services/openai/openai.service';
 import { GmailService } from '../integrations/services/gmail/gmail.service';
 import { CalendarService } from '../integrations/services/calendar/calendar.service';
-import type {
-  AudioFile,
-  VoiceProcessResult,
-  ChatHistoryItem,
-  ChatWithMessages,
-} from './types/ai.types';
+import { OpenAIFastResponseService } from './services/openai/openai-fast-response.service';
+import { IntentClassifierService } from './services/intent/intent-classifier.service';
+import { IntegrationStatusCacheService } from './services/cache/integration-status-cache.service';
+import type { ChatHistoryItem, ChatWithMessages } from './types/ai.types';
 
 describe('AiService', () => {
   let service: AiService;
-  let module: TestingModule;
   let chatService: jest.Mocked<ChatService>;
   let openaiService: jest.Mocked<OpenAIService>;
   let gmailService: jest.Mocked<GmailService>;
   let calendarService: jest.Mocked<CalendarService>;
+  let fastResponseService: jest.Mocked<OpenAIFastResponseService>;
+  let intentClassifier: jest.Mocked<IntentClassifierService>;
+  let integrationCache: jest.Mocked<IntegrationStatusCacheService>;
 
   const mockUserId = 'user-123';
   const mockChatId = 'chat-123';
-  const mockAudioFile = {
-    path: '/tmp/test.m4a',
-    originalname: 'test.m4a',
-  } as AudioFile;
 
-  beforeEach(async () => {
-    module = await Test.createTestingModule({
-      providers: [
-        AiService,
-        {
-          provide: ChatService,
-          useValue: {
-            getOrCreateCurrentChat: jest.fn(),
-            getChatById: jest.fn(),
-            saveChat: jest.fn(),
-            getChatHistory: jest.fn(),
-            searchChats: jest.fn(),
-            createNewChat: jest.fn(),
-          },
-        },
-        {
-          provide: OpenAIService,
-          useValue: {
-            transcribeAndRespondWithHistory: jest.fn(),
-          },
-        },
-        {
-          provide: GmailService,
-          useValue: {
-            getConnectionStatus: jest.fn(),
-            getMessagesForAiContext: jest.fn(),
-          },
-        },
-        {
-          provide: CalendarService,
-          useValue: {
-            getConnectionStatus: jest.fn(),
-            getEventsForAiContext: jest.fn(),
-          },
-        },
-      ],
-    }).compile();
+  beforeEach(() => {
+    chatService = {
+      getOrCreateCurrentChat: jest.fn(),
+      getChatById: jest.fn(),
+      saveChat: jest.fn(),
+      getChatHistory: jest.fn(),
+      searchChats: jest.fn(),
+      createNewChat: jest.fn(),
+    } as unknown as jest.Mocked<ChatService>;
 
-    service = module.get<AiService>(AiService);
-    chatService = module.get(ChatService);
-    openaiService = module.get(OpenAIService);
-    gmailService = module.get(GmailService);
-    calendarService = module.get(CalendarService);
+    openaiService = {
+      transcribeAudio: jest.fn(),
+      generateResponse: jest.fn(),
+      detectEmailIntent: jest.fn(),
+      detectCalendarIntent: jest.fn(),
+      detectSmsIntent: jest.fn(),
+    } as unknown as jest.Mocked<OpenAIService>;
+
+    gmailService = {
+      getConnectionStatus: jest.fn(),
+      getMessagesForAiContext: jest.fn(),
+    } as unknown as jest.Mocked<GmailService>;
+
+    calendarService = {
+      getConnectionStatus: jest.fn(),
+      getEventsForAiContext: jest.fn(),
+    } as unknown as jest.Mocked<CalendarService>;
+
+    fastResponseService = {
+      generateFast: jest.fn(),
+    } as unknown as jest.Mocked<OpenAIFastResponseService>;
+
+    intentClassifier = {
+      classifyIntent: jest.fn().mockReturnValue({
+        needsEmailIntent: false,
+        needsCalendarIntent: false,
+        needsSmsIntent: false,
+        isSimpleGreeting: false,
+        needsWebSearch: false,
+        confidence: 'high',
+      }),
+    } as unknown as jest.Mocked<IntentClassifierService>;
+
+    integrationCache = {
+      get: jest.fn().mockReturnValue(null),
+      set: jest.fn(),
+      invalidate: jest.fn(),
+      clear: jest.fn(),
+      cleanup: jest.fn(),
+    } as unknown as jest.Mocked<IntegrationStatusCacheService>;
+
+    service = new AiService(
+      openaiService,
+      fastResponseService,
+      chatService,
+      gmailService,
+      calendarService,
+      intentClassifier,
+      integrationCache,
+    );
   });
 
   afterEach(() => {
     jest.clearAllMocks();
-  });
-
-  describe('transcribeAndRespond', () => {
-    it('powinien przetranskrybować i odpowiedzieć z historią chatu', async () => {
-      const mockChat: ChatWithMessages = {
-        id: mockChatId,
-        title: 'Test Chat',
-        messages: [
-          {
-            id: 'msg-1',
-            role: 'user',
-            content: 'Hello',
-            createdAt: new Date(),
-          },
-          {
-            id: 'msg-2',
-            role: 'assistant',
-            content: 'Hi!',
-            createdAt: new Date(),
-          },
-        ],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const mockResult: VoiceProcessResult = {
-        transcript: 'Test transcript',
-        reply: 'Test reply',
-      };
-
-      chatService.getOrCreateCurrentChat.mockResolvedValue(mockChatId);
-      chatService.getChatById.mockResolvedValue(mockChat);
-      gmailService.getConnectionStatus.mockResolvedValue({
-        isConnected: false,
-      });
-      calendarService.getConnectionStatus.mockResolvedValue({
-        isConnected: false,
-      });
-      openaiService.transcribeAndRespondWithHistory.mockResolvedValue(
-        mockResult,
-      );
-
-      const result = await service.transcribeAndRespond(
-        mockAudioFile,
-        mockUserId,
-        {
-          language: 'pl',
-        },
-      );
-
-      expect(chatService.getOrCreateCurrentChat).toHaveBeenCalledWith(
-        mockUserId,
-      );
-      expect(chatService.getChatById).toHaveBeenCalledWith(
-        mockChatId,
-        mockUserId,
-      );
-      expect(
-        openaiService.transcribeAndRespondWithHistory,
-      ).toHaveBeenCalledWith(
-        mockAudioFile,
-        [
-          { role: 'user', content: 'Hello' },
-          { role: 'assistant', content: 'Hi!' },
-        ],
-        expect.objectContaining({
-          language: 'pl',
-          context: expect.stringContaining(
-            'UWAGA: Użytkownik NIE MA połączonego konta Google Calendar',
-          ),
-        }),
-      );
-      expect(result).toEqual(mockResult);
-    });
   });
 
   describe('saveChat', () => {
