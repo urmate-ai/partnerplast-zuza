@@ -46,6 +46,7 @@ export class ElevenLabsTtsService {
     const body = JSON.stringify({
       text: trimmed,
       model_id: this.modelId,
+      apply_text_normalization: 'on',
       voice_settings: {
         stability: 0.4,
         similarity_boost: 0.8,
