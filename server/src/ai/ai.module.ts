@@ -13,12 +13,14 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import OpenAI from 'openai';
 import type { OpenAIConfig, OpenAIResponsesClient } from './types/ai.types';
+import { ElevenLabsTtsService } from './services/tts/elevenlabs-tts.service';
 
 @Module({
   imports: [ConfigModule, PrismaModule, IntegrationsModule],
   controllers: [AiController],
   providers: [
     AiService,
+    ElevenLabsTtsService,
     ChatService,
     {
       provide: ResponseCacheService,

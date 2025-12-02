@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
-import * as Speech from 'expo-speech';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
+import { API_URL } from '../shared/utils/api';
 
 export type UseTextToSpeechState = {
   isSpeaking: boolean;
@@ -12,19 +12,33 @@ export const useTextToSpeech = () => {
     isSpeaking: false,
     lastText: undefined,
   });
+  const soundRef = useRef<Audio.Sound | null>(null);
 
-  const stop = useCallback(() => {
-    Speech.stop();
+  const stop = useCallback(async () => {
+    if (soundRef.current) {
+      try {
+        await soundRef.current.stopAsync();
+      } catch {
+      }
+      try {
+        await soundRef.current.unloadAsync();
+      } catch {
+      }
+      soundRef.current = null;
+    }
     setState((prev) => ({ ...prev, isSpeaking: false }));
   }, []);
 
   const speak = useCallback(
-    (text: string, lang: string = 'pl-PL') => {
-      if (!text?.trim()) return;
+    async (text: string, lang: string = 'pl-PL') => {
+      const trimmed = text?.trim();
+      if (!trimmed) return;
 
-      stop();
+      await stop();
 
-      void Audio.setAudioModeAsync({
+      setState({ isSpeaking: true, lastText: trimmed });
+
+      await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
         staysActiveInBackground: false,
@@ -34,28 +48,39 @@ export const useTextToSpeech = () => {
         playThroughEarpieceAndroid: false,
       });
 
-      Speech.speak(text, {
-        language: lang,
-        pitch: 1.0,
-        rate: 0.95,
-        volume: 1.0,
-        onStart: () => {
-          setState({ isSpeaking: true, lastText: text });
-        },
-        onDone: () => {
-          setState((prev) => ({ ...prev, isSpeaking: false }));
-        },
-        onStopped: () => {
-          setState((prev) => ({ ...prev, isSpeaking: false }));
-        },
-      });
+      const ttsUrl = `${API_URL}/api/v1/ai/tts?text=${encodeURIComponent(
+        trimmed,
+      )}`;
+
+      try {
+        const { sound } = await Audio.Sound.createAsync({ uri: ttsUrl });
+        soundRef.current = sound;
+
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (!status.isLoaded) return;
+
+          const hasFinished =
+            status.didJustFinish ||
+            (typeof status.durationMillis === 'number' &&
+              status.positionMillis >= status.durationMillis);
+
+          if (hasFinished) {
+            setState((prev) => ({ ...prev, isSpeaking: false }));
+          }
+        });
+
+        await sound.playAsync();
+      } catch (error) {
+        console.error('[useTextToSpeech] Failed to play ElevenLabs TTS', error);
+        setState((prev) => ({ ...prev, isSpeaking: false }));
+      }
     },
     [stop],
   );
 
   useEffect(() => {
     return () => {
-      Speech.stop();
+      void stop();
     };
   }, []);
 
