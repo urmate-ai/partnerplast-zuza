@@ -84,7 +84,6 @@ import { ElevenLabsTtsService } from './services/tts/elevenlabs-tts.service';
 
         const config: OpenAIConfig = {
           model: 'gpt-5',
-          maxTokens: 1500,
           temperature: 0.7,
         };
 

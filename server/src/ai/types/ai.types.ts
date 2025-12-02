@@ -65,7 +65,7 @@ export type AudioFile = Multer.File;
 
 export type OpenAIConfig = {
   model: string;
-  maxTokens: number;
+  maxTokens?: number;
   temperature: number;
 };
 
