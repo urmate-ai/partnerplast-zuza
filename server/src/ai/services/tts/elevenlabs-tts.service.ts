@@ -12,7 +12,7 @@ export class ElevenLabsTtsService {
   constructor(private readonly configService: ConfigService) {
     this.apiKey = this.configService.get<string>('ELEVENLABS_API_KEY');
     this.voiceId =
-      this.configService.get<string>('ELEVENLABS_VOICE_ID_ALICE') ?? undefined;
+      this.configService.get<string>('ELEVENLABS_VOICE_ID') ?? undefined;
 
     if (!this.apiKey) {
       this.logger.warn(
@@ -22,7 +22,7 @@ export class ElevenLabsTtsService {
 
     if (!this.voiceId) {
       this.logger.warn(
-        'ELEVENLABS_VOICE_ID_ALICE is not set – using ElevenLabs TTS requires a configured voice id.',
+        'ELEVENLABS_VOICE_ID is not set – using ElevenLabs TTS requires a configured voice id.',
       );
     }
   }
