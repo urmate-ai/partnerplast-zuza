@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import * as crypto from 'crypto';
 
 type StateData = {
@@ -7,14 +7,25 @@ type StateData = {
 };
 
 @Injectable()
-export class OAuthStateService {
+export class OAuthStateService implements OnModuleDestroy {
   private readonly logger = new Logger(OAuthStateService.name);
   private readonly stateStore = new Map<string, StateData>();
   private readonly stateExpirationMs = 10 * 60 * 1000; // 10 minutes
   private readonly cleanupIntervalMs = 10 * 60 * 1000; // 10 minutes
+  private cleanupInterval?: NodeJS.Timeout;
 
   constructor() {
-    setInterval(() => this.cleanupExpiredStates(), this.cleanupIntervalMs);
+    this.cleanupInterval = setInterval(
+      () => this.cleanupExpiredStates(),
+      this.cleanupIntervalMs,
+    );
+  }
+
+  onModuleDestroy() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = undefined;
+    }
   }
 
   generate(userId: string): string {
