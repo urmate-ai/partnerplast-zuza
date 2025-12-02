@@ -28,6 +28,16 @@ import {
 import type { ExpressResponse } from '../common/types/express.types';
 import type { GoogleAuthResult } from './types/oauth.types';
 
+type AuthSession = {
+  accessToken: string;
+  user: unknown;
+  expiresAt: number;
+};
+
+declare global {
+  var authSessions: Map<string, AuthSession> | undefined;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -105,7 +115,29 @@ export class AuthController {
       }
 
       const { accessToken, user: userData } = req.user;
-      const redirectUrl = `${redirectUri}?token=${encodeURIComponent(accessToken)}&user=${encodeURIComponent(JSON.stringify(userData))}`;
+
+      const sessionCode = Buffer.from(
+        `${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      )
+        .toString('base64')
+        .substring(0, 32);
+
+      if (!global.authSessions) {
+        global.authSessions = new Map();
+      }
+      global.authSessions.set(sessionCode, {
+        accessToken,
+        user: userData,
+        expiresAt: Date.now() + 2 * 60 * 1000,
+      });
+
+      for (const [code, session] of global.authSessions.entries()) {
+        if (session.expiresAt < Date.now()) {
+          global.authSessions.delete(code);
+        }
+      }
+
+      const redirectUrl = `${redirectUri}?code=${sessionCode}`;
 
       return res.send(`
         <!DOCTYPE html>
@@ -228,6 +260,32 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async googleVerify(@Body() dto: GoogleVerifyDto) {
     return this.authService.verifyGoogleToken(dto.accessToken);
+  }
+
+  @Post('google/exchange')
+  @HttpCode(HttpStatus.OK)
+  googleExchangeCode(@Body() body: { code: string }) {
+    if (!global.authSessions) {
+      throw new Error('Invalid session code');
+    }
+
+    const session = global.authSessions.get(body.code);
+
+    if (!session) {
+      throw new Error('Invalid or expired session code');
+    }
+
+    if (session.expiresAt < Date.now()) {
+      global.authSessions.delete(body.code);
+      throw new Error('Session code expired');
+    }
+
+    global.authSessions.delete(body.code);
+
+    return {
+      accessToken: session.accessToken,
+      user: session.user,
+    };
   }
 
   @Put('profile')

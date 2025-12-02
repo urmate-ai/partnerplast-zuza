@@ -13,16 +13,14 @@ export const useGoogleAuth = () => {
     error?: string;
   }> => {
     return new Promise((resolve) => {
-      // Nasłuchuj na deep link przed otwarciem przeglądarki
-      const subscription = Linking.addEventListener('url', (event) => {
+      const subscription = Linking.addEventListener('url', async (event) => {
         const { path, queryParams } = Linking.parse(event.url);
         
         if (path === 'auth/google/callback') {
           subscription.remove();
           WebBrowser.dismissBrowser();
           
-          const token = queryParams?.token as string;
-          const userJson = queryParams?.user as string;
+          const code = queryParams?.code as string;
           const error = queryParams?.error as string;
           
           if (error) {
@@ -30,23 +28,31 @@ export const useGoogleAuth = () => {
             return;
           }
           
-          if (token && userJson) {
+          if (code) {
             try {
-              const user = JSON.parse(decodeURIComponent(userJson));
-              resolve({ type: 'success', token, user });
+              const response = await fetch(`${API_URL}/api/v1/auth/google/exchange`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code }),
+              });
+
+              if (!response.ok) {
+                throw new Error('Failed to exchange code for token');
+              }
+
+              const data = await response.json();
+              resolve({ type: 'success', token: data.accessToken, user: data.user });
             } catch (err) {
-              resolve({ type: 'error', error: 'Failed to parse user data' });
+              resolve({ type: 'error', error: 'Failed to exchange code for token' });
             }
           } else {
-            resolve({ type: 'error', error: 'Missing token or user data' });
+            resolve({ type: 'error', error: 'Missing code' });
           }
         }
       });
 
-      // Otwórz przeglądarkę
       WebBrowser.openBrowserAsync(`${API_URL}/api/v1/auth/google`)
         .then((result) => {
-          // Jeśli przeglądarka została zamknięta bez deep linka
           if (result.type === 'cancel' || result.type === 'dismiss') {
             subscription.remove();
             resolve({ type: 'cancel' });
