@@ -9,7 +9,7 @@ import { SearchBar } from '../../shared/components/SearchBar.component';
 import { LoadingState } from '../../shared/components/LoadingState.component';
 import { ErrorState } from '../../shared/components/ErrorState.component';
 import { EmptyState } from '../../shared/components/EmptyState.component';
-import { IntegrationCard } from '../../components/integrations/IntegrationCard.component';
+import { IntegrationCard } from '../../components/integrations/components/IntegrationCard.component';
 import { useIntegrations } from '../../shared/hooks/integrations/useIntegrations.hook';
 import { getErrorMessage } from '../../shared/utils/error.utils';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
