@@ -205,7 +205,7 @@ export const ChatMessages: React.FC<ChatMessagesProps> = ({
           );
         })}
 
-        {isTyping && (!lastAssistantMessage || displayedReply.length === 0) && (
+        {isTyping && (
           <View className="flex-row justify-start">
             <View className="bg-gray-100 rounded-2xl rounded-bl-sm">
               <TypingIndicator isVisible={true} />

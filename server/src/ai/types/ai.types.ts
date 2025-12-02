@@ -65,7 +65,7 @@ export type AudioFile = Multer.File;
 
 export type OpenAIConfig = {
   model: string;
-  maxTokens: number;
+  maxTokens?: number;
   temperature: number;
 };
 
@@ -82,6 +82,7 @@ export type ResponsesCreateParams = {
   reasoning?: {
     effort: ReasoningEffort;
   };
+  max_output_tokens?: number;
 };
 
 export type OpenAITextBlock = {
