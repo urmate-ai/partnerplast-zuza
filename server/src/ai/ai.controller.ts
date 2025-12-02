@@ -8,7 +8,11 @@ import {
   Query,
   Param,
   UseGuards,
+  BadRequestException,
+  StreamableFile,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
 import { diskStorage } from 'multer';
@@ -19,10 +23,14 @@ import {
   type CurrentUserPayload,
 } from '../auth/decorators/current-user.decorator';
 import type { AudioFile } from './types/ai.types';
+import { ElevenLabsTtsService } from './services/tts/elevenlabs-tts.service';
 
 @Controller('ai')
 export class AiController {
-  constructor(private readonly aiService: AiService) {}
+  constructor(
+    private readonly aiService: AiService,
+    private readonly elevenLabsTtsService: ElevenLabsTtsService,
+  ) {}
 
   @Post('voice')
   @UseGuards(AuthGuard('jwt'))
@@ -62,6 +70,36 @@ export class AiController {
       calendarIntent: result.calendarIntent,
       smsIntent: result.smsIntent,
     };
+  }
+
+  @Get('tts')
+  async getTts(
+    @Query('text') text?: string,
+    @Res({ passthrough: true }) res?: Response,
+  ): Promise<StreamableFile> {
+    const trimmed = text?.trim();
+    if (!trimmed) {
+      throw new BadRequestException('Query parameter "text" is required.');
+    }
+
+    const audioBuffer =
+      await this.elevenLabsTtsService.synthesizeToBuffer(trimmed);
+
+    if (!audioBuffer.length) {
+      throw new BadRequestException('Failed to synthesize speech.');
+    }
+
+    if (res) {
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': audioBuffer.length.toString(),
+        'Accept-Ranges': 'bytes',
+      });
+    }
+
+    return new StreamableFile(audioBuffer, {
+      type: 'audio/mpeg',
+    });
   }
 
   @Get('chat-history')
