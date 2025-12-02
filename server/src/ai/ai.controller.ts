@@ -60,6 +60,7 @@ export class AiController {
       reply: result.reply,
       emailIntent: result.emailIntent,
       calendarIntent: result.calendarIntent,
+      smsIntent: result.smsIntent,
     };
   }
 

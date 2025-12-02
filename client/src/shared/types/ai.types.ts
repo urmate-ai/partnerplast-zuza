@@ -18,10 +18,17 @@ export type CalendarIntent = {
   attendees?: string[];
 };
 
+export type SmsIntent = {
+  shouldSendSms: boolean;
+  to?: string;
+  body?: string;
+};
+
 export type VoiceProcessResult = {
   transcript: string;
   reply: string;
   emailIntent?: EmailIntent;
   calendarIntent?: CalendarIntent;
+  smsIntent?: SmsIntent;
 };
 

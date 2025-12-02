@@ -3,6 +3,8 @@ import type {
   EmailIntentRaw,
   CalendarIntentResult,
   CalendarIntentRaw,
+  SmsIntentResult,
+  SmsIntentRaw,
 } from '../types/intent.types';
 
 export class IntentParser {
@@ -27,6 +29,14 @@ export class IntentParser {
       endDateTime: this.parseStringField(raw.endDateTime),
       isAllDay: raw.isAllDay === true,
       attendees: this.parseAttendees(raw.attendees),
+    };
+  }
+
+  static parseSmsIntent(raw: SmsIntentRaw): SmsIntentResult {
+    return {
+      shouldSendSms: raw.shouldSendSms === true,
+      to: this.parseStringField(raw.to),
+      body: this.parseStringField(raw.body),
     };
   }
 
