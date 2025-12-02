@@ -2,7 +2,8 @@ import axios, { AxiosResponse } from 'axios';
 import { useAuthStore } from '../../stores/authStore';
 import type { ApiSuccessResponse } from '../types/api.types';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+export const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export const apiClient = axios.create({
   baseURL: `${API_URL}/api/v1`,
