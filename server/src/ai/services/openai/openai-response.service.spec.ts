@@ -171,6 +171,7 @@ describe('OpenAIResponseService', () => {
         input: expect.any(String),
         reasoning: { effort: 'low' },
         tools: [{ type: 'web_search' }],
+        max_output_tokens: mockConfig.maxTokens,
       });
     });
 
