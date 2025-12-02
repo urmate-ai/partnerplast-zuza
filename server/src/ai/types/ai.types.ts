@@ -82,6 +82,7 @@ export type ResponsesCreateParams = {
   reasoning?: {
     effort: ReasoningEffort;
   };
+  max_output_tokens?: number;
 };
 
 export type OpenAITextBlock = {
