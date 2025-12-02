@@ -9,6 +9,9 @@ import type {
   VoiceProcessResult,
   ChatHistoryItem,
   ChatWithMessages,
+  EmailIntent,
+  CalendarIntent,
+  SmsIntent,
 } from './types/ai.types';
 
 @Injectable()
@@ -97,6 +100,10 @@ export class AiService {
       enhancedOptions,
     );
 
+    let detectedEmailIntent: EmailIntent | undefined;
+    let detectedCalendarIntent: CalendarIntent | undefined;
+    let detectedSmsIntent: SmsIntent | undefined;
+
     if (isGmailConnected) {
       try {
         const emailIntent = await this.openaiService.detectEmailIntent(
@@ -104,14 +111,11 @@ export class AiService {
         );
         if (emailIntent.shouldSendEmail) {
           this.logger.log(`Email intent detected for user ${userId}`);
-          return {
-            ...result,
-            emailIntent: {
-              shouldSendEmail: emailIntent.shouldSendEmail,
-              to: emailIntent.to,
-              subject: emailIntent.subject,
-              body: emailIntent.body,
-            },
+          detectedEmailIntent = {
+            shouldSendEmail: emailIntent.shouldSendEmail,
+            to: emailIntent.to,
+            subject: emailIntent.subject,
+            body: emailIntent.body,
           };
         }
       } catch (error) {
@@ -131,10 +135,7 @@ export class AiService {
           this.logger.log(
             `Calendar intent detected for user ${userId}: ${JSON.stringify(calendarIntent)}`,
           );
-          return {
-            ...result,
-            calendarIntent,
-          };
+          detectedCalendarIntent = calendarIntent;
         }
       } catch (error) {
         this.logger.warn('Failed to detect calendar intent:', error);
@@ -145,7 +146,45 @@ export class AiService {
       );
     }
 
-    return result;
+    try {
+      const smsIntent = await this.openaiService.detectSmsIntent(
+        result.transcript,
+      );
+      if (smsIntent.shouldSendSms) {
+        this.logger.log(
+          `SMS intent detected for user ${userId}: ${JSON.stringify(smsIntent)}`,
+        );
+        detectedSmsIntent = {
+          shouldSendSms: smsIntent.shouldSendSms,
+          to: smsIntent.to,
+          body: smsIntent.body,
+        };
+      }
+    } catch (error) {
+      this.logger.warn('Failed to detect SMS intent:', error);
+    }
+
+    const finalReply =
+      detectedSmsIntent?.shouldSendSms === true
+        ? 'Otwieram dla Ciebie aplikację SMS. Wybierz odbiorcę (jeśli trzeba), uzupełnij treść i wyślij wiadomość samodzielnie.'
+        : result.reply;
+
+    const response: VoiceProcessResult = {
+      ...result,
+      reply: finalReply,
+    };
+
+    if (detectedEmailIntent) {
+      response.emailIntent = detectedEmailIntent;
+    }
+    if (detectedCalendarIntent) {
+      response.calendarIntent = detectedCalendarIntent;
+    }
+    if (detectedSmsIntent) {
+      response.smsIntent = detectedSmsIntent;
+    }
+
+    return response;
   }
 
   async saveChat(
