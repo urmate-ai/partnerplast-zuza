@@ -1,8 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OpenAIService } from './services/openai/openai.service';
+import { OpenAIFastResponseService } from './services/openai/openai-fast-response.service';
 import { ChatService } from './services/chat/chat.service';
 import { GmailService } from '../integrations/services/gmail/gmail.service';
 import { CalendarService } from '../integrations/services/calendar/calendar.service';
+import { IntentClassifierService } from './services/intent/intent-classifier.service';
+import { IntegrationStatusCacheService } from './services/cache/integration-status-cache.service';
+import type { ChatMessageHistory, ChatRole } from './types/chat.types';
 import type {
   AudioFile,
   VoiceProcessOptions,
@@ -20,9 +24,12 @@ export class AiService {
 
   constructor(
     private readonly openaiService: OpenAIService,
+    private readonly fastResponseService: OpenAIFastResponseService,
     private readonly chatService: ChatService,
     private readonly gmailService: GmailService,
     private readonly calendarService: CalendarService,
+    private readonly intentClassifier: IntentClassifierService,
+    private readonly integrationCache: IntegrationStatusCacheService,
   ) {}
 
   async transcribeAndRespond(
@@ -30,147 +37,81 @@ export class AiService {
     userId: string,
     options: VoiceProcessOptions = {},
   ): Promise<VoiceProcessResult> {
-    const chatId = await this.chatService.getOrCreateCurrentChat(userId);
-
-    const chat = await this.chatService.getChatById(chatId, userId);
-
-    const messages = chat.messages.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-    }));
-
-    let gmailContext = '';
-    let isGmailConnected = false;
-    try {
-      const gmailStatus = await this.gmailService.getConnectionStatus(userId);
-      isGmailConnected = gmailStatus.isConnected;
-      if (gmailStatus.isConnected) {
-        gmailContext = await this.gmailService.getMessagesForAiContext(
-          userId,
-          20,
-        );
-        this.logger.log(`Gmail context added for user ${userId}`);
-      }
-    } catch (error) {
-      this.logger.warn('Failed to fetch Gmail context:', error);
-    }
-
-    let calendarContext = '';
-    let isCalendarConnected = false;
-    try {
-      const calendarStatus =
-        await this.calendarService.getConnectionStatus(userId);
-      isCalendarConnected = calendarStatus.isConnected;
-      if (calendarStatus.isConnected) {
-        calendarContext = await this.calendarService.getEventsForAiContext(
-          userId,
-          7,
-        );
-        this.logger.log(`Calendar context added for user ${userId}`);
-      }
-    } catch (error) {
-      this.logger.warn('Failed to fetch Calendar context:', error);
-    }
-
-    const contextParts = [options.context || ''];
-    if (gmailContext) {
-      contextParts.push(
-        `${gmailContext}\n\nUWAGA: Użytkownik ma połączone konto Gmail. Jeśli poprosi o wysłanie emaila, poinformuj go, że może to zrobić.`,
-      );
-    }
-
-    if (calendarContext) {
-      contextParts.push(
-        `${calendarContext}\n\nUWAGA: Użytkownik ma połączone konto Google Calendar. Jeśli zapyta o wydarzenia lub poprosi o dodanie wydarzenia, możesz mu pomóc.`,
-      );
-    } else {
-      contextParts.push(
-        '\n\nUWAGA: Użytkownik NIE MA połączonego konta Google Calendar. Jeśli poprosi o dodanie wydarzenia do kalendarza, zapytanie o wydarzenia, lub użyje słów: "dodaj do kalendarza", "zapisz w kalendarzu", "przypomnienie", "termin", "spotkanie" - poinformuj go, że musi najpierw połączyć konto Google Calendar w ustawieniach integracji.',
-      );
-    }
-
-    const enhancedOptions = {
-      ...options,
-      context: contextParts.filter(Boolean).join('\n\n'),
-    };
-
-    const result = await this.openaiService.transcribeAndRespondWithHistory(
+    const transcript = await this.openaiService.transcribeAudio(
       file,
-      messages,
-      enhancedOptions,
+      options.language,
     );
 
-    let detectedEmailIntent: EmailIntent | undefined;
-    let detectedCalendarIntent: CalendarIntent | undefined;
-    let detectedSmsIntent: SmsIntent | undefined;
+    const intentClass = this.intentClassifier.classifyIntent(transcript);
+    this.logger.debug(
+      `Intent classification for "${transcript}": ${JSON.stringify(intentClass)}`,
+    );
 
-    if (isGmailConnected) {
-      try {
-        const emailIntent = await this.openaiService.detectEmailIntent(
-          result.transcript,
-        );
-        if (emailIntent.shouldSendEmail) {
-          this.logger.log(`Email intent detected for user ${userId}`);
-          detectedEmailIntent = {
-            shouldSendEmail: emailIntent.shouldSendEmail,
-            to: emailIntent.to,
-            subject: emailIntent.subject,
-            body: emailIntent.body,
-          };
-        }
-      } catch (error) {
-        this.logger.warn('Failed to detect email intent:', error);
-      }
-    }
+    const [chatData, integrationStatuses, contextData] = await Promise.all([
+      this.getChatData(userId),
+      intentClass.needsEmailIntent || intentClass.needsCalendarIntent
+        ? this.getIntegrationStatuses(userId)
+        : Promise.resolve({
+            isGmailConnected: false,
+            isCalendarConnected: false,
+          }),
+      this.getContextData(userId, intentClass),
+    ]);
 
-    if (isCalendarConnected) {
-      try {
-        const calendarIntent = await this.openaiService.detectCalendarIntent(
-          result.transcript,
-        );
-        this.logger.debug(
-          `Calendar intent detection result for user ${userId}: ${JSON.stringify(calendarIntent)}`,
-        );
-        if (calendarIntent.shouldCreateEvent) {
-          this.logger.log(
-            `Calendar intent detected for user ${userId}: ${JSON.stringify(calendarIntent)}`,
-          );
-          detectedCalendarIntent = calendarIntent;
-        }
-      } catch (error) {
-        this.logger.warn('Failed to detect calendar intent:', error);
-      }
+    const { messages } = chatData;
+    const { isGmailConnected, isCalendarConnected } = integrationStatuses;
+    const { gmailContext, calendarContext } = contextData;
+
+    const context = this.buildContext(
+      options.context,
+      gmailContext,
+      calendarContext,
+      isGmailConnected,
+      isCalendarConnected,
+    );
+
+    let reply: string;
+    if (intentClass.isSimpleGreeting && intentClass.confidence === 'high') {
+      this.logger.debug(`Using fast response for simple greeting`);
+      reply = await this.fastResponseService.generateFast(
+        transcript,
+        messages,
+        context,
+        options.location,
+      );
+    } else if (intentClass.needsWebSearch) {
+      this.logger.debug(`Using web search for query`);
+      reply = await this.openaiService.generateResponse(
+        transcript,
+        messages,
+        context,
+        options.location,
+      );
     } else {
-      this.logger.debug(
-        `Calendar not connected for user ${userId}, skipping intent detection`,
+      reply = await this.openaiService.generateResponse(
+        transcript,
+        messages,
+        context,
+        options.location,
       );
     }
 
-    try {
-      const smsIntent = await this.openaiService.detectSmsIntent(
-        result.transcript,
+    const [detectedEmailIntent, detectedCalendarIntent, detectedSmsIntent] =
+      await this.detectIntents(
+        transcript,
+        userId,
+        intentClass,
+        isGmailConnected,
+        isCalendarConnected,
       );
-      if (smsIntent.shouldSendSms) {
-        this.logger.log(
-          `SMS intent detected for user ${userId}: ${JSON.stringify(smsIntent)}`,
-        );
-        detectedSmsIntent = {
-          shouldSendSms: smsIntent.shouldSendSms,
-          to: smsIntent.to,
-          body: smsIntent.body,
-        };
-      }
-    } catch (error) {
-      this.logger.warn('Failed to detect SMS intent:', error);
-    }
 
     const finalReply =
       detectedSmsIntent?.shouldSendSms === true
         ? 'Otwieram dla Ciebie aplikację SMS. Wybierz odbiorcę (jeśli trzeba), uzupełnij treść i wyślij wiadomość samodzielnie.'
-        : result.reply;
+        : reply;
 
     const response: VoiceProcessResult = {
-      ...result,
+      transcript,
       reply: finalReply,
     };
 
@@ -185,6 +126,210 @@ export class AiService {
     }
 
     return response;
+  }
+
+  private async getChatData(
+    userId: string,
+  ): Promise<{ chatId: string; messages: ChatMessageHistory[] }> {
+    const chatId = await this.chatService.getOrCreateCurrentChat(userId);
+    const chat = await this.chatService.getChatById(chatId, userId);
+    const messages: ChatMessageHistory[] = chat.messages.map((msg) => ({
+      role: msg.role as ChatRole,
+      content: msg.content,
+    }));
+    return { chatId, messages };
+  }
+
+  private async getIntegrationStatuses(userId: string): Promise<{
+    isGmailConnected: boolean;
+    isCalendarConnected: boolean;
+  }> {
+    const cached = this.integrationCache.get(userId);
+    if (cached) {
+      this.logger.debug(`Using cached integration status for user ${userId}`);
+      return cached;
+    }
+
+    const [gmailStatus, calendarStatus] = await Promise.all([
+      this.gmailService.getConnectionStatus(userId).catch((error) => {
+        this.logger.warn('Failed to fetch Gmail status:', error);
+        return { isConnected: false };
+      }),
+      this.calendarService.getConnectionStatus(userId).catch((error) => {
+        this.logger.warn('Failed to fetch Calendar status:', error);
+        return { isConnected: false };
+      }),
+    ]);
+
+    const result = {
+      isGmailConnected: gmailStatus.isConnected,
+      isCalendarConnected: calendarStatus.isConnected,
+    };
+
+    this.integrationCache.set(
+      userId,
+      result.isGmailConnected,
+      result.isCalendarConnected,
+    );
+
+    return result;
+  }
+
+  private async getContextData(
+    userId: string,
+    intentClass: {
+      needsEmailIntent: boolean;
+      needsCalendarIntent: boolean;
+    },
+  ): Promise<{ gmailContext: string; calendarContext: string }> {
+    const promises: [Promise<string | null>, Promise<string | null>] = [
+      intentClass.needsEmailIntent
+        ? this.gmailService
+            .getConnectionStatus(userId)
+            .then((status) =>
+              status.isConnected
+                ? this.gmailService.getMessagesForAiContext(userId, 20)
+                : null,
+            )
+            .catch((error) => {
+              this.logger.warn('Failed to fetch Gmail context:', error);
+              return null;
+            })
+        : Promise.resolve(null),
+      intentClass.needsCalendarIntent
+        ? this.calendarService
+            .getConnectionStatus(userId)
+            .then((status) =>
+              status.isConnected
+                ? this.calendarService.getEventsForAiContext(userId, 7)
+                : null,
+            )
+            .catch((error) => {
+              this.logger.warn('Failed to fetch Calendar context:', error);
+              return null;
+            })
+        : Promise.resolve(null),
+    ];
+
+    const [gmailContext, calendarContext] = await Promise.all(promises);
+
+    return {
+      gmailContext: gmailContext || '',
+      calendarContext: calendarContext || '',
+    };
+  }
+
+  private buildContext(
+    baseContext: string | undefined,
+    gmailContext: string,
+    calendarContext: string,
+    isGmailConnected: boolean,
+    isCalendarConnected: boolean,
+  ): string {
+    const contextParts = [baseContext || ''];
+
+    if (gmailContext) {
+      contextParts.push(
+        `${gmailContext}\n\nUWAGA: Użytkownik ma połączone konto Gmail. Jeśli poprosi o wysłanie emaila, poinformuj go, że może to zrobić.`,
+      );
+    }
+
+    if (calendarContext) {
+      contextParts.push(
+        `${calendarContext}\n\nUWAGA: Użytkownik ma połączone konto Google Calendar. Jeśli zapyta o wydarzenia lub poprosi o dodanie wydarzenia, możesz mu pomóc.`,
+      );
+    } else if (isCalendarConnected) {
+      contextParts.push(
+        '\n\nUWAGA: Użytkownik ma połączone konto Google Calendar.',
+      );
+    } else {
+      contextParts.push(
+        '\n\nUWAGA: Użytkownik NIE MA połączonego konta Google Calendar. Jeśli poprosi o dodanie wydarzenia do kalendarza, zapytanie o wydarzenia, lub użyje słów: "dodaj do kalendarza", "zapisz w kalendarzu", "przypomnienie", "termin", "spotkanie" - poinformuj go, że musi najpierw połączyć konto Google Calendar w ustawieniach integracji.',
+      );
+    }
+
+    return contextParts.filter(Boolean).join('\n\n');
+  }
+
+  private async detectIntents(
+    transcript: string,
+    userId: string,
+    intentClass: {
+      needsEmailIntent: boolean;
+      needsCalendarIntent: boolean;
+      needsSmsIntent: boolean;
+    },
+    isGmailConnected: boolean,
+    isCalendarConnected: boolean,
+  ): Promise<
+    [EmailIntent | undefined, CalendarIntent | undefined, SmsIntent | undefined]
+  > {
+    const promises: [
+      Promise<EmailIntent | undefined>,
+      Promise<CalendarIntent | undefined>,
+      Promise<SmsIntent | undefined>,
+    ] = [
+      intentClass.needsEmailIntent && isGmailConnected
+        ? this.openaiService
+            .detectEmailIntent(transcript)
+            .then((intent) => {
+              if (intent.shouldSendEmail) {
+                this.logger.log(`Email intent detected for user ${userId}`);
+                return {
+                  shouldSendEmail: intent.shouldSendEmail,
+                  to: intent.to,
+                  subject: intent.subject,
+                  body: intent.body,
+                };
+              }
+              return undefined;
+            })
+            .catch((error) => {
+              this.logger.warn('Failed to detect email intent:', error);
+              return undefined;
+            })
+        : Promise.resolve(undefined),
+      intentClass.needsCalendarIntent && isCalendarConnected
+        ? this.openaiService
+            .detectCalendarIntent(transcript)
+            .then((intent) => {
+              if (intent.shouldCreateEvent) {
+                this.logger.log(
+                  `Calendar intent detected for user ${userId}: ${JSON.stringify(intent)}`,
+                );
+                return intent;
+              }
+              return undefined;
+            })
+            .catch((error) => {
+              this.logger.warn('Failed to detect calendar intent:', error);
+              return undefined;
+            })
+        : Promise.resolve(undefined),
+      intentClass.needsSmsIntent
+        ? this.openaiService
+            .detectSmsIntent(transcript)
+            .then((intent) => {
+              if (intent.shouldSendSms) {
+                this.logger.log(
+                  `SMS intent detected for user ${userId}: ${JSON.stringify(intent)}`,
+                );
+                return {
+                  shouldSendSms: intent.shouldSendSms,
+                  to: intent.to,
+                  body: intent.body,
+                };
+              }
+              return undefined;
+            })
+            .catch((error) => {
+              this.logger.warn('Failed to detect SMS intent:', error);
+              return undefined;
+            })
+        : Promise.resolve(undefined),
+    ];
+
+    return Promise.all(promises);
   }
 
   async saveChat(
