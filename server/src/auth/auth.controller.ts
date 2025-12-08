@@ -78,17 +78,37 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   googleAuthCallback(
-    @Request() req: { user?: GoogleAuthResult },
+    @Request()
+    req: {
+      user?: GoogleAuthResult | Record<string, unknown>;
+      query?: { state?: string };
+    },
     @Res() res: ExpressResponse,
     @Query('state') state?: string,
   ) {
     try {
-      const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
+      const userWithState = req.user as Record<string, unknown> | undefined;
+      const stateFromUser = userWithState?.state as string | undefined;
+      const stateFromQuery = state || req.query?.state || stateFromUser;
+
+      let redirectUri = 'urmate-ai-zuza://auth/google/callback';
+
+      if (stateFromQuery) {
+        try {
+          redirectUri = decodeURIComponent(stateFromQuery);
+        } catch {
+          redirectUri = stateFromQuery;
+        }
+      }
+
+      console.log('[Auth] Callback received - state from query param:', state);
+      console.log('[Auth] State from req.query:', req.query?.state);
+      console.log('[Auth] State from req.user:', stateFromUser);
+      console.log('[Auth] Final redirectUri:', redirectUri);
 
       if (!req.user) {
         const errorUrl = `${redirectUri}?error=authentication_failed`;
 
-        // Dla mobile clients, zwróć bezpośredni redirect
         if (
           redirectUri.startsWith('exp://') ||
           redirectUri.startsWith('urmate-ai-zuza://')
@@ -127,7 +147,8 @@ export class AuthController {
         `);
       }
 
-      const { accessToken, user: userData } = req.user;
+      const userResult = req.user as GoogleAuthResult;
+      const { accessToken, user: userData } = userResult;
 
       const sessionCode = Buffer.from(
         `${Date.now()}-${Math.random().toString(36).substring(7)}`,
@@ -152,8 +173,6 @@ export class AuthController {
 
       const redirectUrl = `${redirectUri}?code=${sessionCode}`;
 
-      // Dla Expo Go (exp://) i innych mobile schemes, zwróć bezpośredni HTTP redirect
-      // zamiast HTML - ASWebAuthenticationSession w iOS lepiej obsługuje HTTP redirects
       if (
         redirectUri.startsWith('exp://') ||
         redirectUri.startsWith('urmate-ai-zuza://')
@@ -162,7 +181,6 @@ export class AuthController {
         return res.redirect(redirectUrl);
       }
 
-      // Dla web browsers, zwróć HTML z JavaScript redirect
       return res.send(`
         <!DOCTYPE html>
         <html>
