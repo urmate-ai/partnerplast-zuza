@@ -101,19 +101,31 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
   const handleGoogleLogin = async () => {
     try {
       setGoogleError(null);
+      console.log('[LoginScreen] Starting Google login...');
       
       const result = await googleLogin();
+      console.log('[LoginScreen] Google login result:', result.type, 'token:', !!result.token, 'user:', !!result.user);
       
       if (result.type === 'success' && result.token && result.user) {
+        console.log('[LoginScreen] Saving auth data to store...');
         await useAuthStore.getState().setAuth(result.user as unknown as User, result.token);
-        navigation.replace('Home');
+        console.log('[LoginScreen] Auth data saved, navigating to Home...');
+        setTimeout(() => {
+          const { isAuthenticated } = useAuthStore.getState();
+          if (isAuthenticated) {
+            navigation.replace('Home');
+          }
+        }, 100);
       } else if (result.type === 'error' || result.error) {
+        console.error('[LoginScreen] Google login error:', result.error);
         setGoogleError('Błąd logowania Google: ' + (result.error || 'Nieznany błąd'));
       } else if (result.type === 'cancel') {
-        console.log('Google login cancelled');
+        console.log('[LoginScreen] Google login cancelled');
+      } else {
+        console.warn('[LoginScreen] Unexpected result type:', result.type);
       }
     } catch (error: unknown) {
-      console.error('Google login error:', error);
+      console.error('[LoginScreen] Google login exception:', error);
       const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
       setGoogleError('Błąd logowania Google: ' + errorMessage);
     }

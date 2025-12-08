@@ -51,6 +51,8 @@ export type CalendarEvent = {
 
 export type CalendarAuthResponse = {
   authUrl: string;
+  state: string;
+  expoRedirectUrl?: string;
 };
 
 export type CreateEventRequest = {
@@ -89,10 +91,13 @@ export type UpdateEventRequest = {
   attendees?: Array<{ email: string }>;
 };
 
-export async function getCalendarAuthUrl(): Promise<CalendarAuthResponse> {
+export async function getCalendarAuthUrl(expoRedirectUri?: string): Promise<CalendarAuthResponse> {
   try {
     const response = await apiClient.get<CalendarAuthResponse>(
       '/integrations/calendar/auth',
+      {
+        params: expoRedirectUri ? { expoRedirectUri } : undefined,
+      },
     );
     return response.data;
   } catch (error: unknown) {

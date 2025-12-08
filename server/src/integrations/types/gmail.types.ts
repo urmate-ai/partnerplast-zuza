@@ -19,6 +19,7 @@ export type GmailUserInfo = {
 export type GmailAuthUrlResponse = {
   authUrl: string;
   state: string;
+  expoRedirectUrl?: string;
 };
 
 export type GmailConnectionStatus = {

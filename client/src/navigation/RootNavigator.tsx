@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -37,6 +37,50 @@ export const RootNavigator: React.FC = () => {
   const { isLoading, isAuthenticated, loadAuth } = useAuthStore();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
 
+  const linking = useMemo(() => ({
+    prefixes: [
+      Linking.createURL('/'),
+      'urmate-ai-zuza://',
+      'exp://192.168.1.100:8081', 
+    ],
+    config: {
+      screens: {
+        Login: 'login',
+        Register: 'register',
+        ForgotPassword: 'forgot-password',
+        ResetPassword: 'reset-password',
+        Home: 'home',
+        Settings: 'settings',
+        EditProfile: 'edit-profile',
+        ChangePassword: 'change-password',
+        Integrations: 'integrations',
+        SearchChats: 'search-chats',
+        ChatDetail: 'chat/:chatId',
+      },
+    },
+    subscribe(listener: (url: string) => void) {
+      const onReceiveURL = ({ url }: { url: string }) => {
+        console.log('[Navigation] Subscribe received URL:', url);
+        const { path } = Linking.parse(url);
+        
+        console.log('[Navigation] Subscribe parsed path:', path);
+        
+        if (path === 'auth/google/callback' || path?.includes('auth/google/callback')) {
+          console.log('[Navigation] Ignoring auth/google/callback in navigation');
+          return;
+        }
+          
+        listener(url);
+      };
+
+      const subscription = Linking.addEventListener('url', onReceiveURL);
+
+      return () => {
+        subscription.remove();
+      };
+    },
+  }), []);
+
   useEffect(() => {
     loadAuth();
   }, []);
@@ -59,33 +103,28 @@ export const RootNavigator: React.FC = () => {
 
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
+      console.log('[Navigation] handleDeepLink received:', event.url);
       const { path, queryParams } = Linking.parse(event.url);
+      console.log('[Navigation] handleDeepLink parsed - path:', path, 'queryParams:', queryParams);
       
       if (path === 'reset-password' && queryParams?.token) {
         navigationRef.current?.navigate('ResetPassword', {
           token: queryParams.token as string,
         });
-      } else if (path === 'auth/google/callback') {
-        const token = queryParams?.token as string;
-        const userJson = queryParams?.user as string;
+      } else if (path === 'auth/google/callback' || path?.includes('auth/google/callback')) {
+        const code = queryParams?.code as string;
         const error = queryParams?.error as string;
         
+        console.log('[Navigation] Google callback detected - code:', !!code, 'error:', error);
+        
         if (error) {
-          console.error('Google OAuth error:', error);
+          console.error('[Navigation] Google OAuth error:', error);
           return;
         }
         
-        if (token && userJson) {
-          try {
-            const user = JSON.parse(decodeURIComponent(userJson));
-            await useAuthStore.getState().setAuth(user, token);
-            navigationRef.current?.reset({
-              index: 0,
-              routes: [{ name: 'Home' }],
-            });
-          } catch (err) {
-            console.error('Failed to parse user data:', err);
-          }
+        if (code) {
+          console.log('[Navigation] Code received, will be handled by oauth.service');
+          return;
         }
       }
     };
@@ -94,6 +133,7 @@ export const RootNavigator: React.FC = () => {
 
     Linking.getInitialURL().then((url) => {
       if (url) {
+        console.log('[Navigation] Initial URL:', url);
         handleDeepLink({ url });
       }
     });
@@ -113,7 +153,16 @@ export const RootNavigator: React.FC = () => {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer 
+        ref={navigationRef}
+        linking={linking}
+        onReady={() => {
+          console.log('[Navigation] NavigationContainer ready');
+        }}
+        onStateChange={(state) => {
+          console.log('[Navigation] State changed:', state);
+        }}
+      >
         <Stack.Navigator
           screenOptions={{
             headerShown: false,

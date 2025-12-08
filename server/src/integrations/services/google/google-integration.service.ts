@@ -55,31 +55,49 @@ export class GoogleIntegrationService {
       return { isConnected: false };
     }
 
-    const userIntegration = await this.prisma.userIntegration.findUnique({
-      where: {
-        userId_integrationId: {
-          userId,
-          integrationId: integration.id,
+    try {
+      const userIntegration = await this.prisma.userIntegration.findUnique({
+        where: {
+          userId_integrationId: {
+            userId,
+            integrationId: integration.id,
+          },
         },
-      },
-    });
+      });
 
-    if (!userIntegration || !userIntegration.isConnected) {
-      return { isConnected: false };
+      if (!userIntegration || !userIntegration.isConnected) {
+        return { isConnected: false };
+      }
+
+      const metadata =
+        (userIntegration.metadata as {
+          email?: string;
+          timezone?: string;
+        }) || {};
+
+      return {
+        isConnected: true,
+        email: metadata.email,
+        connectedAt: userIntegration.createdAt,
+        scopes: userIntegration.scopes,
+        timezone: metadata.timezone,
+      };
+    } catch (error: unknown) {
+      // Obsługa przypadku gdy tabela nie istnieje (brak migracji)
+      const errorObj = error as { code?: string; message?: string };
+      if (
+        errorObj?.code === 'P2021' ||
+        (typeof errorObj?.message === 'string' &&
+          (errorObj.message.includes('does not exist') ||
+            errorObj.message.includes('relation')))
+      ) {
+        this.logger.warn(
+          `Table user_integrations does not exist. Please run migrations.`,
+        );
+        return { isConnected: false };
+      }
+      // Rzuć dalej inne błędy
+      throw error;
     }
-
-    const metadata =
-      (userIntegration.metadata as {
-        email?: string;
-        timezone?: string;
-      }) || {};
-
-    return {
-      isConnected: true,
-      email: metadata.email,
-      connectedAt: userIntegration.createdAt,
-      scopes: userIntegration.scopes,
-      timezone: metadata.timezone,
-    };
   }
 }

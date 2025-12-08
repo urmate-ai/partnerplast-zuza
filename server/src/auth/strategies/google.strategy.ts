@@ -24,6 +24,10 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         ? `${publicUrl}/api/v1/auth/google/callback`
         : 'http://localhost:3000/api/v1/auth/google/callback');
 
+    if (!global.oauthStates) {
+      global.oauthStates = new Map();
+    }
+
     super({
       clientID:
         configService.get<string>('GOOGLE_CLIENT_ID') ||
@@ -33,13 +37,17 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         'your-google-client-secret',
       callbackURL,
       scope: ['email', 'profile'],
-      passReqToCallback: false,
+      passReqToCallback: true,
     });
 
     this.logger.log(`Google OAuth callback URL: ${callbackURL}`);
   }
 
   async validate(
+    req: {
+      query?: { state?: string };
+      session?: { oauthRedirectUri?: string };
+    },
     _accessToken: string,
     _refreshToken: string,
     profile: GoogleProfile,
@@ -47,6 +55,28 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   ): Promise<void> {
     try {
       const result = await this.oauthService.validateGoogleUser(profile);
+
+      const passportState = req?.query?.state;
+      const sessionRedirectUri = req?.session?.oauthRedirectUri;
+
+      if (sessionRedirectUri) {
+        const resultWithState = result as unknown as Record<string, unknown>;
+        resultWithState.state = sessionRedirectUri;
+        this.logger.log(
+          `[GoogleStrategy] Using redirect URI from session: ${sessionRedirectUri}`,
+        );
+      } else if (passportState && global.oauthStates) {
+        const storedState = global.oauthStates.get(passportState);
+        if (storedState && storedState.expiresAt > Date.now()) {
+          const resultWithState = result as unknown as Record<string, unknown>;
+          resultWithState.state = storedState.redirectUri;
+          global.oauthStates.delete(passportState);
+          this.logger.log(
+            `[GoogleStrategy] Using redirect URI from global map: ${storedState.redirectUri}`,
+          );
+        }
+      }
+
       done(null, result);
     } catch (error) {
       done(error as Error, false);

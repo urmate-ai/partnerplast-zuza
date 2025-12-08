@@ -20,6 +20,7 @@ export type CalendarUserInfo = {
 export type CalendarAuthUrlResponse = {
   authUrl: string;
   state: string;
+  expoRedirectUrl?: string;
 };
 
 export type CalendarConnectionStatus = {
@@ -78,4 +79,3 @@ export const CALENDAR_SCOPES = [
 ] as const;
 
 export type CalendarScope = (typeof CALENDAR_SCOPES)[number];
-

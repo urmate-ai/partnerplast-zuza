@@ -4,8 +4,11 @@ import { OpenAIService } from './services/openai/openai.service';
 import { GmailService } from '../integrations/services/gmail/gmail.service';
 import { CalendarService } from '../integrations/services/calendar/calendar.service';
 import { OpenAIFastResponseService } from './services/openai/openai-fast-response.service';
+import { OpenAIPlacesResponseService } from './services/openai/openai-places-response.service';
 import { IntentClassifierService } from './services/intent/intent-classifier.service';
+import { AIIntentClassifierService } from './services/intent/ai-intent-classifier.service';
 import { IntegrationStatusCacheService } from './services/cache/integration-status-cache.service';
+import { UserService } from '../auth/services/user.service';
 import type { ChatHistoryItem, ChatWithMessages } from './types/ai.types';
 
 describe('AiService', () => {
@@ -15,8 +18,11 @@ describe('AiService', () => {
   let gmailService: jest.Mocked<GmailService>;
   let calendarService: jest.Mocked<CalendarService>;
   let fastResponseService: jest.Mocked<OpenAIFastResponseService>;
+  let placesResponseService: jest.Mocked<OpenAIPlacesResponseService>;
   let intentClassifier: jest.Mocked<IntentClassifierService>;
+  let aiIntentClassifier: jest.Mocked<AIIntentClassifierService>;
   let integrationCache: jest.Mocked<IntegrationStatusCacheService>;
+  let userService: jest.Mocked<UserService>;
 
   const mockUserId = 'user-123';
   const mockChatId = 'chat-123';
@@ -53,6 +59,10 @@ describe('AiService', () => {
       generateFast: jest.fn(),
     } as unknown as jest.Mocked<OpenAIFastResponseService>;
 
+    placesResponseService = {
+      generateWithPlaces: jest.fn().mockResolvedValue('places reply'),
+    } as unknown as jest.Mocked<OpenAIPlacesResponseService>;
+
     intentClassifier = {
       classifyIntent: jest.fn().mockReturnValue({
         needsEmailIntent: false,
@@ -60,9 +70,22 @@ describe('AiService', () => {
         needsSmsIntent: false,
         isSimpleGreeting: false,
         needsWebSearch: false,
+        needsPlacesSearch: false,
         confidence: 'high',
       }),
     } as unknown as jest.Mocked<IntentClassifierService>;
+
+    aiIntentClassifier = {
+      classifyIntent: jest.fn().mockResolvedValue({
+        needsEmailIntent: false,
+        needsCalendarIntent: false,
+        needsSmsIntent: false,
+        isSimpleGreeting: false,
+        needsWebSearch: false,
+        needsPlacesSearch: false,
+        confidence: 'high',
+      }),
+    } as unknown as jest.Mocked<AIIntentClassifierService>;
 
     integrationCache = {
       get: jest.fn().mockReturnValue(null),
@@ -72,14 +95,31 @@ describe('AiService', () => {
       cleanup: jest.fn(),
     } as unknown as jest.Mocked<IntegrationStatusCacheService>;
 
+    userService = {
+      getProfile: jest.fn().mockResolvedValue({
+        id: mockUserId,
+        email: 'test@example.com',
+        name: 'Test User',
+        provider: 'local',
+        pushNotifications: true,
+        emailNotifications: true,
+        soundEnabled: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+    } as unknown as jest.Mocked<UserService>;
+
     service = new AiService(
       openaiService,
       fastResponseService,
+      placesResponseService,
       chatService,
       gmailService,
       calendarService,
       intentClassifier,
+      aiIntentClassifier,
       integrationCache,
+      userService,
     );
   });
 

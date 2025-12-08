@@ -25,11 +25,15 @@ export class CalendarService {
     private readonly integrationService: GoogleIntegrationService,
   ) {}
 
-  generateAuthUrl(userId: string): CalendarAuthUrlResponse {
+  generateAuthUrl(
+    userId: string,
+    expoRedirectUri?: string,
+  ): CalendarAuthUrlResponse {
     return this.oauthService.generateAuthUrl(
       userId,
       CALENDAR_SCOPES,
       '/api/v1/integrations/calendar/callback',
+      expoRedirectUri,
     );
   }
 

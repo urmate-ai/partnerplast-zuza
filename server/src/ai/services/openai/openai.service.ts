@@ -50,12 +50,16 @@ export class OpenAIService {
     chatHistory: ChatMessageHistory[] = [],
     context?: string,
     location?: string,
+    useWebSearch: boolean = false,
+    userName?: string,
   ): Promise<string> {
     return this.responseService.generate(
       transcript,
       chatHistory,
       context,
       location,
+      useWebSearch,
+      userName,
     );
   }
 

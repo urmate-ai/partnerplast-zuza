@@ -64,12 +64,22 @@ export function useCalendarConnect() {
 
   return useMutation({
     mutationFn: async () => {
-      const { authUrl } = await getCalendarAuthUrl();
-
+      const redirectUrl = Linking.createURL('integrations');
+      console.log('Calendar connect redirect URL:', redirectUrl);
+      
+      const { authUrl, expoRedirectUrl } = await getCalendarAuthUrl(redirectUrl);
+      
+      const finalRedirectUrl = expoRedirectUrl || redirectUrl;
+      
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
-        Linking.createURL('/integrations'),
+        finalRedirectUrl,
+        {
+          preferEphemeralSession: false,
+        }
       );
+
+      console.log('Calendar connect result:', result);
 
       if (result.type !== 'success') {
         throw new Error('Autoryzacja została anulowana');

@@ -76,6 +76,16 @@ export class IntentClassifierService {
     'jaki jest',
     'jakie jest',
     'czym jest',
+    'jaki był',
+    'jaki byl',
+    'jaka była',
+    'jaka byla',
+    'ostatni',
+    'ostatnia',
+    'ostatnie',
+    'mecz',
+    'wynik',
+    'wyniki',
     'pogoda',
     'temperatura',
     'kurs',
@@ -88,6 +98,50 @@ export class IntentClassifierService {
     'dziś',
     'bieżąc',
     'biezac',
+    'najnowsz',
+    'śwież',
+    'swiez',
+  ];
+
+  private readonly placesKeywords = [
+    'najbliższ',
+    'najblizs',
+    'w okolicy',
+    'w poblizu',
+    'w pobliżu',
+    'gdzie zjem',
+    'gdzie mogę zjeść',
+    'gdzie moge zjesc',
+    'gdzie jest',
+    'ile metrów',
+    'ile metrow',
+    'ile kilometrów',
+    'ile kilometrow',
+    'odległość',
+    'odleglosc',
+    'dystans',
+    'jak daleko',
+    'poleć',
+    'polec',
+    'polecisz',
+    'polecasz',
+    'rekomenduj',
+    'restauracj',
+    'bar',
+    'kawiarni',
+    'kawiarn',
+    'stacja benzynowa',
+    'stacj',
+    'sklep',
+    'apteka',
+    'bank',
+    'bankomat',
+    'hotel',
+    'atrakcj',
+    'muzeum',
+    'park',
+    'kino',
+    'teatr',
   ];
 
   classifyIntent(transcript: string): {
@@ -96,28 +150,39 @@ export class IntentClassifierService {
     needsSmsIntent: boolean;
     isSimpleGreeting: boolean;
     needsWebSearch: boolean;
+    needsPlacesSearch: boolean;
     confidence: 'high' | 'medium' | 'low';
   } {
     const lower = transcript.toLowerCase();
+
+    const needsPlacesSearch = this.placesKeywords.some((keyword) =>
+      lower.includes(keyword),
+    );
+
+    const needsWebSearch = this.searchKeywords.some((keyword) =>
+      lower.includes(keyword),
+    );
 
     const isSimpleGreeting = this.simpleGreetings.some((greeting) =>
       lower.includes(greeting),
     );
 
-    if (isSimpleGreeting && transcript.length < 50) {
+    if (
+      isSimpleGreeting &&
+      transcript.length < 50 &&
+      !needsWebSearch &&
+      !needsPlacesSearch
+    ) {
       return {
         needsEmailIntent: false,
         needsCalendarIntent: false,
         needsSmsIntent: false,
         isSimpleGreeting: true,
         needsWebSearch: false,
+        needsPlacesSearch: false,
         confidence: 'high',
       };
     }
-
-    const needsWebSearch = this.searchKeywords.some((keyword) =>
-      lower.includes(keyword),
-    );
 
     const needsEmailIntent = this.emailKeywords.some((keyword) =>
       lower.includes(keyword),
@@ -144,6 +209,8 @@ export class IntentClassifierService {
     let confidence: 'high' | 'medium' | 'low' = 'medium';
     if (needsEmailIntent || needsSmsIntent || needsCalendarIntent) {
       confidence = 'high';
+    } else if (needsPlacesSearch) {
+      confidence = 'high';
     } else if (needsWebSearch) {
       confidence = 'medium';
     } else if (transcript.length < 20) {
@@ -156,6 +223,7 @@ export class IntentClassifierService {
       needsSmsIntent,
       isSimpleGreeting: false,
       needsWebSearch,
+      needsPlacesSearch,
       confidence,
     };
   }

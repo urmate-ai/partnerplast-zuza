@@ -1,11 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OpenAIService } from './services/openai/openai.service';
 import { OpenAIFastResponseService } from './services/openai/openai-fast-response.service';
+import { OpenAIPlacesResponseService } from './services/openai/openai-places-response.service';
 import { ChatService } from './services/chat/chat.service';
 import { GmailService } from '../integrations/services/gmail/gmail.service';
 import { CalendarService } from '../integrations/services/calendar/calendar.service';
 import { IntentClassifierService } from './services/intent/intent-classifier.service';
+import { AIIntentClassifierService } from './services/intent/ai-intent-classifier.service';
 import { IntegrationStatusCacheService } from './services/cache/integration-status-cache.service';
+import { UserService } from '../auth/services/user.service';
 import type { ChatMessageHistory, ChatRole } from './types/chat.types';
 import type {
   AudioFile,
@@ -25,11 +28,14 @@ export class AiService {
   constructor(
     private readonly openaiService: OpenAIService,
     private readonly fastResponseService: OpenAIFastResponseService,
+    private readonly placesResponseService: OpenAIPlacesResponseService,
     private readonly chatService: ChatService,
     private readonly gmailService: GmailService,
     private readonly calendarService: CalendarService,
     private readonly intentClassifier: IntentClassifierService,
+    private readonly aiIntentClassifier: AIIntentClassifierService,
     private readonly integrationCache: IntegrationStatusCacheService,
+    private readonly userService: UserService,
   ) {}
 
   async transcribeAndRespond(
@@ -42,33 +48,43 @@ export class AiService {
       options.language,
     );
 
-    const intentClass = this.intentClassifier.classifyIntent(transcript);
+    const intentClass =
+      await this.aiIntentClassifier.classifyIntent(transcript);
     this.logger.debug(
       `Intent classification for "${transcript}": ${JSON.stringify(intentClass)}`,
     );
 
-    const [chatData, integrationStatuses, contextData] = await Promise.all([
-      this.getChatData(userId),
-      intentClass.needsEmailIntent || intentClass.needsCalendarIntent
-        ? this.getIntegrationStatuses(userId)
-        : Promise.resolve({
-            isGmailConnected: false,
-            isCalendarConnected: false,
-          }),
-      this.getContextData(userId, intentClass),
-    ]);
-
+    const chatData = await this.getChatData(userId);
     const { messages } = chatData;
-    const { isGmailConnected, isCalendarConnected } = integrationStatuses;
-    const { gmailContext, calendarContext } = contextData;
 
-    const context = this.buildContext(
-      options.context,
-      gmailContext,
-      calendarContext,
-      isGmailConnected,
-      isCalendarConnected,
-    );
+    let userName: string | undefined;
+    try {
+      const userProfile = await this.userService.getProfile(userId);
+      userName = userProfile.name;
+    } catch (error) {
+      this.logger.warn(`Failed to get user profile for ${userId}:`, error);
+    }
+
+    let context = options.context;
+    let isGmailConnected = false;
+    let isCalendarConnected = false;
+
+    if (intentClass.needsEmailIntent || intentClass.needsCalendarIntent) {
+      const integrationStatuses = await this.getIntegrationStatuses(userId);
+      isGmailConnected = integrationStatuses.isGmailConnected;
+      isCalendarConnected = integrationStatuses.isCalendarConnected;
+
+      if (isGmailConnected || isCalendarConnected) {
+        const contextData = await this.getContextData(userId, intentClass);
+        context = this.buildContext(
+          options.context,
+          contextData.gmailContext,
+          contextData.calendarContext,
+          isGmailConnected,
+          isCalendarConnected,
+        );
+      }
+    }
 
     let reply: string;
     if (intentClass.isSimpleGreeting && intentClass.confidence === 'high') {
@@ -78,32 +94,69 @@ export class AiService {
         messages,
         context,
         options.location,
+        userName,
+      );
+    } else if (intentClass.needsPlacesSearch) {
+      this.logger.debug(
+        `Using OpenAI GPT-4o with nearbyPlaces function for location query`,
+      );
+      const locationCoords = this.parseLocationCoordinates(options.location);
+      this.logger.debug(
+        `Parsed location coordinates: ${JSON.stringify(locationCoords)}`,
+      );
+      this.logger.debug(`Location string: ${options.location}`);
+
+      if (!locationCoords) {
+        this.logger.warn(
+          `Could not parse location coordinates from: ${options.location}`,
+        );
+      }
+
+      reply = await this.placesResponseService.generateWithPlaces(
+        transcript,
+        messages,
+        context,
+        options.location,
+        locationCoords?.latitude,
+        locationCoords?.longitude,
+        userName,
       );
     } else if (intentClass.needsWebSearch) {
-      this.logger.debug(`Using web search for query`);
+      this.logger.debug(
+        `Using OpenAI GPT-5 with built-in web_search for query`,
+      );
       reply = await this.openaiService.generateResponse(
         transcript,
         messages,
         context,
         options.location,
+        true,
+        userName,
       );
     } else {
+      this.logger.debug(`Using OpenAI GPT-4o-mini for response`);
       reply = await this.openaiService.generateResponse(
         transcript,
         messages,
         context,
         options.location,
+        false,
+        userName,
       );
     }
 
     const [detectedEmailIntent, detectedCalendarIntent, detectedSmsIntent] =
-      await this.detectIntents(
-        transcript,
-        userId,
-        intentClass,
-        isGmailConnected,
-        isCalendarConnected,
-      );
+      intentClass.needsEmailIntent ||
+      intentClass.needsCalendarIntent ||
+      intentClass.needsSmsIntent
+        ? await this.detectIntents(
+            transcript,
+            userId,
+            intentClass,
+            isGmailConnected,
+            isCalendarConnected,
+          )
+        : [undefined, undefined, undefined];
 
     const finalReply =
       detectedSmsIntent?.shouldSendSms === true
@@ -132,7 +185,7 @@ export class AiService {
     userId: string,
   ): Promise<{ chatId: string; messages: ChatMessageHistory[] }> {
     const chatId = await this.chatService.getOrCreateCurrentChat(userId);
-    const chat = await this.chatService.getChatById(chatId, userId);
+    const chat = await this.chatService.getRecentMessages(chatId, userId, 20);
     const messages: ChatMessageHistory[] = chat.messages.map((msg) => ({
       role: msg.role as ChatRole,
       content: msg.content,
@@ -355,5 +408,22 @@ export class AiService {
   async createNewChat(userId: string): Promise<{ chatId: string }> {
     const chatId = await this.chatService.createNewChat(userId);
     return { chatId };
+  }
+
+  private parseLocationCoordinates(location?: string): {
+    latitude: number;
+    longitude: number;
+  } | null {
+    if (!location) return null;
+
+    const match = location.match(/\(([0-9.]+),\s*([0-9.]+)\)/);
+    if (match) {
+      return {
+        latitude: parseFloat(match[1]),
+        longitude: parseFloat(match[2]),
+      };
+    }
+
+    return null;
   }
 }

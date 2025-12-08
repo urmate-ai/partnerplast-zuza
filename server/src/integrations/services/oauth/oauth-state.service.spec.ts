@@ -47,12 +47,23 @@ describe('OAuthStateService', () => {
   });
 
   describe('validateAndConsume', () => {
-    it('should return userId for valid state', () => {
+    it('should return userId and redirectUri for valid state', () => {
       const userId = 'user-123';
       const state = service.generate(userId);
-      const validatedUserId = service.validateAndConsume(state);
+      const result = service.validateAndConsume(state);
 
-      expect(validatedUserId).toBe(userId);
+      expect(result.userId).toBe(userId);
+      expect(result.redirectUri).toBeUndefined();
+    });
+
+    it('should return userId and redirectUri when redirectUri was provided', () => {
+      const userId = 'user-123';
+      const redirectUri = 'exp://192.168.0.23:8081/--/integrations';
+      const state = service.generate(userId, redirectUri);
+      const result = service.validateAndConsume(state);
+
+      expect(result.userId).toBe(userId);
+      expect(result.redirectUri).toBe(redirectUri);
     });
 
     it('should throw error for invalid state', () => {
@@ -77,7 +88,7 @@ describe('OAuthStateService', () => {
       jest.useFakeTimers();
       const userId = 'user-123';
       const state = service.generate(userId);
-      
+
       jest.advanceTimersByTime(10 * 60 * 1000 + 1000);
 
       expect(() => service.validateAndConsume(state)).toThrow(

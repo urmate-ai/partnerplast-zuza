@@ -45,6 +45,39 @@ export class OpenAITranscriptionService {
       }
 
       return transcript;
+    } catch (error) {
+      this.logger.error('Failed to transcribe audio:', error);
+
+      if (error instanceof Error) {
+        if (
+          error.message.includes('Connection error') ||
+          error.message.includes('ECONNREFUSED')
+        ) {
+          throw new InternalServerErrorException(
+            'Nie można połączyć się z serwisem transkrypcji. Sprawdź połączenie internetowe.',
+          );
+        }
+        if (
+          error.message.includes('401') ||
+          error.message.includes('Unauthorized')
+        ) {
+          throw new InternalServerErrorException(
+            'Błąd autoryzacji z serwisem transkrypcji. Sprawdź konfigurację API key.',
+          );
+        }
+        if (
+          error.message.includes('429') ||
+          error.message.includes('rate limit')
+        ) {
+          throw new InternalServerErrorException(
+            'Przekroczono limit zapytań. Spróbuj ponownie za chwilę.',
+          );
+        }
+      }
+
+      throw new InternalServerErrorException(
+        `Błąd podczas transkrypcji: ${error instanceof Error ? error.message : 'Nieznany błąd'}`,
+      );
     } finally {
       this.cleanupFile(filePath);
     }

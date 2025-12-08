@@ -28,6 +28,22 @@ import {
 import type { ExpressResponse } from '../common/types/express.types';
 import type { GoogleAuthResult } from './types/oauth.types';
 
+type AuthSession = {
+  accessToken: string;
+  user: unknown;
+  expiresAt: number;
+};
+
+type OAuthState = {
+  redirectUri: string;
+  expiresAt: number;
+};
+
+declare global {
+  var authSessions: Map<string, AuthSession> | undefined;
+  var oauthStates: Map<string, OAuthState> | undefined;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -63,20 +79,103 @@ export class AuthController {
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
-  async googleAuth() {}
+  googleAuth(@Query('state') state?: string) {
+    if (state && global.oauthStates) {
+      const decodedState = decodeURIComponent(state);
+
+      const stateKey = Buffer.from(`${Date.now()}-${Math.random()}`)
+        .toString('base64')
+        .substring(0, 32);
+
+      global.oauthStates.set(stateKey, {
+        redirectUri: decodedState,
+        expiresAt: Date.now() + 10 * 60 * 1000,
+      });
+
+      console.log(
+        '[Auth] Stored redirect URI in global map:',
+        decodedState,
+        'key:',
+        stateKey,
+      );
+
+      if (state) {
+        global.oauthStates.set(state, {
+          redirectUri: decodedState,
+          expiresAt: Date.now() + 10 * 60 * 1000,
+        });
+      }
+    }
+  }
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   googleAuthCallback(
-    @Request() req: { user?: GoogleAuthResult },
+    @Request()
+    req: {
+      user?: GoogleAuthResult | Record<string, unknown>;
+      query?: { state?: string };
+      session?: { oauthRedirectUri?: string };
+    },
     @Res() res: ExpressResponse,
     @Query('state') state?: string,
   ) {
     try {
-      const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
+      const userWithState = req.user as Record<string, unknown> | undefined;
+      const stateFromUser = userWithState?.state as string | undefined;
+      const stateFromSession = req.session?.oauthRedirectUri;
+      const stateFromQuery =
+        state || req.query?.state || stateFromUser || stateFromSession;
+
+      let redirectUri = 'exp://192.168.0.23:8081/--/auth/google/callback';
+
+      if (stateFromQuery) {
+        if (global.oauthStates) {
+          const storedState = global.oauthStates.get(stateFromQuery);
+          if (storedState && storedState.expiresAt > Date.now()) {
+            redirectUri = storedState.redirectUri;
+            console.log(
+              '[Auth] Found redirect URI in global map:',
+              redirectUri,
+            );
+            global.oauthStates.delete(stateFromQuery);
+          } else if (stateFromQuery.includes('://')) {
+            try {
+              redirectUri = decodeURIComponent(stateFromQuery);
+            } catch {
+              redirectUri = stateFromQuery;
+            }
+          }
+        } else if (stateFromQuery.includes('://')) {
+          try {
+            redirectUri = decodeURIComponent(stateFromQuery);
+          } catch {
+            redirectUri = stateFromQuery;
+          }
+        }
+      }
+
+      console.log('[Auth] Callback received - state from query param:', state);
+      console.log('[Auth] State from req.query:', req.query?.state);
+      console.log('[Auth] State from req.user:', stateFromUser);
+      console.log('[Auth] State from req.session:', stateFromSession);
+      console.log('[Auth] All req.query:', JSON.stringify(req.query));
+      console.log('[Auth] Final redirectUri:', redirectUri);
 
       if (!req.user) {
         const errorUrl = `${redirectUri}?error=authentication_failed`;
+
+        if (
+          redirectUri.startsWith('exp://') ||
+          redirectUri.startsWith('urmate-ai-zuza://')
+        ) {
+          console.log(
+            '[Auth] Redirecting mobile client to error URL:',
+            errorUrl,
+          );
+          return res.redirect(errorUrl);
+        }
+
         return res.send(`
           <!DOCTYPE html>
           <html>
@@ -104,8 +203,39 @@ export class AuthController {
         `);
       }
 
-      const { accessToken, user: userData } = req.user;
-      const redirectUrl = `${redirectUri}?token=${encodeURIComponent(accessToken)}&user=${encodeURIComponent(JSON.stringify(userData))}`;
+      const userResult = req.user as GoogleAuthResult;
+      const { accessToken, user: userData } = userResult;
+
+      const sessionCode = Buffer.from(
+        `${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      )
+        .toString('base64')
+        .substring(0, 32);
+
+      if (!global.authSessions) {
+        global.authSessions = new Map();
+      }
+      global.authSessions.set(sessionCode, {
+        accessToken,
+        user: userData,
+        expiresAt: Date.now() + 2 * 60 * 1000,
+      });
+
+      for (const [code, session] of global.authSessions.entries()) {
+        if (session.expiresAt < Date.now()) {
+          global.authSessions.delete(code);
+        }
+      }
+
+      const redirectUrl = `${redirectUri}?code=${sessionCode}`;
+
+      if (
+        redirectUri.startsWith('exp://') ||
+        redirectUri.startsWith('urmate-ai-zuza://')
+      ) {
+        console.log('[Auth] Redirecting mobile client to:', redirectUrl);
+        return res.redirect(redirectUrl);
+      }
 
       return res.send(`
         <!DOCTYPE html>
@@ -114,61 +244,124 @@ export class AuthController {
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>Logowanie zakończone</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 20px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              }
+              .container {
+                text-align: center;
+                background: white;
+                padding: 40px;
+                border-radius: 16px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+                max-width: 400px;
+                width: 90%;
+              }
+              .icon {
+                font-size: 64px;
+                margin-bottom: 20px;
+                animation: bounce 0.6s ease-in-out;
+              }
+              @keyframes bounce {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-10px); }
+              }
+              h1 {
+                color: #10b981;
+                font-size: 24px;
+                margin: 0 0 10px 0;
+              }
+              p {
+                color: #6b7280;
+                font-size: 16px;
+                margin: 0 0 30px 0;
+              }
+              .button {
+                display: inline-block;
+                width: 100%;
+                padding: 16px 32px;
+                background: #10b981;
+                color: white;
+                text-decoration: none;
+                border-radius: 12px;
+                font-weight: 600;
+                font-size: 18px;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+              }
+              .button:hover {
+                background: #059669;
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5);
+              }
+              .button:active {
+                transform: translateY(0);
+              }
+            </style>
           </head>
           <body>
+            <div class="container">
+              <div class="icon">✓</div>
+              <h1>Zalogowano!</h1>
+              <p>Kliknij poniższy przycisk, aby wrócić do aplikacji</p>
+              <a href="${redirectUrl}" class="button" id="returnButton">Wróć do aplikacji</a>
+            </div>
             <script>
-              // Próbuj różne metody otwarcia deep linka
-              function openDeepLink() {
-                const url = '${redirectUrl}';
+              (function() {
+                const redirectUrl = '${redirectUrl}';
                 
-                // Metoda 1: window.location
+                // Metoda 1: Natychmiastowe przekierowanie (najlepsze dla Safari)
                 try {
-                  window.location.href = url;
+                  window.location.replace(redirectUrl);
                 } catch (e) {
-                  console.error('window.location failed:', e);
+                  console.error('location.replace failed:', e);
                 }
                 
-                // Metoda 2: window.open (fallback)
+                // Metoda 2: Fallback - automatyczne kliknięcie
+                window.addEventListener('load', function() {
+                  setTimeout(function() {
+                    const button = document.getElementById('returnButton');
+                    if (button) {
+                      button.click();
+                    }
+                  }, 100);
+                });
+                
+                // Metoda 3: Dodatkowy fallback przez location.href
                 setTimeout(function() {
                   try {
-                    window.open(url, '_self');
+                    window.location.href = redirectUrl;
                   } catch (e) {
-                    console.error('window.open failed:', e);
+                    console.error('location.href failed:', e);
                   }
-                }, 100);
-                
-                // Metoda 3: Kliknięcie w link (fallback)
-                setTimeout(function() {
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.style.display = 'none';
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                }, 200);
-              }
-              
-              // Uruchom natychmiast
-              openDeepLink();
-              
-              // Próbuj zamknąć okno po 2 sekundach
-              setTimeout(function() {
-                try {
-                  window.close();
-                } catch (e) {
-                  // Nie można zamknąć okna (normalne w niektórych przeglądarkach)
-                }
-              }, 2000);
+                }, 500);
+              })();
             </script>
-            <p>Logowanie zakończone. Przekierowywanie do aplikacji...</p>
-            <p><a href="${redirectUrl}">Kliknij tutaj jeśli przekierowanie nie działa</a></p>
           </body>
         </html>
       `);
     } catch (error) {
       console.error('Google callback error:', error);
-      const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
+      const redirectUri =
+        state || 'exp://192.168.0.23:8081/--/auth/google/callback';
       const errorUrl = `${redirectUri}?error=callback_failed`;
+
+      if (
+        redirectUri.startsWith('exp://') ||
+        redirectUri.startsWith('urmate-ai-zuza://')
+      ) {
+        console.log('[Auth] Redirecting mobile client to error URL:', errorUrl);
+        return res.redirect(errorUrl);
+      }
+
       return res.send(`
         <!DOCTYPE html>
         <html>
@@ -195,6 +388,32 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async googleVerify(@Body() dto: GoogleVerifyDto) {
     return this.authService.verifyGoogleToken(dto.accessToken);
+  }
+
+  @Post('google/exchange')
+  @HttpCode(HttpStatus.OK)
+  googleExchangeCode(@Body() body: { code: string }) {
+    if (!global.authSessions) {
+      throw new Error('Invalid session code');
+    }
+
+    const session = global.authSessions.get(body.code);
+
+    if (!session) {
+      throw new Error('Invalid or expired session code');
+    }
+
+    if (session.expiresAt < Date.now()) {
+      global.authSessions.delete(body.code);
+      throw new Error('Session code expired');
+    }
+
+    global.authSessions.delete(body.code);
+
+    return {
+      accessToken: session.accessToken,
+      user: session.user,
+    };
   }
 
   @Put('profile')

@@ -23,9 +23,12 @@ export class GmailController {
 
   @Get('auth')
   @UseGuards(AuthGuard('jwt'))
-  initiateAuth(@CurrentUser() user: CurrentUserPayload) {
-    const { authUrl } = this.gmailService.generateAuthUrl(user.id);
-    return { authUrl };
+  initiateAuth(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('expoRedirectUri') expoRedirectUri?: string,
+  ) {
+    const result = this.gmailService.generateAuthUrl(user.id, expoRedirectUri);
+    return result;
   }
 
   @Get('callback')
@@ -33,7 +36,7 @@ export class GmailController {
     try {
       await this.gmailService.handleCallback(query.code, query.state);
 
-      const deepLink = 'urmate-ai-zuza://integrations?gmail=success';
+      const deepLink = 'exp://192.168.0.23:8081/--/integrations?gmail=success';
 
       return res.send(`
         <!DOCTYPE html>
@@ -41,7 +44,6 @@ export class GmailController {
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <meta http-equiv="refresh" content="0;url=${deepLink}">
             <title>Gmail połączony</title>
             <style>
               body {
@@ -53,72 +55,92 @@ export class GmailController {
                 align-items: center;
                 justify-content: center;
                 min-height: 100vh;
-                background: #f5f5f5;
+                background: white;
               }
               .container {
                 text-align: center;
                 background: white;
-                padding: 30px;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                padding: 40px;
+                border-radius: 16px;
+                max-width: 400px;
+                width: 90%;
               }
-              .link {
+              .icon {
+                font-size: 64px;
+                margin-bottom: 20px;
+                animation: bounce 0.6s ease-in-out;
+              }
+              @keyframes bounce {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-10px); }
+              }
+              h1 {
+                color: #000000;
+                font-size: 24px;
+                margin: 0 0 10px 0;
+              }
+              p {
+                color: #6b7280;
+                font-size: 16px;
+                margin: 0 0 30px 0;
+              }
+              .button {
                 display: inline-block;
-                margin-top: 20px;
-                padding: 12px 24px;
-                background: #2563EB;
+                width: 100%;
+                padding: 16px 32px;
+                background: #000000;
                 color: white;
                 text-decoration: none;
-                border-radius: 6px;
-                font-weight: 500;
+                border-radius: 12px;
+                font-weight: 600;
+                font-size: 18px;
+                transition: all 0.3s ease;
               }
-              .link:hover {
-                background: #1d4ed8;
+              .button:hover {
+                background: #333333;
+                transform: translateY(-2px);
+              }
+              .button:active {
+                transform: translateY(0);
               }
             </style>
           </head>
           <body>
             <div class="container">
-              <h1 style="color: #10b981; margin-bottom: 10px;">✓</h1>
-              <p style="font-size: 18px; margin-bottom: 10px;">Gmail został pomyślnie połączony!</p>
-              <p style="color: #6b7280; margin-bottom: 20px;">Przekierowywanie do aplikacji...</p>
-              <a href="${deepLink}" class="link">Otwórz aplikację</a>
+              <div class="icon">✓</div>
+              <h1>Gmail połączony!</h1>
+              <p>Kliknij poniższy przycisk, aby wrócić do aplikacji</p>
+              <a href="${deepLink}" class="button" id="returnButton">Wróć do aplikacji</a>
             </div>
             <script>
               (function() {
-                const url = '${deepLink}';
+                const deepLink = '${deepLink}';
                 
-                // Metoda 1: Natychmiastowe przekierowanie przez location.replace (działa lepiej w Safari)
+                // Metoda 1: Natychmiastowe przekierowanie (najlepsze dla Safari)
                 try {
-                  window.location.replace(url);
+                  window.location.replace(deepLink);
                 } catch (e) {
                   console.error('location.replace failed:', e);
                 }
                 
-                // Metoda 2: Fallback - kliknięcie w link (działa w większości przypadków)
+                // Metoda 2: Fallback - automatyczne kliknięcie
+              window.addEventListener('load', function() {
                 setTimeout(function() {
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.style.display = 'none';
-                  document.body.appendChild(link);
-                  try {
-                    link.click();
-                  } catch (e) {
-                    console.error('link.click failed:', e);
-                  }
-                  setTimeout(function() {
-                    document.body.removeChild(link);
+                  const button = document.getElementById('returnButton');
+                  if (button) {
+                    button.click();
+                    }
                   }, 100);
-                }, 100);
+                });
                 
-                // Metoda 3: Ostatnia próba przez window.location.href
+                // Metoda 3: Dodatkowy fallback przez location.href
                 setTimeout(function() {
                   try {
-                    window.location.href = url;
+                    window.location.href = deepLink;
                   } catch (e) {
                     console.error('location.href failed:', e);
                   }
-                }, 300);
+                }, 500);
               })();
             </script>
           </body>
@@ -127,7 +149,7 @@ export class GmailController {
     } catch (error) {
       console.error('Error in Gmail callback:', error);
 
-      const deepLink = 'urmate-ai-zuza://integrations?gmail=error';
+      const deepLink = 'exp://192.168.0.23:8081/--/integrations?gmail=error';
 
       return res.send(`
         <!DOCTYPE html>
@@ -135,7 +157,6 @@ export class GmailController {
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <meta http-equiv="refresh" content="0;url=${deepLink}">
             <title>Błąd połączenia Gmail</title>
             <style>
               body {
@@ -147,72 +168,87 @@ export class GmailController {
                 align-items: center;
                 justify-content: center;
                 min-height: 100vh;
-                background: #f5f5f5;
+                background: white;
               }
               .container {
                 text-align: center;
                 background: white;
-                padding: 30px;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                padding: 40px;
+                border-radius: 16px;
+                max-width: 400px;
+                width: 90%;
               }
-              .link {
+              .icon {
+                font-size: 64px;
+                margin-bottom: 20px;
+              }
+              h1 {
+                color: #000000;
+                font-size: 24px;
+                margin: 0 0 10px 0;
+              }
+              p {
+                color: #6b7280;
+                font-size: 16px;
+                margin: 0 0 30px 0;
+              }
+              .button {
                 display: inline-block;
-                margin-top: 20px;
-                padding: 12px 24px;
-                background: #2563EB;
+                width: 100%;
+                padding: 16px 32px;
+                background: #000000;
                 color: white;
                 text-decoration: none;
-                border-radius: 6px;
-                font-weight: 500;
+                border-radius: 12px;
+                font-weight: 600;
+                font-size: 18px;
+                transition: all 0.3s ease;
               }
-              .link:hover {
-                background: #1d4ed8;
+              .button:hover {
+                background: #333333;
+                transform: translateY(-2px);
+              }
+              .button:active {
+                transform: translateY(0);
               }
             </style>
           </head>
           <body>
             <div class="container">
-              <h1 style="color: #DC2626; margin-bottom: 10px;">✗</h1>
-              <p style="font-size: 18px; margin-bottom: 10px; color: #DC2626;">Wystąpił błąd podczas łączenia z Gmail</p>
-              <p style="color: #6b7280; margin-bottom: 20px;">Przekierowywanie do aplikacji...</p>
-              <a href="${deepLink}" class="link">Otwórz aplikację</a>
+              <div class="icon">✗</div>
+              <h1>Błąd połączenia</h1>
+              <p>Wystąpił błąd podczas łączenia z Gmail. Kliknij poniższy przycisk, aby wrócić do aplikacji</p>
+              <a href="${deepLink}" class="button" id="returnButton">Wróć do aplikacji</a>
             </div>
             <script>
               (function() {
-                const url = '${deepLink}';
+                const deepLink = '${deepLink}';
                 
-                // Metoda 1: Natychmiastowe przekierowanie przez location.replace
+                // Metoda 1: Natychmiastowe przekierowanie (najlepsze dla Safari)
                 try {
-                  window.location.replace(url);
+                  window.location.replace(deepLink);
                 } catch (e) {
                   console.error('location.replace failed:', e);
                 }
                 
-                // Metoda 2: Fallback - kliknięcie w link
+                // Metoda 2: Fallback - automatyczne kliknięcie
+              window.addEventListener('load', function() {
                 setTimeout(function() {
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.style.display = 'none';
-                  document.body.appendChild(link);
-                  try {
-                    link.click();
-                  } catch (e) {
-                    console.error('link.click failed:', e);
-                  }
-                  setTimeout(function() {
-                    document.body.removeChild(link);
+                  const button = document.getElementById('returnButton');
+                  if (button) {
+                    button.click();
+                    }
                   }, 100);
-                }, 100);
+                });
                 
-                // Metoda 3: Ostatnia próba przez window.location.href
+                // Metoda 3: Dodatkowy fallback przez location.href
                 setTimeout(function() {
                   try {
-                    window.location.href = url;
+                    window.location.href = deepLink;
                   } catch (e) {
                     console.error('location.href failed:', e);
                   }
-                }, 300);
+                }, 500);
               })();
             </script>
           </body>

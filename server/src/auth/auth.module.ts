@@ -12,13 +12,14 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { PrismaModule } from '../prisma/prisma.module';
 import { CommonModule } from '../common/common.module';
+import { forwardRef } from '@nestjs/common';
 import { AiModule } from '../ai/ai.module';
 
 @Module({
   imports: [
     PrismaModule,
     CommonModule,
-    AiModule,
+    forwardRef(() => AiModule),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -43,6 +44,6 @@ import { AiModule } from '../ai/ai.module';
     JwtStrategy,
     GoogleStrategy,
   ],
-  exports: [AuthService],
+  exports: [AuthService, UserService],
 })
 export class AuthModule {}

@@ -22,6 +22,8 @@ export type GmailMessage = {
 
 export type GmailAuthResponse = {
   authUrl: string;
+  state: string;
+  expoRedirectUrl?: string;
 }
 
 export type SendEmailRequest = {
@@ -41,10 +43,13 @@ export type GmailContextResponse = {
   context: string;
 }
 
-export async function getGmailAuthUrl(): Promise<GmailAuthResponse> {
+export async function getGmailAuthUrl(expoRedirectUri?: string): Promise<GmailAuthResponse> {
   try {
     const response = await apiClient.get<GmailAuthResponse>(
       '/integrations/gmail/auth',
+      {
+        params: expoRedirectUri ? { expoRedirectUri } : undefined,
+      },
     );
     return response.data;
   } catch (error: unknown) {
