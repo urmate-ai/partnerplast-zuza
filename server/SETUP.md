@@ -10,8 +10,12 @@ cp .env.example .env
 ```
 
 Edytuj `.env` i ustaw:
+
 - `DATABASE_URL` - URL do bazy PostgreSQL
 - `JWT_SECRET` - Silny, losowy string (użyj: `openssl rand -base64 32`)
+- `OPENAI_API_KEY` - Klucz API OpenAI (wymagany dla AI)
+- `ELEVENLABS_API_KEY` - Klucz API ElevenLabs (opcjonalny, dla TTS)
+- `ELEVENLABS_VOICE_ID` - ID głosu ElevenLabs (opcjonalny, dla TTS)
 - Inne zmienne według potrzeb
 
 ## 2. Uruchom Docker Compose
@@ -22,6 +26,7 @@ npm run docker:up
 ```
 
 To uruchomi:
+
 - PostgreSQL 17 na porcie 5432
 - Backend NestJS na porcie 3000
 
@@ -67,16 +72,18 @@ curl -X POST http://localhost:3000/auth/login \
 ## 🔧 Troubleshooting
 
 ### Błąd połączenia z bazą danych
+
 - Upewnij się, że Docker Compose jest uruchomiony: `npm run docker:up`
 - Sprawdź logi: `npm run docker:logs`
 - Sprawdź czy PostgreSQL działa: `docker ps`
 
 ### Błąd migracji
+
 - Upewnij się, że `.env` ma poprawny `DATABASE_URL`
 - Sprawdź czy baza danych jest dostępna
 - Spróbuj: `npx prisma migrate reset` (UWAGA: usuwa wszystkie dane!)
 
 ### Prisma Client nie wygenerowany
+
 - Uruchom: `npm run prisma:generate`
 - Sprawdź czy `node_modules/.prisma/client` istnieje
-

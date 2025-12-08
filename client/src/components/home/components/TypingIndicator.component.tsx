@@ -34,7 +34,15 @@ export function TypingIndicator({ isVisible }: TypingIndicatorProps) {
   if (!isVisible) return null;
 
   return (
-    <RNView className="flex-row items-center gap-1.5 px-4 py-3">
+    <RNView 
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+      }}
+    >
       {dots.map((dot, index) => (
         <AnimatedDot key={index} animatedValue={dot} style={getDotStyle(dot)} />
       ))}
