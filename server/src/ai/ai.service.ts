@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OpenAIService } from './services/openai/openai.service';
 import { OpenAIFastResponseService } from './services/openai/openai-fast-response.service';
 import { OpenAIPlacesResponseService } from './services/openai/openai-places-response.service';
+import { GeminiWebSearchService } from './services/gemini/gemini-websearch.service';
 import { ChatService } from './services/chat/chat.service';
 import { GmailService } from '../integrations/services/gmail/gmail.service';
 import { CalendarService } from '../integrations/services/calendar/calendar.service';
@@ -29,6 +30,7 @@ export class AiService {
     private readonly openaiService: OpenAIService,
     private readonly fastResponseService: OpenAIFastResponseService,
     private readonly placesResponseService: OpenAIPlacesResponseService,
+    private readonly geminiWebSearchService: GeminiWebSearchService,
     private readonly chatService: ChatService,
     private readonly gmailService: GmailService,
     private readonly calendarService: CalendarService,
@@ -123,14 +125,13 @@ export class AiService {
       );
     } else if (intentClass.needsWebSearch) {
       this.logger.debug(
-        `Using OpenAI GPT-5 with built-in web_search for query`,
+        `Using Gemini 2.5 Pro with Google Search retrieval for web search query`,
       );
-      reply = await this.openaiService.generateResponse(
+      reply = await this.geminiWebSearchService.generateWithWebSearch(
         transcript,
         messages,
         context,
         options.location,
-        true,
         userName,
       );
     } else {

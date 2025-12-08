@@ -5,6 +5,7 @@ import { GmailService } from '../integrations/services/gmail/gmail.service';
 import { CalendarService } from '../integrations/services/calendar/calendar.service';
 import { OpenAIFastResponseService } from './services/openai/openai-fast-response.service';
 import { OpenAIPlacesResponseService } from './services/openai/openai-places-response.service';
+import { GeminiWebSearchService } from './services/gemini/gemini-websearch.service';
 import { IntentClassifierService } from './services/intent/intent-classifier.service';
 import { AIIntentClassifierService } from './services/intent/ai-intent-classifier.service';
 import { IntegrationStatusCacheService } from './services/cache/integration-status-cache.service';
@@ -19,6 +20,7 @@ describe('AiService', () => {
   let calendarService: jest.Mocked<CalendarService>;
   let fastResponseService: jest.Mocked<OpenAIFastResponseService>;
   let placesResponseService: jest.Mocked<OpenAIPlacesResponseService>;
+  let geminiWebSearchService: jest.Mocked<GeminiWebSearchService>;
   let intentClassifier: jest.Mocked<IntentClassifierService>;
   let aiIntentClassifier: jest.Mocked<AIIntentClassifierService>;
   let integrationCache: jest.Mocked<IntegrationStatusCacheService>;
@@ -62,6 +64,10 @@ describe('AiService', () => {
     placesResponseService = {
       generateWithPlaces: jest.fn().mockResolvedValue('places reply'),
     } as unknown as jest.Mocked<OpenAIPlacesResponseService>;
+
+    geminiWebSearchService = {
+      generateWithWebSearch: jest.fn().mockResolvedValue('web search reply'),
+    } as unknown as jest.Mocked<GeminiWebSearchService>;
 
     intentClassifier = {
       classifyIntent: jest.fn().mockReturnValue({
@@ -113,6 +119,7 @@ describe('AiService', () => {
       openaiService,
       fastResponseService,
       placesResponseService,
+      geminiWebSearchService,
       chatService,
       gmailService,
       calendarService,

@@ -22,6 +22,10 @@ import type { OpenAIConfig, OpenAIResponsesClient } from './types/ai.types';
 import { ElevenLabsTtsService } from './services/tts/elevenlabs-tts.service';
 import { GooglePlacesService } from './services/places/google-places.service';
 import { OpenAIPlacesResponseService } from './services/openai/openai-places-response.service';
+import { GeminiWebSearchService } from './services/gemini/gemini-websearch.service';
+import { GmailService } from '../integrations/services/gmail/gmail.service';
+import { CalendarService } from '../integrations/services/calendar/calendar.service';
+import { UserService } from '../auth/services/user.service';
 
 @Module({
   imports: [
@@ -32,7 +36,6 @@ import { OpenAIPlacesResponseService } from './services/openai/openai-places-res
   ],
   controllers: [AiController],
   providers: [
-    AiService,
     ElevenLabsTtsService,
     ChatService,
     IntentClassifierService,
@@ -101,6 +104,22 @@ import { OpenAIPlacesResponseService } from './services/openai/openai-places-res
       inject: [ConfigService],
     },
     {
+      provide: GeminiWebSearchService,
+      useFactory: (
+        configService: ConfigService,
+        cacheService: ResponseCacheService,
+      ) => {
+        const apiKey = configService.get<string>('GOOGLE_AI_API_KEY');
+        if (!apiKey) {
+          throw new Error(
+            'GOOGLE_AI_API_KEY is required for Gemini web search functionality',
+          );
+        }
+        return new GeminiWebSearchService(apiKey, cacheService);
+      },
+      inject: [ConfigService, ResponseCacheService],
+    },
+    {
       provide: OpenAIResponseService,
       useFactory: (
         configService: ConfigService,
@@ -150,6 +169,49 @@ import { OpenAIPlacesResponseService } from './services/openai/openai-places-res
         OpenAIResponseService,
         OpenAIIntentDetectionService,
         OpenAIChatTitleService,
+      ],
+    },
+    {
+      provide: AiService,
+      useFactory: (
+        openaiService: OpenAIService,
+        fastResponseService: OpenAIFastResponseService,
+        placesResponseService: OpenAIPlacesResponseService,
+        geminiWebSearchService: GeminiWebSearchService,
+        chatService: ChatService,
+        gmailService: GmailService,
+        calendarService: CalendarService,
+        intentClassifier: IntentClassifierService,
+        aiIntentClassifier: AIIntentClassifierService,
+        integrationCache: IntegrationStatusCacheService,
+        userService: UserService,
+      ) => {
+        return new AiService(
+          openaiService,
+          fastResponseService,
+          placesResponseService,
+          geminiWebSearchService,
+          chatService,
+          gmailService,
+          calendarService,
+          intentClassifier,
+          aiIntentClassifier,
+          integrationCache,
+          userService,
+        );
+      },
+      inject: [
+        OpenAIService,
+        OpenAIFastResponseService,
+        OpenAIPlacesResponseService,
+        GeminiWebSearchService,
+        ChatService,
+        GmailService,
+        CalendarService,
+        IntentClassifierService,
+        AIIntentClassifierService,
+        IntegrationStatusCacheService,
+        UserService,
       ],
     },
   ],
