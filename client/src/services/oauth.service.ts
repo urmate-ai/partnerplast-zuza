@@ -17,7 +17,15 @@ export const useGoogleAuth = () => {
         console.log('[OAuth] Deep link received:', event.url);
         const { path, queryParams } = Linking.parse(event.url);
         
-        if (path === 'auth/google/callback') {
+        console.log('[OAuth] Parsed path:', path, 'queryParams:', queryParams);
+        
+        // Sprawdź czy to callback (zarówno dla standalone jak i Expo Go)
+        const isCallback = path === 'auth/google/callback' || 
+                          path?.includes('auth/google/callback') ||
+                          event.url.includes('auth/google/callback');
+        
+        if (isCallback) {
+          console.log('[OAuth] Callback detected!');
           subscription.remove();
           WebBrowser.dismissBrowser();
           
