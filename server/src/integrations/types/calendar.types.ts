@@ -20,6 +20,7 @@ export type CalendarUserInfo = {
 export type CalendarAuthUrlResponse = {
   authUrl: string;
   state: string;
+  expoRedirectUrl?: string;
 };
 
 export type CalendarConnectionStatus = {

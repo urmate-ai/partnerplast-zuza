@@ -42,8 +42,9 @@ export class GoogleOAuthService {
     userId: string,
     scopes: readonly string[],
     redirectPath: string,
-  ): { authUrl: string; state: string } {
-    const redirectUri = this.buildRedirectUri(redirectPath);
+    expoRedirectUri?: string,
+  ): { authUrl: string; state: string; expoRedirectUrl?: string } {
+    const redirectUri = expoRedirectUri || this.buildRedirectUri(redirectPath);
     const state = this.stateService.generate(userId, redirectUri);
 
     const tempClient = new google.auth.OAuth2(
@@ -61,7 +62,12 @@ export class GoogleOAuthService {
 
     this.logger.log(`Generated auth URL for user ${userId}`);
     this.logger.debug(`Full auth URL: ${authUrl}`);
-    return { authUrl, state };
+
+    return {
+      authUrl,
+      state,
+      ...(expoRedirectUri && { expoRedirectUrl: expoRedirectUri }),
+    };
   }
 
   async handleCallback(
@@ -271,7 +277,7 @@ export class GoogleOAuthService {
       clientId: this.configService.get<string>('GOOGLE_CLIENT_ID') || '',
       clientSecret:
         this.configService.get<string>('GOOGLE_CLIENT_SECRET') || '',
-      redirectUri: '', // Will be set per request
+      redirectUri: '',
     };
   }
 

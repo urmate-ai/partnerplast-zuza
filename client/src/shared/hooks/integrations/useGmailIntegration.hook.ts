@@ -46,14 +46,16 @@ export function useGmailConnect() {
 
   return useMutation({
     mutationFn: async () => {
-      const { authUrl } = await getGmailAuthUrl();
-      
       const redirectUrl = Linking.createURL('integrations');
       console.log('Gmail connect redirect URL:', redirectUrl);
       
+      const { authUrl, expoRedirectUrl } = await getGmailAuthUrl(redirectUrl);
+      
+      const finalRedirectUrl = expoRedirectUrl || redirectUrl;
+      
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
-        redirectUrl,
+        finalRedirectUrl,
         { 
           preferEphemeralSession: false,
         }

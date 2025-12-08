@@ -64,17 +64,17 @@ export function useCalendarConnect() {
 
   return useMutation({
     mutationFn: async () => {
-      const { authUrl } = await getCalendarAuthUrl();
-
-      // Użyj Linking.createURL dla lepszej kompatybilności
       const redirectUrl = Linking.createURL('integrations');
       console.log('Calendar connect redirect URL:', redirectUrl);
       
+      const { authUrl, expoRedirectUrl } = await getCalendarAuthUrl(redirectUrl);
+      
+      const finalRedirectUrl = expoRedirectUrl || redirectUrl;
+      
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
-        redirectUrl,
+        finalRedirectUrl,
         {
-          // Dla iOS - wymusza użycie ASWebAuthenticationSession
           preferEphemeralSession: false,
         }
       );
