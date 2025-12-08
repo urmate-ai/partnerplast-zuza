@@ -15,6 +15,7 @@ import { IntentClassifierService } from './services/intent/intent-classifier.ser
 import { AIIntentClassifierService } from './services/intent/ai-intent-classifier.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
+import { forwardRef } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import OpenAI from 'openai';
 import type { OpenAIConfig, OpenAIResponsesClient } from './types/ai.types';
@@ -23,7 +24,12 @@ import { GooglePlacesService } from './services/places/google-places.service';
 import { OpenAIPlacesResponseService } from './services/openai/openai-places-response.service';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, IntegrationsModule, AuthModule],
+  imports: [
+    ConfigModule,
+    PrismaModule,
+    IntegrationsModule,
+    forwardRef(() => AuthModule),
+  ],
   controllers: [AiController],
   providers: [
     AiService,
