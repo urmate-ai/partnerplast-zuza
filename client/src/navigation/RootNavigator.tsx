@@ -58,6 +58,29 @@ export const RootNavigator: React.FC = () => {
         ChatDetail: 'chat/:chatId',
       },
     },
+    // Dodaj subscribe do obsługi deep linków, które nie pasują do żadnej ścieżki
+    subscribe(listener) {
+      const onReceiveURL = ({ url }: { url: string }) => {
+        console.log('[Navigation] Subscribe received URL:', url);
+        const { path } = Linking.parse(url);
+        
+        // Jeśli to auth/google/callback, nie przekazuj do React Navigation
+        // oauth.service.ts obsłuży to
+        if (path === 'auth/google/callback') {
+          console.log('[Navigation] Ignoring auth/google/callback in navigation');
+          return;
+        }
+        
+        // Dla innych ścieżek, przekaż do React Navigation
+        listener(url);
+      };
+
+      const subscription = Linking.addEventListener('url', onReceiveURL);
+
+      return () => {
+        subscription.remove();
+      };
+    },
   }), []);
 
   useEffect(() => {
@@ -82,33 +105,28 @@ export const RootNavigator: React.FC = () => {
 
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
+      console.log('[Navigation] Deep link received:', event.url);
       const { path, queryParams } = Linking.parse(event.url);
+      console.log('[Navigation] Parsed path:', path, 'queryParams:', queryParams);
       
       if (path === 'reset-password' && queryParams?.token) {
         navigationRef.current?.navigate('ResetPassword', {
           token: queryParams.token as string,
         });
       } else if (path === 'auth/google/callback') {
-        const token = queryParams?.token as string;
-        const userJson = queryParams?.user as string;
+        const code = queryParams?.code as string;
         const error = queryParams?.error as string;
         
+        console.log('[Navigation] Google callback - code:', !!code, 'error:', error);
+        
         if (error) {
-          console.error('Google OAuth error:', error);
+          console.error('[Navigation] Google OAuth error:', error);
           return;
         }
         
-        if (token && userJson) {
-          try {
-            const user = JSON.parse(decodeURIComponent(userJson));
-            await useAuthStore.getState().setAuth(user, token);
-            navigationRef.current?.reset({
-              index: 0,
-              routes: [{ name: 'Home' }],
-            });
-          } catch (err) {
-            console.error('Failed to parse user data:', err);
-          }
+        if (code) {
+          console.log('[Navigation] Code received, will be handled by oauth.service');
+          return;
         }
       }
     };
@@ -117,6 +135,7 @@ export const RootNavigator: React.FC = () => {
 
     Linking.getInitialURL().then((url) => {
       if (url) {
+        console.log('[Navigation] Initial URL:', url);
         handleDeepLink({ url });
       }
     });
