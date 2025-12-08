@@ -43,6 +43,6 @@ import { AiModule } from '../ai/ai.module';
     JwtStrategy,
     GoogleStrategy,
   ],
-  exports: [AuthService],
+  exports: [AuthService, UserService],
 })
 export class AuthModule {}

@@ -8,6 +8,7 @@ import { OpenAIPlacesResponseService } from './services/openai/openai-places-res
 import { IntentClassifierService } from './services/intent/intent-classifier.service';
 import { AIIntentClassifierService } from './services/intent/ai-intent-classifier.service';
 import { IntegrationStatusCacheService } from './services/cache/integration-status-cache.service';
+import { UserService } from '../auth/services/user.service';
 import type { ChatHistoryItem, ChatWithMessages } from './types/ai.types';
 
 describe('AiService', () => {
@@ -21,6 +22,7 @@ describe('AiService', () => {
   let intentClassifier: jest.Mocked<IntentClassifierService>;
   let aiIntentClassifier: jest.Mocked<AIIntentClassifierService>;
   let integrationCache: jest.Mocked<IntegrationStatusCacheService>;
+  let userService: jest.Mocked<UserService>;
 
   const mockUserId = 'user-123';
   const mockChatId = 'chat-123';
@@ -93,6 +95,20 @@ describe('AiService', () => {
       cleanup: jest.fn(),
     } as unknown as jest.Mocked<IntegrationStatusCacheService>;
 
+    userService = {
+      getProfile: jest.fn().mockResolvedValue({
+        id: mockUserId,
+        email: 'test@example.com',
+        name: 'Test User',
+        provider: 'local',
+        pushNotifications: true,
+        emailNotifications: true,
+        soundEnabled: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+    } as unknown as jest.Mocked<UserService>;
+
     service = new AiService(
       openaiService,
       fastResponseService,
@@ -103,6 +119,7 @@ describe('AiService', () => {
       intentClassifier,
       aiIntentClassifier,
       integrationCache,
+      userService,
     );
   });
 

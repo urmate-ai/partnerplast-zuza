@@ -27,8 +27,9 @@ export class OpenAIFastResponseService {
     chatHistory: ChatHistoryMessage[] = [],
     context?: string,
     location?: string,
+    userName?: string,
   ): Promise<string> {
-    const systemPrompt = this.buildSystemPrompt(context, location);
+    const systemPrompt = this.buildSystemPrompt(context, location, userName);
     const messages = PromptUtils.buildMessages(
       systemPrompt,
       chatHistory,
@@ -61,8 +62,12 @@ export class OpenAIFastResponseService {
     }
   }
 
-  private buildSystemPrompt(context?: string, location?: string): string {
-    const basePrompt = context ?? PromptUtils.DEFAULT_SYSTEM_PROMPT;
+  private buildSystemPrompt(
+    context?: string,
+    location?: string,
+    userName?: string,
+  ): string {
+    const basePrompt = context ?? PromptUtils.buildSystemPrompt(userName);
     if (!location) {
       return basePrompt;
     }
