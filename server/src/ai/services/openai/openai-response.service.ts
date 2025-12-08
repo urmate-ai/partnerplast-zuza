@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import OpenAI from 'openai';
 import { PromptUtils } from '../../utils/prompt.utils';
 import {
   extractReplyFromResponse,
@@ -24,15 +25,18 @@ export class OpenAIResponseService {
   private readonly responsesClient: OpenAIResponsesClient;
   private readonly config: OpenAIConfig;
   private readonly cacheService: ResponseCacheService;
+  private readonly openai: OpenAI;
 
   constructor(
     responsesClient: OpenAIResponsesClient,
     config: OpenAIConfig,
     cacheService: ResponseCacheService,
+    openai: OpenAI,
   ) {
     this.responsesClient = responsesClient;
     this.config = config;
     this.cacheService = cacheService;
+    this.openai = openai;
   }
 
   async generate(
@@ -80,6 +84,32 @@ export class OpenAIResponseService {
   private async callOpenAI(
     messages: Array<{ role: string; content: string }>,
   ): Promise<unknown> {
+    if (this.config.model === 'gpt-4o-mini' || this.config.model === 'gpt-4o') {
+      this.logger.debug(`Calling ${this.config.model} for response generation`);
+
+      const completion = await this.openai.chat.completions.create({
+        model: this.config.model,
+        messages: messages as Array<{
+          role: 'system' | 'user' | 'assistant';
+          content: string;
+        }>,
+        max_tokens: this.config.maxTokens || 500,
+        temperature: this.config.temperature || 0.7,
+        stream: false,
+      });
+
+      return {
+        choices: [
+          {
+            message: {
+              content: completion.choices[0]?.message?.content || '',
+            },
+          },
+        ],
+      };
+    }
+
+    // Dla GPT-5 używamy responses API
     const input = messages
       .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`)
       .join('\n');

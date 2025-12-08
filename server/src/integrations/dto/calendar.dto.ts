@@ -155,4 +155,3 @@ export class DeleteEventDto {
   @IsNotEmpty()
   eventId: string;
 }
-

@@ -7,6 +7,7 @@ import type {
   OpenAIResponsesClient,
 } from '../../types/ai.types';
 import type { MessageRole } from '../../types/chat.types';
+import OpenAI from 'openai';
 
 jest.mock('../../utils/prompt.utils', () => ({
   PromptUtils: {
@@ -63,6 +64,7 @@ describe('OpenAIResponseService', () => {
               mockResponsesClient,
               mockConfig,
               cacheService,
+              new OpenAI({ apiKey: 'test' }),
             ),
         },
       ],

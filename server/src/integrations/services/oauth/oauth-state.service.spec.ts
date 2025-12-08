@@ -77,7 +77,7 @@ describe('OAuthStateService', () => {
       jest.useFakeTimers();
       const userId = 'user-123';
       const state = service.generate(userId);
-      
+
       jest.advanceTimersByTime(10 * 60 * 1000 + 1000);
 
       expect(() => service.validateAndConsume(state)).toThrow(

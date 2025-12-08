@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OpenAIService } from './services/openai/openai.service';
 import { OpenAIFastResponseService } from './services/openai/openai-fast-response.service';
+import { GeminiResponseService } from './services/gemini/gemini-response.service';
 import { ChatService } from './services/chat/chat.service';
 import { GmailService } from '../integrations/services/gmail/gmail.service';
 import { CalendarService } from '../integrations/services/calendar/calendar.service';
@@ -25,6 +26,7 @@ export class AiService {
   constructor(
     private readonly openaiService: OpenAIService,
     private readonly fastResponseService: OpenAIFastResponseService,
+    private readonly geminiService: GeminiResponseService,
     private readonly chatService: ChatService,
     private readonly gmailService: GmailService,
     private readonly calendarService: CalendarService,
@@ -47,28 +49,34 @@ export class AiService {
       `Intent classification for "${transcript}": ${JSON.stringify(intentClass)}`,
     );
 
-    const [chatData, integrationStatuses, contextData] = await Promise.all([
-      this.getChatData(userId),
-      intentClass.needsEmailIntent || intentClass.needsCalendarIntent
-        ? this.getIntegrationStatuses(userId)
-        : Promise.resolve({
-            isGmailConnected: false,
-            isCalendarConnected: false,
-          }),
-      this.getContextData(userId, intentClass),
-    ]);
-
+    // Pobierz tylko dane czatu synchronicznie (szybkie)
+    const chatData = await this.getChatData(userId);
     const { messages } = chatData;
-    const { isGmailConnected, isCalendarConnected } = integrationStatuses;
-    const { gmailContext, calendarContext } = contextData;
 
-    const context = this.buildContext(
-      options.context,
-      gmailContext,
-      calendarContext,
-      isGmailConnected,
-      isCalendarConnected,
-    );
+    // Dla prostych zapytań, pomiń pobieranie kontekstu integracji
+    let context = options.context;
+    let isGmailConnected = false;
+    let isCalendarConnected = false;
+
+    // Tylko dla złożonych intencji pobierz kontekst (asynchronicznie w tle)
+    if (intentClass.needsEmailIntent || intentClass.needsCalendarIntent) {
+      // Pobierz statusy integracji (cache lub szybkie zapytanie)
+      const integrationStatuses = await this.getIntegrationStatuses(userId);
+      isGmailConnected = integrationStatuses.isGmailConnected;
+      isCalendarConnected = integrationStatuses.isCalendarConnected;
+
+      // Pobierz pełny kontekst tylko jeśli integracje są połączone
+      if (isGmailConnected || isCalendarConnected) {
+        const contextData = await this.getContextData(userId, intentClass);
+        context = this.buildContext(
+          options.context,
+          contextData.gmailContext,
+          contextData.calendarContext,
+          isGmailConnected,
+          isCalendarConnected,
+        );
+      }
+    }
 
     let reply: string;
     if (intentClass.isSimpleGreeting && intentClass.confidence === 'high') {
@@ -80,15 +88,17 @@ export class AiService {
         options.location,
       );
     } else if (intentClass.needsWebSearch) {
-      this.logger.debug(`Using web search for query`);
-      reply = await this.openaiService.generateResponse(
+      this.logger.debug(`Using Gemini with Google Search for web query`);
+      reply = await this.geminiService.generate(
         transcript,
         messages,
         context,
         options.location,
       );
     } else {
-      reply = await this.openaiService.generateResponse(
+      // Dla zwykłych pytań też użyj Gemini - ma dostęp do aktualnych danych
+      this.logger.debug(`Using Gemini for response`);
+      reply = await this.geminiService.generate(
         transcript,
         messages,
         context,
@@ -96,14 +106,19 @@ export class AiService {
       );
     }
 
+    // Wykrywaj intencje tylko gdy są potrzebne (optymalizacja)
     const [detectedEmailIntent, detectedCalendarIntent, detectedSmsIntent] =
-      await this.detectIntents(
-        transcript,
-        userId,
-        intentClass,
-        isGmailConnected,
-        isCalendarConnected,
-      );
+      intentClass.needsEmailIntent ||
+      intentClass.needsCalendarIntent ||
+      intentClass.needsSmsIntent
+        ? await this.detectIntents(
+            transcript,
+            userId,
+            intentClass,
+            isGmailConnected,
+            isCalendarConnected,
+          )
+        : [undefined, undefined, undefined];
 
     const finalReply =
       detectedSmsIntent?.shouldSendSms === true
@@ -132,7 +147,8 @@ export class AiService {
     userId: string,
   ): Promise<{ chatId: string; messages: ChatMessageHistory[] }> {
     const chatId = await this.chatService.getOrCreateCurrentChat(userId);
-    const chat = await this.chatService.getChatById(chatId, userId);
+    // Pobierz tylko ostatnie 20 wiadomości dla kontekstu (10 wymian)
+    const chat = await this.chatService.getRecentMessages(chatId, userId, 20);
     const messages: ChatMessageHistory[] = chat.messages.map((msg) => ({
       role: msg.role as ChatRole,
       content: msg.content,
