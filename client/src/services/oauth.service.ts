@@ -13,19 +13,38 @@ export const useGoogleAuth = () => {
     error?: string;
   }> => {
     return new Promise((resolve) => {
+      let resolved = false;
+      
+      // Timeout po 5 minutach
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          console.error('[OAuth] Timeout waiting for callback');
+          subscription.remove();
+          resolved = true;
+          resolve({ type: 'error', error: 'Timeout waiting for OAuth callback' });
+        }
+      }, 5 * 60 * 1000);
+      
       const subscription = Linking.addEventListener('url', async (event) => {
         console.log('[OAuth] Deep link received:', event.url);
         const { path, queryParams } = Linking.parse(event.url);
         
         console.log('[OAuth] Parsed path:', path, 'queryParams:', queryParams);
         
-        // Sprawdź czy to callback (zarówno dla standalone jak i Expo Go)
         const isCallback = path === 'auth/google/callback' || 
                           path?.includes('auth/google/callback') ||
                           event.url.includes('auth/google/callback');
         
         if (isCallback) {
           console.log('[OAuth] Callback detected!');
+          
+          if (resolved) {
+            console.log('[OAuth] Already resolved, ignoring callback');
+            return;
+          }
+          
+          resolved = true;
+          clearTimeout(timeout);
           subscription.remove();
           WebBrowser.dismissBrowser();
           
@@ -68,19 +87,41 @@ export const useGoogleAuth = () => {
       const redirectUrl = Linking.createURL('auth/google/callback');
       const authUrl = `${API_URL}/api/v1/auth/google?state=${encodeURIComponent(redirectUrl)}`;
       
-      console.log('[OAuth] Opening browser with redirect URL:', redirectUrl);
+      console.log('[OAuth] Opening auth session with redirect URL:', redirectUrl);
       console.log('[OAuth] Auth URL:', authUrl);
 
-      WebBrowser.openBrowserAsync(authUrl)
+      // Użyj openAuthSessionAsync zamiast openBrowserAsync dla lepszej obsługi deep linking w iOS
+      WebBrowser.openAuthSessionAsync(authUrl, redirectUrl, {
+        preferEphemeralSession: false,
+      })
         .then((result) => {
-          console.log('[OAuth] Browser result:', result);
-          if (result.type === 'cancel' || result.type === 'dismiss') {
-            subscription.remove();
-            resolve({ type: 'cancel' });
+          console.log('[OAuth] Auth session result:', result);
+          
+          // openAuthSessionAsync zwraca 'success' gdy redirect się powiódł
+          if (result.type === 'success' && result.url) {
+            console.log('[OAuth] Success redirect received:', result.url);
+            // URL jest już obsłużony przez listener powyżej
+            // Nie musimy nic robić, listener obsłuży wymianę code na token
+          } else if (result.type === 'cancel' || result.type === 'dismiss') {
+            console.log('[OAuth] Auth session cancelled');
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timeout);
+              subscription.remove();
+              resolve({ type: 'cancel' });
+            }
+          } else {
+            console.log('[OAuth] Auth session failed:', result.type);
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timeout);
+              subscription.remove();
+              resolve({ type: 'error', error: `Auth session failed: ${result.type}` });
+            }
           }
         })
         .catch((error) => {
-          console.error('[OAuth] Browser error:', error);
+          console.error('[OAuth] Auth session error:', error);
           subscription.remove();
           resolve({ type: 'error', error: error instanceof Error ? error.message : 'Unknown error' });
         });
