@@ -23,9 +23,12 @@ export class GmailController {
 
   @Get('auth')
   @UseGuards(AuthGuard('jwt'))
-  initiateAuth(@CurrentUser() user: CurrentUserPayload) {
-    const { authUrl } = this.gmailService.generateAuthUrl(user.id);
-    return { authUrl };
+  initiateAuth(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('expoRedirectUri') expoRedirectUri?: string,
+  ) {
+    const result = this.gmailService.generateAuthUrl(user.id, expoRedirectUri);
+    return result;
   }
 
   @Get('callback')
@@ -52,14 +55,13 @@ export class GmailController {
                 align-items: center;
                 justify-content: center;
                 min-height: 100vh;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: white;
               }
               .container {
                 text-align: center;
                 background: white;
                 padding: 40px;
                 border-radius: 16px;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.2);
                 max-width: 400px;
                 width: 90%;
               }
@@ -73,7 +75,7 @@ export class GmailController {
                 50% { transform: translateY(-10px); }
               }
               h1 {
-                color: #10b981;
+                color: #000000;
                 font-size: 24px;
                 margin: 0 0 10px 0;
               }
@@ -86,19 +88,17 @@ export class GmailController {
                 display: inline-block;
                 width: 100%;
                 padding: 16px 32px;
-                background: #10b981;
+                background: #000000;
                 color: white;
                 text-decoration: none;
                 border-radius: 12px;
                 font-weight: 600;
                 font-size: 18px;
                 transition: all 0.3s ease;
-                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
               }
               .button:hover {
-                background: #059669;
+                background: #333333;
                 transform: translateY(-2px);
-                box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5);
               }
               .button:active {
                 transform: translateY(0);
@@ -168,14 +168,13 @@ export class GmailController {
                 align-items: center;
                 justify-content: center;
                 min-height: 100vh;
-                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                background: white;
               }
               .container {
                 text-align: center;
                 background: white;
                 padding: 40px;
                 border-radius: 16px;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.2);
                 max-width: 400px;
                 width: 90%;
               }
@@ -184,7 +183,7 @@ export class GmailController {
                 margin-bottom: 20px;
               }
               h1 {
-                color: #DC2626;
+                color: #000000;
                 font-size: 24px;
                 margin: 0 0 10px 0;
               }
@@ -197,19 +196,17 @@ export class GmailController {
                 display: inline-block;
                 width: 100%;
                 padding: 16px 32px;
-                background: #DC2626;
+                background: #000000;
                 color: white;
                 text-decoration: none;
                 border-radius: 12px;
                 font-weight: 600;
                 font-size: 18px;
                 transition: all 0.3s ease;
-                box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
               }
               .button:hover {
-                background: #B91C1C;
+                background: #333333;
                 transform: translateY(-2px);
-                box-shadow: 0 6px 16px rgba(220, 38, 38, 0.5);
               }
               .button:active {
                 transform: translateY(0);

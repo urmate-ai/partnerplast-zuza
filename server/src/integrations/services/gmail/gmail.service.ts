@@ -24,11 +24,15 @@ export class GmailService {
     private readonly integrationService: GoogleIntegrationService,
   ) {}
 
-  generateAuthUrl(userId: string): GmailAuthUrlResponse {
+  generateAuthUrl(
+    userId: string,
+    expoRedirectUri?: string,
+  ): GmailAuthUrlResponse {
     return this.oauthService.generateAuthUrl(
       userId,
       GMAIL_SCOPES,
       '/api/v1/integrations/gmail/callback',
+      expoRedirectUri,
     );
   }
 

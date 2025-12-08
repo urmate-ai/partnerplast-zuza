@@ -30,9 +30,15 @@ export class CalendarController {
 
   @Get('auth')
   @UseGuards(AuthGuard('jwt'))
-  initiateAuth(@CurrentUser() user: CurrentUserPayload) {
-    const { authUrl } = this.calendarService.generateAuthUrl(user.id);
-    return { authUrl };
+  initiateAuth(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('expoRedirectUri') expoRedirectUri?: string,
+  ) {
+    const result = this.calendarService.generateAuthUrl(
+      user.id,
+      expoRedirectUri,
+    );
+    return result;
   }
 
   @Get('callback')
@@ -89,9 +95,9 @@ export class CalendarController {
           </head>
           <body>
             <div class="container">
-              <h1 style="color: #10b981; margin-bottom: 10px;">✓</h1>
-              <p style="font-size: 18px; margin-bottom: 10px;">Google Calendar został pomyślnie połączony!</p>
-              <p style="color: #6b7280; margin-bottom: 20px;">Przekierowywanie do aplikacji...</p>
+              <h1 style="color: #000000; font-size: 64px; margin-bottom: 20px;">✓</h1>
+              <h2 style="color: #000000; font-size: 24px; margin: 0 0 10px 0;">Google Calendar został pomyślnie połączony!</h2>
+              <p style="color: #6b7280; font-size: 16px; margin: 0 0 30px 0;">Przekierowywanie do aplikacji...</p>
               <a href="${deepLink}" class="link">Otwórz aplikację</a>
             </div>
             <script>
@@ -157,35 +163,40 @@ export class CalendarController {
                 align-items: center;
                 justify-content: center;
                 min-height: 100vh;
-                background: #f5f5f5;
+                background: white;
               }
               .container {
                 text-align: center;
                 background: white;
-                padding: 30px;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                padding: 40px;
+                border-radius: 16px;
+                max-width: 400px;
+                width: 90%;
               }
               .link {
                 display: inline-block;
                 margin-top: 20px;
-                padding: 12px 24px;
-                background: #2563EB;
+                padding: 16px 32px;
+                width: 100%;
+                background: #000000;
                 color: white;
                 text-decoration: none;
-                border-radius: 6px;
-                font-weight: 500;
+                border-radius: 12px;
+                font-weight: 600;
+                font-size: 18px;
+                transition: all 0.3s ease;
               }
               .link:hover {
-                background: #1d4ed8;
+                background: #333333;
+                transform: translateY(-2px);
               }
             </style>
           </head>
           <body>
             <div class="container">
-              <h1 style="color: #DC2626; margin-bottom: 10px;">✗</h1>
-              <p style="font-size: 18px; margin-bottom: 10px; color: #DC2626;">Wystąpił błąd podczas łączenia z Google Calendar</p>
-              <p style="color: #6b7280; margin-bottom: 20px;">Przekierowywanie do aplikacji...</p>
+              <h1 style="color: #000000; font-size: 64px; margin-bottom: 20px;">✗</h1>
+              <h2 style="color: #000000; font-size: 24px; margin: 0 0 10px 0;">Wystąpił błąd podczas łączenia z Google Calendar</h2>
+              <p style="color: #6b7280; font-size: 16px; margin: 0 0 30px 0;">Przekierowywanie do aplikacji...</p>
               <a href="${deepLink}" class="link">Otwórz aplikację</a>
             </div>
             <script>
