@@ -80,19 +80,16 @@ export class AuthController {
   @Get('google')
   @UseGuards(AuthGuard('google'))
   googleAuth(@Query('state') state?: string) {
-    // Przechowaj redirect URI w globalnej mapie przed przekierowaniem
-    // Używamy state jako klucza (jeśli jest dostępny)
     if (state && global.oauthStates) {
       const decodedState = decodeURIComponent(state);
 
-      // Generuj unikalny klucz dla tego requestu
       const stateKey = Buffer.from(`${Date.now()}-${Math.random()}`)
         .toString('base64')
         .substring(0, 32);
 
       global.oauthStates.set(stateKey, {
         redirectUri: decodedState,
-        expiresAt: Date.now() + 10 * 60 * 1000, // 10 minut
+        expiresAt: Date.now() + 10 * 60 * 1000,
       });
 
       console.log(
@@ -102,11 +99,6 @@ export class AuthController {
         stateKey,
       );
 
-      // Przechowaj również mapping: stateKey -> redirectUri używając state jako klucza
-      // W callback, odczytamy state z query i użyjemy go do znalezienia redirect URI
-      // Ale Passport nie przekazuje naszego custom state do Google...
-      // Użyjemy prostszego podejścia: przechować redirect URI bezpośrednio w mapie
-      // używając state jako klucza (jeśli state jest dostępny)
       if (state) {
         global.oauthStates.set(state, {
           redirectUri: decodedState,
@@ -135,11 +127,9 @@ export class AuthController {
       const stateFromQuery =
         state || req.query?.state || stateFromUser || stateFromSession;
 
-      // Spróbuj odczytać redirect URI z globalnej mapy używając state jako klucza
       let redirectUri = 'exp://192.168.0.23:8081/--/auth/google/callback';
 
       if (stateFromQuery) {
-        // Najpierw sprawdź, czy state jest kluczem w globalnej mapie
         if (global.oauthStates) {
           const storedState = global.oauthStates.get(stateFromQuery);
           if (storedState && storedState.expiresAt > Date.now()) {
@@ -148,10 +138,8 @@ export class AuthController {
               '[Auth] Found redirect URI in global map:',
               redirectUri,
             );
-            // Usuń użyty state
             global.oauthStates.delete(stateFromQuery);
           } else if (stateFromQuery.includes('://')) {
-            // Jeśli stateFromQuery wygląda jak URL, użyj go bezpośrednio
             try {
               redirectUri = decodeURIComponent(stateFromQuery);
             } catch {
@@ -159,7 +147,6 @@ export class AuthController {
             }
           }
         } else if (stateFromQuery.includes('://')) {
-          // Jeśli nie ma globalnej mapy, ale state wygląda jak URL, użyj go
           try {
             redirectUri = decodeURIComponent(stateFromQuery);
           } catch {

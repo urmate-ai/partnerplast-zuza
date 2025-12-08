@@ -15,7 +15,6 @@ export const useGoogleAuth = () => {
     return new Promise((resolve) => {
       let resolved = false;
       
-      // Timeout po 5 minutach
       const timeout = setTimeout(() => {
         if (!resolved) {
           console.error('[OAuth] Timeout waiting for callback');
@@ -90,18 +89,70 @@ export const useGoogleAuth = () => {
       console.log('[OAuth] Opening auth session with redirect URL:', redirectUrl);
       console.log('[OAuth] Auth URL:', authUrl);
 
-      // Użyj openAuthSessionAsync zamiast openBrowserAsync dla lepszej obsługi deep linking w iOS
       WebBrowser.openAuthSessionAsync(authUrl, redirectUrl, {
         preferEphemeralSession: false,
       })
         .then((result) => {
           console.log('[OAuth] Auth session result:', result);
-          
-          // openAuthSessionAsync zwraca 'success' gdy redirect się powiódł
+            
           if (result.type === 'success' && result.url) {
             console.log('[OAuth] Success redirect received:', result.url);
-            // URL jest już obsłużony przez listener powyżej
-            // Nie musimy nic robić, listener obsłuży wymianę code na token
+            
+            // Usuń # z końca URL (może powodować problemy z parsowaniem)
+            const cleanUrl = result.url.replace(/#$/, '');
+            console.log('[OAuth] Cleaned URL:', cleanUrl);
+            
+            const { path, queryParams } = Linking.parse(cleanUrl);
+            
+            console.log('[OAuth] Parsed result.url - path:', path, 'queryParams:', queryParams);
+            
+            const isCallback = path === 'auth/google/callback' || 
+                              path?.includes('auth/google/callback') ||
+                              result.url.includes('auth/google/callback');
+            
+            if (isCallback && !resolved) {
+              console.log('[OAuth] Callback detected in result.url!');
+              
+              resolved = true;
+              clearTimeout(timeout);
+              subscription.remove();
+              WebBrowser.dismissBrowser();
+              
+              const code = queryParams?.code as string;
+              const error = queryParams?.error as string;
+              
+              console.log('[OAuth] Callback params from result.url:', { code: !!code, error });
+              
+              if (error) {
+                resolve({ type: 'error', error });
+                return;
+              }
+              
+              if (code) {
+                try {
+                  console.log('[OAuth] Exchanging code for token...');
+                  const response = await fetch(`${API_URL}/api/v1/auth/google/exchange`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code }),
+                  });
+
+                  if (!response.ok) {
+                    throw new Error('Failed to exchange code for token');
+                  }
+
+                  const data = await response.json();
+                  console.log('[OAuth] Token exchange successful');
+                  console.log('[OAuth] Received token:', !!data.accessToken, 'user:', !!data.user);
+                  resolve({ type: 'success', token: data.accessToken, user: data.user });
+                } catch (err) {
+                  console.error('[OAuth] Token exchange failed:', err);
+                  resolve({ type: 'error', error: 'Failed to exchange code for token' });
+                }
+              } else {
+                resolve({ type: 'error', error: 'Missing code' });
+              }
+            }
           } else if (result.type === 'cancel' || result.type === 'dismiss') {
             console.log('[OAuth] Auth session cancelled');
             if (!resolved) {
