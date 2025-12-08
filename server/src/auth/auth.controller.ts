@@ -111,8 +111,6 @@ export class AuthController {
       const stateFromQuery =
         state || req.query?.state || stateFromUser || stateFromSession;
 
-      // Domyślnie używaj formatu Expo Go (dla developmentu)
-      // W produkcji można zmienić na urmate-ai-zuza://
       let redirectUri = 'exp://192.168.0.23:8081/--/auth/google/callback';
 
       if (stateFromQuery) {
@@ -318,12 +316,10 @@ export class AuthController {
       `);
     } catch (error) {
       console.error('Google callback error:', error);
-      // Domyślnie używaj formatu Expo Go (dla developmentu)
       const redirectUri =
         state || 'exp://192.168.0.23:8081/--/auth/google/callback';
       const errorUrl = `${redirectUri}?error=callback_failed`;
 
-      // Dla mobile clients, zwróć bezpośredni redirect
       if (
         redirectUri.startsWith('exp://') ||
         redirectUri.startsWith('urmate-ai-zuza://')
