@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 
 type StateData = {
   userId: string;
+  redirectUri?: string;
   expiresAt: number;
 };
 
@@ -28,16 +29,17 @@ export class OAuthStateService implements OnModuleDestroy {
     }
   }
 
-  generate(userId: string): string {
+  generate(userId: string, redirectUri?: string): string {
     const state = crypto.randomBytes(32).toString('hex');
     this.stateStore.set(state, {
       userId,
+      redirectUri,
       expiresAt: Date.now() + this.stateExpirationMs,
     });
     return state;
   }
 
-  validateAndConsume(state: string): string {
+  validateAndConsume(state: string): { userId: string; redirectUri?: string } {
     const stateData = this.stateStore.get(state);
     if (!stateData) {
       throw new Error('Invalid or expired state parameter');
@@ -49,7 +51,7 @@ export class OAuthStateService implements OnModuleDestroy {
     }
 
     this.stateStore.delete(state);
-    return stateData.userId;
+    return { userId: stateData.userId, redirectUri: stateData.redirectUri };
   }
 
   private cleanupExpiredStates(): void {

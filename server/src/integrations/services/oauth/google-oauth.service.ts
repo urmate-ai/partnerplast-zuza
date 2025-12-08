@@ -43,8 +43,8 @@ export class GoogleOAuthService {
     scopes: readonly string[],
     redirectPath: string,
   ): { authUrl: string; state: string } {
-    const state = this.stateService.generate(userId);
     const redirectUri = this.buildRedirectUri(redirectPath);
+    const state = this.stateService.generate(userId, redirectUri);
 
     const tempClient = new google.auth.OAuth2(
       this.config.clientId,
@@ -68,10 +68,18 @@ export class GoogleOAuthService {
     code: string,
     state: string,
   ): Promise<{ userId: string; tokens: GoogleTokens }> {
-    const userId = this.stateService.validateAndConsume(state);
+    const { userId, redirectUri } = this.stateService.validateAndConsume(state);
 
     try {
-      const { tokens } = await this.oauth2Client.getToken(code);
+      const client = redirectUri
+        ? new google.auth.OAuth2(
+            this.config.clientId,
+            this.config.clientSecret,
+            redirectUri,
+          )
+        : this.oauth2Client;
+
+      const { tokens } = await client.getToken(code);
 
       if (!tokens.access_token) {
         throw new BadRequestException('No access token received from Google');
