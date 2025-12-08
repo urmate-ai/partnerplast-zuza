@@ -12,6 +12,11 @@ import OpenAI from 'openai';
 jest.mock('../../utils/prompt.utils', () => ({
   PromptUtils: {
     DEFAULT_SYSTEM_PROMPT: 'Test system prompt',
+    buildSystemPrompt: jest.fn((userName?: string): string => {
+      return userName
+        ? `Test system prompt Zwracaj się do użytkownika po imieniu "${userName}" gdy to możliwe i naturalne.`
+        : 'Test system prompt';
+    }),
     buildMessages: jest.fn(
       (
         systemPrompt: string,
