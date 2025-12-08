@@ -8,6 +8,7 @@ import { CalendarService } from '../integrations/services/calendar/calendar.serv
 import { IntentClassifierService } from './services/intent/intent-classifier.service';
 import { AIIntentClassifierService } from './services/intent/ai-intent-classifier.service';
 import { IntegrationStatusCacheService } from './services/cache/integration-status-cache.service';
+import { UserService } from '../auth/services/user.service';
 import type { ChatMessageHistory, ChatRole } from './types/chat.types';
 import type {
   AudioFile,
@@ -34,6 +35,7 @@ export class AiService {
     private readonly intentClassifier: IntentClassifierService,
     private readonly aiIntentClassifier: AIIntentClassifierService,
     private readonly integrationCache: IntegrationStatusCacheService,
+    private readonly userService: UserService,
   ) {}
 
   async transcribeAndRespond(
@@ -54,6 +56,14 @@ export class AiService {
 
     const chatData = await this.getChatData(userId);
     const { messages } = chatData;
+
+    let userName: string | undefined;
+    try {
+      const userProfile = await this.userService.getProfile(userId);
+      userName = userProfile.name;
+    } catch (error) {
+      this.logger.warn(`Failed to get user profile for ${userId}:`, error);
+    }
 
     let context = options.context;
     let isGmailConnected = false;
@@ -84,6 +94,7 @@ export class AiService {
         messages,
         context,
         options.location,
+        userName,
       );
     } else if (intentClass.needsPlacesSearch) {
       this.logger.debug(
@@ -108,6 +119,7 @@ export class AiService {
         options.location,
         locationCoords?.latitude,
         locationCoords?.longitude,
+        userName,
       );
     } else if (intentClass.needsWebSearch) {
       this.logger.debug(
@@ -119,6 +131,7 @@ export class AiService {
         context,
         options.location,
         true,
+        userName,
       );
     } else {
       this.logger.debug(`Using OpenAI GPT-4o-mini for response`);
@@ -128,6 +141,7 @@ export class AiService {
         context,
         options.location,
         false,
+        userName,
       );
     }
 

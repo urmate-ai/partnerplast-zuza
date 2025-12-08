@@ -51,6 +51,7 @@ export class OpenAIService {
     context?: string,
     location?: string,
     useWebSearch: boolean = false,
+    userName?: string,
   ): Promise<string> {
     return this.responseService.generate(
       transcript,
@@ -58,6 +59,7 @@ export class OpenAIService {
       context,
       location,
       useWebSearch,
+      userName,
     );
   }
 
