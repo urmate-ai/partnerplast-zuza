@@ -1,10 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OpenAIService } from './services/openai/openai.service';
 import { OpenAIFastResponseService } from './services/openai/openai-fast-response.service';
+import { OpenAIPlacesResponseService } from './services/openai/openai-places-response.service';
 import { ChatService } from './services/chat/chat.service';
 import { GmailService } from '../integrations/services/gmail/gmail.service';
 import { CalendarService } from '../integrations/services/calendar/calendar.service';
 import { IntentClassifierService } from './services/intent/intent-classifier.service';
+import { AIIntentClassifierService } from './services/intent/ai-intent-classifier.service';
 import { IntegrationStatusCacheService } from './services/cache/integration-status-cache.service';
 import type { ChatMessageHistory, ChatRole } from './types/chat.types';
 import type {
@@ -25,10 +27,12 @@ export class AiService {
   constructor(
     private readonly openaiService: OpenAIService,
     private readonly fastResponseService: OpenAIFastResponseService,
+    private readonly placesResponseService: OpenAIPlacesResponseService,
     private readonly chatService: ChatService,
     private readonly gmailService: GmailService,
     private readonly calendarService: CalendarService,
     private readonly intentClassifier: IntentClassifierService,
+    private readonly aiIntentClassifier: AIIntentClassifierService,
     private readonly integrationCache: IntegrationStatusCacheService,
   ) {}
 
@@ -42,7 +46,8 @@ export class AiService {
       options.language,
     );
 
-    const intentClass = this.intentClassifier.classifyIntent(transcript);
+    const intentClass =
+      await this.aiIntentClassifier.classifyIntent(transcript);
     this.logger.debug(
       `Intent classification for "${transcript}": ${JSON.stringify(intentClass)}`,
     );
@@ -79,6 +84,30 @@ export class AiService {
         messages,
         context,
         options.location,
+      );
+    } else if (intentClass.needsPlacesSearch) {
+      this.logger.debug(
+        `Using OpenAI GPT-4o with nearbyPlaces function for location query`,
+      );
+      const locationCoords = this.parseLocationCoordinates(options.location);
+      this.logger.debug(
+        `Parsed location coordinates: ${JSON.stringify(locationCoords)}`,
+      );
+      this.logger.debug(`Location string: ${options.location}`);
+
+      if (!locationCoords) {
+        this.logger.warn(
+          `Could not parse location coordinates from: ${options.location}`,
+        );
+      }
+
+      reply = await this.placesResponseService.generateWithPlaces(
+        transcript,
+        messages,
+        context,
+        options.location,
+        locationCoords?.latitude,
+        locationCoords?.longitude,
       );
     } else if (intentClass.needsWebSearch) {
       this.logger.debug(
@@ -365,5 +394,22 @@ export class AiService {
   async createNewChat(userId: string): Promise<{ chatId: string }> {
     const chatId = await this.chatService.createNewChat(userId);
     return { chatId };
+  }
+
+  private parseLocationCoordinates(location?: string): {
+    latitude: number;
+    longitude: number;
+  } | null {
+    if (!location) return null;
+
+    const match = location.match(/\(([0-9.]+),\s*([0-9.]+)\)/);
+    if (match) {
+      return {
+        latitude: parseFloat(match[1]),
+        longitude: parseFloat(match[2]),
+      };
+    }
+
+    return null;
   }
 }
