@@ -99,6 +99,45 @@ export class ChatService {
     }
   }
 
+  /**
+   * Pobiera ostatnie N wiadomości z czatu (dla kontekstu AI)
+   * @param chatId ID czatu
+   * @param userId ID użytkownika
+   * @param limit Liczba ostatnich wiadomości (domyślnie 20)
+   */
+  async getRecentMessages(
+    chatId: string,
+    userId: string,
+    limit: number = 20,
+  ): Promise<ChatWithMessages> {
+    try {
+      const chat = await this.prisma.chat.findFirst({
+        where: { id: chatId, userId },
+        include: {
+          messages: {
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+          },
+        },
+      });
+
+      if (!chat) {
+        throw new NotFoundException('Chat not found');
+      }
+
+      // Odwróć kolejność wiadomości, aby były chronologicznie
+      const chatWithOrderedMessages = {
+        ...chat,
+        messages: chat.messages.reverse(),
+      };
+
+      return ChatMapper.toDto(chatWithOrderedMessages);
+    } catch (error) {
+      this.logger.error('Error fetching recent messages:', error);
+      throw error;
+    }
+  }
+
   async getChatHistory(userId: string): Promise<ChatHistoryItem[]> {
     try {
       const chats = await this.prisma.chat.findMany({

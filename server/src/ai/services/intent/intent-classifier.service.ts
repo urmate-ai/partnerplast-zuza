@@ -76,6 +76,16 @@ export class IntentClassifierService {
     'jaki jest',
     'jakie jest',
     'czym jest',
+    'jaki był',
+    'jaki byl',
+    'jaka była',
+    'jaka byla',
+    'ostatni',
+    'ostatnia',
+    'ostatnie',
+    'mecz',
+    'wynik',
+    'wyniki',
     'pogoda',
     'temperatura',
     'kurs',
@@ -88,6 +98,9 @@ export class IntentClassifierService {
     'dziś',
     'bieżąc',
     'biezac',
+    'najnowsz',
+    'śwież',
+    'swiez',
   ];
 
   classifyIntent(transcript: string): {
@@ -100,11 +113,17 @@ export class IntentClassifierService {
   } {
     const lower = transcript.toLowerCase();
 
+    // Najpierw sprawdź, czy potrzebne jest wyszukiwanie w internecie
+    const needsWebSearch = this.searchKeywords.some((keyword) =>
+      lower.includes(keyword),
+    );
+
     const isSimpleGreeting = this.simpleGreetings.some((greeting) =>
       lower.includes(greeting),
     );
 
-    if (isSimpleGreeting && transcript.length < 50) {
+    // Jeśli wykryto potrzebę wyszukiwania, to NIE jest to proste powitanie
+    if (isSimpleGreeting && transcript.length < 50 && !needsWebSearch) {
       return {
         needsEmailIntent: false,
         needsCalendarIntent: false,
@@ -114,10 +133,6 @@ export class IntentClassifierService {
         confidence: 'high',
       };
     }
-
-    const needsWebSearch = this.searchKeywords.some((keyword) =>
-      lower.includes(keyword),
-    );
 
     const needsEmailIntent = this.emailKeywords.some((keyword) =>
       lower.includes(keyword),
