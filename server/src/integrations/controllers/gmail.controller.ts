@@ -36,7 +36,7 @@ export class GmailController {
     try {
       await this.gmailService.handleCallback(query.code, query.state);
 
-      const deepLink = 'urmate-ai-zuza://integrations?gmail=success';
+      const deepLink = 'exp://192.168.0.23:8081/--/integrations?gmail=success';
 
       return res.send(`
         <!DOCTYPE html>
@@ -149,7 +149,7 @@ export class GmailController {
     } catch (error) {
       console.error('Error in Gmail callback:', error);
 
-      const deepLink = 'urmate-ai-zuza://integrations?gmail=error';
+      const deepLink = 'exp://192.168.0.23:8081/--/integrations?gmail=error';
 
       return res.send(`
         <!DOCTYPE html>
