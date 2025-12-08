@@ -66,21 +66,35 @@ export class GeminiWebSearchService {
         ],
       });
 
-      const historyForGemini = this.convertHistoryToGeminiFormat(
-        chatHistory,
+      const fullPrompt = this.buildFullPrompt(
         systemPrompt,
+        chatHistory,
+        transcript,
       );
 
-      const chat = model.startChat({
-        history: historyForGemini,
-      });
+      this.logger.debug(
+        `Sending prompt to Gemini (length: ${fullPrompt.length})`,
+      );
 
-      const result = await chat.sendMessage(transcript);
+      const result = await model.generateContent(fullPrompt);
       const response = result.response;
+
+      this.logger.debug(
+        'Gemini response:',
+        JSON.stringify({
+          candidates: response.candidates?.length,
+          finishReason: response.candidates?.[0]?.finishReason,
+          hasText: !!response.text(),
+        }),
+      );
+
       const text = response.text();
 
       if (!text || !text.trim()) {
-        this.logger.error('Empty response from Gemini');
+        this.logger.error(
+          'Empty response from Gemini. Full response:',
+          JSON.stringify(response, null, 2),
+        );
         throw new InternalServerErrorException(
           'Przepraszam, nie udało mi się wygenerować odpowiedzi na to pytanie.',
         );
@@ -134,16 +148,30 @@ export class GeminiWebSearchService {
     return `${basePrompt} Aktualna (przybliżona) lokalizacja użytkownika: ${location}.`;
   }
 
-  private buildMessages(
+  private buildFullPrompt(
     systemPrompt: string,
     chatHistory: ChatHistoryMessage[],
     userMessage: string,
-  ): Array<{ role: string; content: string }> {
-    return [
-      { role: 'system', content: systemPrompt },
-      ...chatHistory.filter((msg) => msg.role !== 'system'),
-      { role: 'user', content: userMessage },
-    ];
+  ): string {
+    const parts: string[] = [];
+
+    if (systemPrompt) {
+      parts.push(`Instrukcje: ${systemPrompt}\n\n`);
+    }
+
+    if (chatHistory.length > 0) {
+      parts.push('Historia rozmowy:\n');
+      for (const msg of chatHistory) {
+        if (msg.role === 'system') continue;
+        const roleLabel = msg.role === 'user' ? 'Użytkownik' : 'ZUZA';
+        parts.push(`${roleLabel}: ${msg.content}\n`);
+      }
+      parts.push('\n');
+    }
+
+    parts.push(`Pytanie użytkownika: ${userMessage}`);
+
+    return parts.join('');
   }
 
   private convertHistoryToGeminiFormat(
