@@ -124,11 +124,11 @@ export class GmailController {
                 }
                 
                 // Metoda 2: Fallback - automatyczne kliknięcie
-                window.addEventListener('load', function() {
-                  setTimeout(function() {
-                    const button = document.getElementById('returnButton');
-                    if (button) {
-                      button.click();
+              window.addEventListener('load', function() {
+                setTimeout(function() {
+                  const button = document.getElementById('returnButton');
+                  if (button) {
+                    button.click();
                     }
                   }, 100);
                 });
@@ -235,11 +235,11 @@ export class GmailController {
                 }
                 
                 // Metoda 2: Fallback - automatyczne kliknięcie
-                window.addEventListener('load', function() {
-                  setTimeout(function() {
-                    const button = document.getElementById('returnButton');
-                    if (button) {
-                      button.click();
+              window.addEventListener('load', function() {
+                setTimeout(function() {
+                  const button = document.getElementById('returnButton');
+                  if (button) {
+                    button.click();
                     }
                   }, 100);
                 });

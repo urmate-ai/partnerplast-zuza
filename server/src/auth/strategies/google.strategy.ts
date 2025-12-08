@@ -38,7 +38,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       callbackURL,
       scope: ['email', 'profile'],
       passReqToCallback: true,
-      state: true,
+      // Nie używamy state: true, bo wymaga sesji
+      // Zamiast tego przechowujemy redirect URI w globalnej mapie
     });
 
     this.logger.log(`Google OAuth callback URL: ${callbackURL}`);
