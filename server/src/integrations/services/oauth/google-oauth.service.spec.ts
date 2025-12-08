@@ -83,7 +83,10 @@ describe('GoogleOAuthService', () => {
 
     const mockStateService = {
       generate: jest.fn(() => mockState),
-      validateAndConsume: jest.fn(() => mockUserId),
+      validateAndConsume: jest.fn(() => ({
+        userId: mockUserId,
+        redirectUri: undefined,
+      })),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -136,13 +139,18 @@ describe('GoogleOAuthService', () => {
 
       expect(result.authUrl).toBe(mockAuthUrl);
       expect(result.state).toBe(mockState);
-      expect(stateService.generate).toHaveBeenCalledWith(mockUserId);
+      expect(stateService.generate).toHaveBeenCalledWith(
+        mockUserId,
+        expect.any(String),
+      );
     });
   });
 
   describe('handleCallback', () => {
     it('should handle callback successfully', async () => {
       const code = 'auth-code-123';
+      const mockRedirectUri =
+        'http://localhost:3000/api/v1/integrations/gmail/callback';
       const mockTokens = {
         access_token: 'access-token',
         refresh_token: 'refresh-token',
@@ -154,19 +162,33 @@ describe('GoogleOAuthService', () => {
         getToken: jest.fn().mockResolvedValue({ tokens: mockTokens }),
       };
 
-      (
-        service as unknown as { oauth2Client: typeof mockOAuth2Client }
-      ).oauth2Client = mockOAuth2Client as never;
+      // Mock validateAndConsume to return redirectUri
+      (stateService.validateAndConsume as jest.Mock).mockReturnValue({
+        userId: mockUserId,
+        redirectUri: mockRedirectUri,
+      });
+
+      // Mock OAuth2 constructor to return our mock client
+      (google.auth.OAuth2 as unknown as jest.Mock).mockImplementation(
+        () => mockOAuth2Client,
+      );
 
       const result = await service.handleCallback(code, mockState);
 
       expect(result.userId).toBe(mockUserId);
       expect(result.tokens.access_token).toBe(mockTokens.access_token);
       expect(stateService.validateAndConsume).toHaveBeenCalledWith(mockState);
+      expect(google.auth.OAuth2).toHaveBeenCalledWith(
+        mockClientId,
+        mockClientSecret,
+        mockRedirectUri,
+      );
     });
 
     it('should throw error when no access token received', async () => {
       const code = 'auth-code-123';
+      const mockRedirectUri =
+        'http://localhost:3000/api/v1/integrations/gmail/callback';
       const mockTokens = {
         access_token: undefined,
       };
@@ -175,9 +197,16 @@ describe('GoogleOAuthService', () => {
         getToken: jest.fn().mockResolvedValue({ tokens: mockTokens }),
       };
 
-      (
-        service as unknown as { oauth2Client: typeof mockOAuth2Client }
-      ).oauth2Client = mockOAuth2Client as never;
+      // Mock validateAndConsume to return redirectUri
+      (stateService.validateAndConsume as jest.Mock).mockReturnValue({
+        userId: mockUserId,
+        redirectUri: mockRedirectUri,
+      });
+
+      // Mock OAuth2 constructor to return our mock client
+      (google.auth.OAuth2 as unknown as jest.Mock).mockImplementation(
+        () => mockOAuth2Client,
+      );
 
       await expect(service.handleCallback(code, mockState)).rejects.toThrow(
         BadRequestException,
