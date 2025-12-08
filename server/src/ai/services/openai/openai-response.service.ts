@@ -44,6 +44,7 @@ export class OpenAIResponseService {
     chatHistory: ChatHistoryMessage[] = [],
     context?: string,
     location?: string,
+    useWebSearch: boolean = false,
   ): Promise<string> {
     const systemPrompt = this.buildSystemPrompt(context, location);
     const messages = PromptUtils.buildMessages(
@@ -52,13 +53,18 @@ export class OpenAIResponseService {
       transcript,
     );
 
-    const cacheKey = this.buildCacheKey(systemPrompt, chatHistory, transcript);
+    const cacheKey = this.buildCacheKey(
+      systemPrompt,
+      chatHistory,
+      transcript,
+      useWebSearch,
+    );
     const cached = this.cacheService.get(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const response = await this.callOpenAI(messages);
+    const response = await this.callOpenAI(messages, useWebSearch);
     const finalReply = this.processResponse(response);
 
     this.cacheService.set(cacheKey, finalReply);
@@ -77,13 +83,46 @@ export class OpenAIResponseService {
     systemPrompt: string,
     chatHistory: ChatHistoryMessage[],
     transcript: string,
+    useWebSearch: boolean,
   ): string {
-    return JSON.stringify({ systemPrompt, chatHistory, transcript });
+    return JSON.stringify({
+      systemPrompt,
+      chatHistory,
+      transcript,
+      useWebSearch,
+    });
   }
 
   private async callOpenAI(
     messages: Array<{ role: string; content: string }>,
+    useWebSearch: boolean = false,
   ): Promise<unknown> {
+    if (useWebSearch) {
+      this.logger.debug(
+        `Using GPT-5 with web_search for query requiring internet search`,
+      );
+
+      const input = messages
+        .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`)
+        .join('\n');
+
+      const requestBody: ResponsesCreateParams = {
+        model: 'gpt-5',
+        input,
+        reasoning: { effort: 'low' },
+        tools: [{ type: 'web_search' }],
+      };
+
+      if (
+        typeof this.config.maxTokens === 'number' &&
+        this.config.maxTokens > 0
+      ) {
+        requestBody.max_output_tokens = this.config.maxTokens;
+      }
+
+      return this.responsesClient.create(requestBody);
+    }
+
     if (this.config.model === 'gpt-4o-mini' || this.config.model === 'gpt-4o') {
       this.logger.debug(`Calling ${this.config.model} for response generation`);
 
@@ -109,7 +148,6 @@ export class OpenAIResponseService {
       };
     }
 
-    // Dla GPT-5 używamy responses API
     const input = messages
       .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`)
       .join('\n');
@@ -118,7 +156,6 @@ export class OpenAIResponseService {
       model: this.config.model,
       input,
       reasoning: { effort: 'low' },
-      tools: [{ type: 'web_search' }],
     };
 
     if (
