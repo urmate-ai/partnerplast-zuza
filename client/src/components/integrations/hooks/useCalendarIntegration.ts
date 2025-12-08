@@ -79,10 +79,18 @@ export function useCalendarIntegration(enabled: boolean) {
 
       const { authUrl } = await getCalendarAuthUrl();
 
+      const redirectUrl = Linking.createURL('integrations');
+      console.log('Calendar redirect URL:', redirectUrl);
+
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
-        Linking.createURL('integrations'),
+        redirectUrl,
+        {
+          preferEphemeralSession: false,
+        }
       );
+
+      console.log('Calendar auth result:', result);
 
       if (result.type === 'cancel' || result.type === 'dismiss') {
         setIsConnecting(false);

@@ -113,15 +113,35 @@ export class GmailController {
               <a href="${deepLink}" class="button" id="returnButton">Wróć do aplikacji</a>
             </div>
             <script>
-              // Automatyczne kliknięcie po załadowaniu (działa w większości przeglądarek)
-              window.addEventListener('load', function() {
+              (function() {
+                const deepLink = '${deepLink}';
+                
+                // Metoda 1: Natychmiastowe przekierowanie (najlepsze dla Safari)
+                try {
+                  window.location.replace(deepLink);
+                } catch (e) {
+                  console.error('location.replace failed:', e);
+                }
+                
+                // Metoda 2: Fallback - automatyczne kliknięcie
+                window.addEventListener('load', function() {
+                  setTimeout(function() {
+                    const button = document.getElementById('returnButton');
+                    if (button) {
+                      button.click();
+                    }
+                  }, 100);
+                });
+                
+                // Metoda 3: Dodatkowy fallback przez location.href
                 setTimeout(function() {
-                  const button = document.getElementById('returnButton');
-                  if (button) {
-                    button.click();
+                  try {
+                    window.location.href = deepLink;
+                  } catch (e) {
+                    console.error('location.href failed:', e);
                   }
                 }, 500);
-              });
+              })();
             </script>
           </body>
         </html>
@@ -204,15 +224,35 @@ export class GmailController {
               <a href="${deepLink}" class="button" id="returnButton">Wróć do aplikacji</a>
             </div>
             <script>
-              // Automatyczne kliknięcie po załadowaniu
-              window.addEventListener('load', function() {
+              (function() {
+                const deepLink = '${deepLink}';
+                
+                // Metoda 1: Natychmiastowe przekierowanie (najlepsze dla Safari)
+                try {
+                  window.location.replace(deepLink);
+                } catch (e) {
+                  console.error('location.replace failed:', e);
+                }
+                
+                // Metoda 2: Fallback - automatyczne kliknięcie
+                window.addEventListener('load', function() {
+                  setTimeout(function() {
+                    const button = document.getElementById('returnButton');
+                    if (button) {
+                      button.click();
+                    }
+                  }, 100);
+                });
+                
+                // Metoda 3: Dodatkowy fallback przez location.href
                 setTimeout(function() {
-                  const button = document.getElementById('returnButton');
-                  if (button) {
-                    button.click();
+                  try {
+                    window.location.href = deepLink;
+                  } catch (e) {
+                    console.error('location.href failed:', e);
                   }
                 }, 500);
-              });
+              })();
             </script>
           </body>
         </html>

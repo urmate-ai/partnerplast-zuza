@@ -19,10 +19,12 @@
       "infoPlist": {
         "CFBundleURLTypes": [
           {
-            "CFBundleURLSchemes": ["urmate-ai-zuza"]
+            "CFBundleURLSchemes": ["urmate-ai-zuza"],
+            "CFBundleURLName": "com.urmate.ai.zuza"
           }
         ],
-        "NSLocationWhenInUseUsageDescription": "Potrzebujemy Twojej lokalizacji, aby lepiej odpowiadać na pytania o pogodę i lokalne wydarzenia."
+        "NSLocationWhenInUseUsageDescription": "Potrzebujemy Twojej lokalizacji, aby lepiej odpowiadać na pytania o pogodę i lokalne wydarzenia.",
+        "LSApplicationQueriesSchemes": ["urmate-ai-zuza"]
       }
     },
     "android": {

@@ -48,10 +48,18 @@ export function useGmailConnect() {
     mutationFn: async () => {
       const { authUrl } = await getGmailAuthUrl();
       
+      const redirectUrl = Linking.createURL('integrations');
+      console.log('Gmail connect redirect URL:', redirectUrl);
+      
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
-        Linking.createURL('/integrations'),
+        redirectUrl,
+        { 
+          preferEphemeralSession: false,
+        }
       );
+
+      console.log('Gmail connect result:', result);
 
       if (result.type !== 'success') {
         throw new Error('Autoryzacja została anulowana');

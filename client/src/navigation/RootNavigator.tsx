@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -36,6 +36,29 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export const RootNavigator: React.FC = () => {
   const { isLoading, isAuthenticated, loadAuth } = useAuthStore();
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+
+  const linking = useMemo(() => ({
+    prefixes: [
+      Linking.createURL('/'),
+      'urmate-ai-zuza://',
+      'exp://192.168.1.100:8081', 
+    ],
+    config: {
+      screens: {
+        Login: 'login',
+        Register: 'register',
+        ForgotPassword: 'forgot-password',
+        ResetPassword: 'reset-password',
+        Home: 'home',
+        Settings: 'settings',
+        EditProfile: 'edit-profile',
+        ChangePassword: 'change-password',
+        Integrations: 'integrations',
+        SearchChats: 'search-chats',
+        ChatDetail: 'chat/:chatId',
+      },
+    },
+  }), []);
 
   useEffect(() => {
     loadAuth();
@@ -113,7 +136,16 @@ export const RootNavigator: React.FC = () => {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer 
+        ref={navigationRef}
+        linking={linking}
+        onReady={() => {
+          console.log('[Navigation] NavigationContainer ready');
+        }}
+        onStateChange={(state) => {
+          console.log('[Navigation] State changed:', state);
+        }}
+      >
         <Stack.Navigator
           screenOptions={{
             headerShown: false,
