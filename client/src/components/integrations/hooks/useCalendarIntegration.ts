@@ -2,55 +2,32 @@ import { useState, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getCalendarAuthUrl,
   getCalendarStatus,
   disconnectCalendar,
+  type CalendarConnectionStatus,
 } from '../../../services/calendar.service';
 
 WebBrowser.maybeCompleteAuthSession();
 
-type CalendarIntegrationState = {
-  isConnected: boolean;
-  connectedEmail?: string;
-  isLoading: boolean;
-  error: string | null;
-};
-
 export function useCalendarIntegration(enabled: boolean) {
   const queryClient = useQueryClient();
-  const [state, setState] = useState<CalendarIntegrationState>({
-    isConnected: false,
-    isLoading: false,
-    error: null,
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const {
+    data: status,
+    isLoading: isLoadingStatus,
+    error: statusError,
+  } = useQuery<CalendarConnectionStatus>({
+    queryKey: ['calendar', 'status'],
+    queryFn: getCalendarStatus,
+    enabled,
+    staleTime: 30 * 1000, 
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
-
-  useEffect(() => {
-    if (!enabled) return;
-
-    const fetchStatus = async () => {
-      try {
-        setState((prev) => ({ ...prev, isLoading: true, error: null }));
-        const status = await getCalendarStatus();
-        setState({
-          isConnected: status.isConnected,
-          connectedEmail: status.email,
-          isLoading: false,
-          error: null,
-        });
-      } catch (error) {
-        console.error('Failed to fetch Calendar status:', error);
-        setState({
-          isConnected: false,
-          isLoading: false,
-          error: error instanceof Error ? error.message : 'Nieznany błąd',
-        });
-      }
-    };
-
-    fetchStatus();
-  }, [enabled]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -62,36 +39,18 @@ export function useCalendarIntegration(enabled: boolean) {
         const calendarStatus = queryParams?.calendar as string | undefined;
 
         if (calendarStatus === 'success') {
-          setState((prev) => ({ ...prev, isLoading: true }));
-
-          getCalendarStatus()
-            .then((status) => {
-              setState({
-                isConnected: status.isConnected,
-                connectedEmail: status.email,
-                isLoading: false,
-                error: null,
-              });
-
-              queryClient.invalidateQueries({ queryKey: ['integrations'] });
-              queryClient.invalidateQueries({ queryKey: ['calendar'] });
-
-              Alert.alert(
-                'Sukces!',
-                'Google Calendar został pomyślnie połączony.',
-                [{ text: 'OK' }],
-              );
-            })
-            .catch((error) => {
-              console.error('Failed to refresh Calendar status:', error);
-              setState((prev) => ({
-                ...prev,
-                isLoading: false,
-                error: error instanceof Error ? error.message : 'Nieznany błąd',
-              }));
-            });
+          setIsConnecting(false);
+          
+          queryClient.invalidateQueries({ queryKey: ['calendar', 'status'] });
+          queryClient.invalidateQueries({ queryKey: ['integrations'] });
+          
+          Alert.alert(
+            'Sukces!',
+            'Google Calendar został pomyślnie połączony.',
+            [{ text: 'OK' }],
+          );
         } else if (calendarStatus === 'error') {
-          setState((prev) => ({ ...prev, isLoading: false }));
+          setIsConnecting(false);
           Alert.alert(
             'Błąd',
             'Nie udało się połączyć z Google Calendar. Spróbuj ponownie.',
@@ -116,7 +75,7 @@ export function useCalendarIntegration(enabled: boolean) {
 
   const handleConnect = useCallback(async () => {
     try {
-      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+      setIsConnecting(true);
 
       const { authUrl } = await getCalendarAuthUrl();
 
@@ -126,20 +85,15 @@ export function useCalendarIntegration(enabled: boolean) {
       );
 
       if (result.type === 'cancel' || result.type === 'dismiss') {
-        setState((prev) => ({ ...prev, isLoading: false }));
+        setIsConnecting(false);
         return;
       }
 
     } catch (error) {
       console.error('Calendar connection error:', error);
+      setIsConnecting(false);
       const errorMessage =
         error instanceof Error ? error.message : 'Nieznany błąd';
-
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: errorMessage,
-      }));
 
       Alert.alert(
         'Błąd połączenia',
@@ -163,19 +117,14 @@ export function useCalendarIntegration(enabled: boolean) {
           style: 'destructive',
           onPress: async () => {
             try {
-              setState((prev) => ({ ...prev, isLoading: true, error: null }));
+              setIsConnecting(true);
 
               await disconnectCalendar();
-
-              setState({
-                isConnected: false,
-                connectedEmail: undefined,
-                isLoading: false,
-                error: null,
-              });
-
+                
+              queryClient.invalidateQueries({ queryKey: ['calendar', 'status'] });
               queryClient.invalidateQueries({ queryKey: ['integrations'] });
-              queryClient.invalidateQueries({ queryKey: ['calendar'] });
+
+              setIsConnecting(false);
 
               Alert.alert(
                 'Rozłączono',
@@ -184,14 +133,9 @@ export function useCalendarIntegration(enabled: boolean) {
               );
             } catch (error) {
               console.error('Calendar disconnection error:', error);
+              setIsConnecting(false);
               const errorMessage =
                 error instanceof Error ? error.message : 'Nieznany błąd';
-
-              setState((prev) => ({
-                ...prev,
-                isLoading: false,
-                error: errorMessage,
-              }));
 
               Alert.alert(
                 'Błąd',
@@ -206,10 +150,10 @@ export function useCalendarIntegration(enabled: boolean) {
   }, [queryClient]);
 
   return {
-    isConnected: state.isConnected,
-    connectedEmail: state.connectedEmail,
-    isLoading: state.isLoading,
-    error: state.error,
+    isConnected: status?.isConnected ?? false,
+    connectedEmail: status?.email,
+    isLoading: isLoadingStatus || isConnecting,
+    error: statusError ? (statusError instanceof Error ? statusError.message : 'Nieznany błąd') : null,
     handleConnect,
     handleDisconnect,
   };

@@ -90,7 +90,11 @@ export const BaseIntegrationCard: React.FC<BaseIntegrationCardProps> = ({
         size="md"
         className="w-full"
       >
-        {isConnected ? disconnectButtonText : connectButtonText}
+        {isLoading
+          ? 'Ładowanie...'
+          : isConnected
+            ? disconnectButtonText
+            : connectButtonText}
       </Button>
 
       {!isConnected && permissions.length > 0 && (
