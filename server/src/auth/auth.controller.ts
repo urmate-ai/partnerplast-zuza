@@ -34,8 +34,14 @@ type AuthSession = {
   expiresAt: number;
 };
 
+type OAuthState = {
+  redirectUri: string;
+  expiresAt: number;
+};
+
 declare global {
   var authSessions: Map<string, AuthSession> | undefined;
+  var oauthStates: Map<string, OAuthState> | undefined;
 }
 
 @Controller('auth')
@@ -73,7 +79,18 @@ export class AuthController {
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
-  async googleAuth() {}
+  googleAuth(
+    @Query('state') state?: string,
+    @Request() req?: { session?: { oauthRedirectUri?: string } },
+  ) {
+    if (state && req?.session) {
+      req.session.oauthRedirectUri = decodeURIComponent(state);
+      console.log(
+        '[Auth] Stored redirect URI in session:',
+        req.session.oauthRedirectUri,
+      );
+    }
+  }
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
@@ -82,6 +99,7 @@ export class AuthController {
     req: {
       user?: GoogleAuthResult | Record<string, unknown>;
       query?: { state?: string };
+      session?: { oauthRedirectUri?: string };
     },
     @Res() res: ExpressResponse,
     @Query('state') state?: string,
@@ -89,9 +107,13 @@ export class AuthController {
     try {
       const userWithState = req.user as Record<string, unknown> | undefined;
       const stateFromUser = userWithState?.state as string | undefined;
-      const stateFromQuery = state || req.query?.state || stateFromUser;
+      const stateFromSession = req.session?.oauthRedirectUri;
+      const stateFromQuery =
+        state || req.query?.state || stateFromUser || stateFromSession;
 
-      let redirectUri = 'urmate-ai-zuza://auth/google/callback';
+      // Domyślnie używaj formatu Expo Go (dla developmentu)
+      // W produkcji można zmienić na urmate-ai-zuza://
+      let redirectUri = 'exp://192.168.0.23:8081/--/auth/google/callback';
 
       if (stateFromQuery) {
         try {
@@ -104,6 +126,8 @@ export class AuthController {
       console.log('[Auth] Callback received - state from query param:', state);
       console.log('[Auth] State from req.query:', req.query?.state);
       console.log('[Auth] State from req.user:', stateFromUser);
+      console.log('[Auth] State from req.session:', stateFromSession);
+      console.log('[Auth] All req.query:', JSON.stringify(req.query));
       console.log('[Auth] Final redirectUri:', redirectUri);
 
       if (!req.user) {
@@ -294,7 +318,9 @@ export class AuthController {
       `);
     } catch (error) {
       console.error('Google callback error:', error);
-      const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
+      // Domyślnie używaj formatu Expo Go (dla developmentu)
+      const redirectUri =
+        state || 'exp://192.168.0.23:8081/--/auth/google/callback';
       const errorUrl = `${redirectUri}?error=callback_failed`;
 
       // Dla mobile clients, zwróć bezpośredni redirect
