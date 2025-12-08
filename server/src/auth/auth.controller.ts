@@ -217,15 +217,35 @@ export class AuthController {
               <a href="${redirectUrl}" class="button" id="returnButton">Wróć do aplikacji</a>
             </div>
             <script>
-              // Automatyczne kliknięcie po załadowaniu
-              window.addEventListener('load', function() {
+              (function() {
+                const redirectUrl = '${redirectUrl}';
+                
+                // Metoda 1: Natychmiastowe przekierowanie (najlepsze dla Safari)
+                try {
+                  window.location.replace(redirectUrl);
+                } catch (e) {
+                  console.error('location.replace failed:', e);
+                }
+                
+                // Metoda 2: Fallback - automatyczne kliknięcie
+                window.addEventListener('load', function() {
+                  setTimeout(function() {
+                    const button = document.getElementById('returnButton');
+                    if (button) {
+                      button.click();
+                    }
+                  }, 100);
+                });
+                
+                // Metoda 3: Dodatkowy fallback przez location.href
                 setTimeout(function() {
-                  const button = document.getElementById('returnButton');
-                  if (button) {
-                    button.click();
+                  try {
+                    window.location.href = redirectUrl;
+                  } catch (e) {
+                    console.error('location.href failed:', e);
                   }
                 }, 500);
-              });
+              })();
             </script>
           </body>
         </html>

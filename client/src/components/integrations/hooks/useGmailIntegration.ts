@@ -79,10 +79,18 @@ export const useGmailIntegration = (enabled: boolean) => {
 
       const { authUrl } = await getGmailAuthUrl();
 
+      const redirectUrl = Linking.createURL('integrations');
+      console.log('Gmail redirect URL:', redirectUrl);
+
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
-        Linking.createURL('integrations')
+        redirectUrl,
+        {
+          preferEphemeralSession: false,
+        }
       );
+
+      console.log('Gmail auth result:', result);
 
       if (result.type === 'cancel' || result.type === 'dismiss') {
         setIsConnecting(false);

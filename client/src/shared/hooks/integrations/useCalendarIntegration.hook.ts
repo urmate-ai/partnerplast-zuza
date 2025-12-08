@@ -66,10 +66,20 @@ export function useCalendarConnect() {
     mutationFn: async () => {
       const { authUrl } = await getCalendarAuthUrl();
 
+      // Użyj Linking.createURL dla lepszej kompatybilności
+      const redirectUrl = Linking.createURL('integrations');
+      console.log('Calendar connect redirect URL:', redirectUrl);
+      
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
-        Linking.createURL('/integrations'),
+        redirectUrl,
+        {
+          // Dla iOS - wymusza użycie ASWebAuthenticationSession
+          preferEphemeralSession: false,
+        }
       );
+
+      console.log('Calendar connect result:', result);
 
       if (result.type !== 'success') {
         throw new Error('Autoryzacja została anulowana');
