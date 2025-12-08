@@ -72,7 +72,11 @@ export const useGoogleAuth = () => {
 
               const data = await response.json();
               console.log('[OAuth] Token exchange successful');
-              resolve({ type: 'success', token: data.accessToken, user: data.user });
+              console.log('[OAuth] Response data:', JSON.stringify(data));
+              const accessToken = data.data?.accessToken || data.accessToken;
+              const user = data.data?.user || data.user;
+              console.log('[OAuth] Received token:', !!accessToken, 'user:', !!user);
+              resolve({ type: 'success', token: accessToken, user });
             } catch (err) {
               console.error('[OAuth] Token exchange failed:', err);
               resolve({ type: 'error', error: 'Failed to exchange code for token' });
@@ -92,13 +96,12 @@ export const useGoogleAuth = () => {
       WebBrowser.openAuthSessionAsync(authUrl, redirectUrl, {
         preferEphemeralSession: false,
       })
-        .then((result) => {
+        .then(async (result) => {
           console.log('[OAuth] Auth session result:', result);
             
           if (result.type === 'success' && result.url) {
             console.log('[OAuth] Success redirect received:', result.url);
-            
-            // Usuń # z końca URL (może powodować problemy z parsowaniem)
+
             const cleanUrl = result.url.replace(/#$/, '');
             console.log('[OAuth] Cleaned URL:', cleanUrl);
             
@@ -143,8 +146,11 @@ export const useGoogleAuth = () => {
 
                   const data = await response.json();
                   console.log('[OAuth] Token exchange successful');
-                  console.log('[OAuth] Received token:', !!data.accessToken, 'user:', !!data.user);
-                  resolve({ type: 'success', token: data.accessToken, user: data.user });
+                  console.log('[OAuth] Response data:', JSON.stringify(data));
+                  const accessToken = data.data?.accessToken || data.accessToken;
+                  const user = data.data?.user || data.user;
+                  console.log('[OAuth] Received token:', !!accessToken, 'user:', !!user);
+                  resolve({ type: 'success', token: accessToken, user });
                 } catch (err) {
                   console.error('[OAuth] Token exchange failed:', err);
                   resolve({ type: 'error', error: 'Failed to exchange code for token' });
