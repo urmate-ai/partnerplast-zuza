@@ -59,7 +59,7 @@ export const RootNavigator: React.FC = () => {
       },
     },
     // Dodaj subscribe do obsługi deep linków, które nie pasują do żadnej ścieżki
-    subscribe(listener) {
+    subscribe(listener: (url: string) => void) {
       const onReceiveURL = ({ url }: { url: string }) => {
         console.log('[Navigation] Subscribe received URL:', url);
         const { path } = Linking.parse(url);

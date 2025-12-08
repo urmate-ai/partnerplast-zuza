@@ -87,6 +87,19 @@ export class AuthController {
 
       if (!req.user) {
         const errorUrl = `${redirectUri}?error=authentication_failed`;
+
+        // Dla mobile clients, zwróć bezpośredni redirect
+        if (
+          redirectUri.startsWith('exp://') ||
+          redirectUri.startsWith('urmate-ai-zuza://')
+        ) {
+          console.log(
+            '[Auth] Redirecting mobile client to error URL:',
+            errorUrl,
+          );
+          return res.redirect(errorUrl);
+        }
+
         return res.send(`
           <!DOCTYPE html>
           <html>
@@ -139,6 +152,17 @@ export class AuthController {
 
       const redirectUrl = `${redirectUri}?code=${sessionCode}`;
 
+      // Dla Expo Go (exp://) i innych mobile schemes, zwróć bezpośredni HTTP redirect
+      // zamiast HTML - ASWebAuthenticationSession w iOS lepiej obsługuje HTTP redirects
+      if (
+        redirectUri.startsWith('exp://') ||
+        redirectUri.startsWith('urmate-ai-zuza://')
+      ) {
+        console.log('[Auth] Redirecting mobile client to:', redirectUrl);
+        return res.redirect(redirectUrl);
+      }
+
+      // Dla web browsers, zwróć HTML z JavaScript redirect
       return res.send(`
         <!DOCTYPE html>
         <html>
@@ -254,6 +278,16 @@ export class AuthController {
       console.error('Google callback error:', error);
       const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
       const errorUrl = `${redirectUri}?error=callback_failed`;
+
+      // Dla mobile clients, zwróć bezpośredni redirect
+      if (
+        redirectUri.startsWith('exp://') ||
+        redirectUri.startsWith('urmate-ai-zuza://')
+      ) {
+        console.log('[Auth] Redirecting mobile client to error URL:', errorUrl);
+        return res.redirect(errorUrl);
+      }
+
       return res.send(`
         <!DOCTYPE html>
         <html>
