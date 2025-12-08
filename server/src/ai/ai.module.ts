@@ -12,11 +12,14 @@ import { OpenAIChatTitleService } from './services/openai/openai-chat-title.serv
 import { ResponseCacheService } from './services/cache/response-cache.service';
 import { IntegrationStatusCacheService } from './services/cache/integration-status-cache.service';
 import { IntentClassifierService } from './services/intent/intent-classifier.service';
+import { AIIntentClassifierService } from './services/intent/ai-intent-classifier.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import OpenAI from 'openai';
 import type { OpenAIConfig, OpenAIResponsesClient } from './types/ai.types';
 import { ElevenLabsTtsService } from './services/tts/elevenlabs-tts.service';
+import { GooglePlacesService } from './services/places/google-places.service';
+import { OpenAIPlacesResponseService } from './services/openai/openai-places-response.service';
 
 @Module({
   imports: [ConfigModule, PrismaModule, IntegrationsModule],
@@ -26,6 +29,15 @@ import { ElevenLabsTtsService } from './services/tts/elevenlabs-tts.service';
     ElevenLabsTtsService,
     ChatService,
     IntentClassifierService,
+    {
+      provide: AIIntentClassifierService,
+      useFactory: (configService: ConfigService) => {
+        const apiKey = configService.get<string>('OPENAI_API_KEY');
+        return new AIIntentClassifierService(apiKey);
+      },
+      inject: [ConfigService],
+    },
+    GooglePlacesService,
     {
       provide: ResponseCacheService,
       useFactory: () => new ResponseCacheService(),
@@ -45,6 +57,17 @@ import { ElevenLabsTtsService } from './services/tts/elevenlabs-tts.service';
         return new OpenAIFastResponseService(apiKey);
       },
       inject: [ConfigService],
+    },
+    {
+      provide: OpenAIPlacesResponseService,
+      useFactory: (
+        configService: ConfigService,
+        placesService: GooglePlacesService,
+      ) => {
+        const apiKey = configService.get<string>('OPENAI_API_KEY');
+        return new OpenAIPlacesResponseService(apiKey, placesService);
+      },
+      inject: [ConfigService, GooglePlacesService],
     },
     {
       provide: OpenAITranscriptionService,
