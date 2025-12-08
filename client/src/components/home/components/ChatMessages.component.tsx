@@ -66,8 +66,19 @@ export function ChatMessages({
         ))}
 
         {isTyping && (
-          <View className="flex-row justify-start">
-            <View className="bg-gray-100 rounded-2xl rounded-bl-sm">
+          <View 
+            style={{ 
+              flexDirection: 'row', 
+              justifyContent: 'flex-start' 
+            }}
+          >
+            <View 
+              style={{
+                backgroundColor: '#F3F4F6',
+                borderRadius: 16,
+                borderBottomLeftRadius: 4,
+              }}
+            >
               <TypingIndicator isVisible={true} />
             </View>
           </View>
