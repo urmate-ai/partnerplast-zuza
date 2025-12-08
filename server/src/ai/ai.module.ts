@@ -17,7 +17,6 @@ import { IntegrationsModule } from '../integrations/integrations.module';
 import OpenAI from 'openai';
 import type { OpenAIConfig, OpenAIResponsesClient } from './types/ai.types';
 import { ElevenLabsTtsService } from './services/tts/elevenlabs-tts.service';
-import { GeminiResponseService } from './services/gemini/gemini-response.service';
 
 @Module({
   imports: [ConfigModule, PrismaModule, IntegrationsModule],
@@ -27,14 +26,6 @@ import { GeminiResponseService } from './services/gemini/gemini-response.service
     ElevenLabsTtsService,
     ChatService,
     IntentClassifierService,
-    {
-      provide: GeminiResponseService,
-      useFactory: (configService: ConfigService) => {
-        const apiKey = configService.get<string>('GEMINI_API_KEY');
-        return new GeminiResponseService(apiKey);
-      },
-      inject: [ConfigService],
-    },
     {
       provide: ResponseCacheService,
       useFactory: () => new ResponseCacheService(),

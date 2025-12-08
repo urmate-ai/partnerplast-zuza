@@ -7,7 +7,6 @@ import { OpenAIFastResponseService } from './services/openai/openai-fast-respons
 import { IntentClassifierService } from './services/intent/intent-classifier.service';
 import { IntegrationStatusCacheService } from './services/cache/integration-status-cache.service';
 import type { ChatHistoryItem, ChatWithMessages } from './types/ai.types';
-import { GeminiResponseService } from './services/gemini/gemini-response.service';
 
 describe('AiService', () => {
   let service: AiService;
@@ -76,7 +75,6 @@ describe('AiService', () => {
     service = new AiService(
       openaiService,
       fastResponseService,
-      new GeminiResponseService('test'),
       chatService,
       gmailService,
       calendarService,
