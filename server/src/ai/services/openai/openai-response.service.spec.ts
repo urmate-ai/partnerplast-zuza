@@ -41,6 +41,7 @@ describe('OpenAIResponseService', () => {
   let service: OpenAIResponseService;
   let mockResponsesClient: jest.Mocked<OpenAIResponsesClient>;
   let cacheService: ResponseCacheService;
+  let mockOpenAI: jest.Mocked<OpenAI>;
 
   const mockConfig: OpenAIConfig = {
     model: 'gpt-5',
@@ -53,6 +54,14 @@ describe('OpenAIResponseService', () => {
       create: jest.fn(),
     } as unknown as jest.Mocked<OpenAIResponsesClient>;
 
+    mockOpenAI = {
+      chat: {
+        completions: {
+          create: jest.fn(),
+        },
+      },
+    } as unknown as jest.Mocked<OpenAI>;
+
     cacheService = new ResponseCacheService();
 
     const module: TestingModule = await Test.createTestingModule({
@@ -64,7 +73,7 @@ describe('OpenAIResponseService', () => {
               mockResponsesClient,
               mockConfig,
               cacheService,
-              new OpenAI({ apiKey: 'test' }),
+              mockOpenAI,
             ),
         },
       ],
@@ -159,17 +168,48 @@ describe('OpenAIResponseService', () => {
       expect(result).toContain('Przepraszam');
     });
 
-    it('should build correct request body', async () => {
+    it('should build correct request body without web search', async () => {
       const mockResponse: OpenAIResponsePayload = {
         output_text: 'Test response',
       };
 
       mockResponsesClient.create.mockResolvedValue(mockResponse as never);
 
-      await service.generate(mockTranscript, mockChatHistory);
+      await service.generate(
+        mockTranscript,
+        mockChatHistory,
+        undefined,
+        undefined,
+        false,
+      );
 
       expect(mockResponsesClient.create).toHaveBeenCalledWith({
         model: mockConfig.model,
+        input: expect.any(String),
+        reasoning: { effort: 'low' },
+        max_output_tokens: mockConfig.maxTokens,
+      });
+      const callArgs = mockResponsesClient.create.mock.calls[0][0];
+      expect(callArgs).not.toHaveProperty('tools');
+    });
+
+    it('should build correct request body with web search', async () => {
+      const mockResponse: OpenAIResponsePayload = {
+        output_text: 'Test response',
+      };
+
+      mockResponsesClient.create.mockResolvedValue(mockResponse as never);
+
+      await service.generate(
+        mockTranscript,
+        mockChatHistory,
+        undefined,
+        undefined,
+        true,
+      );
+
+      expect(mockResponsesClient.create).toHaveBeenCalledWith({
+        model: 'gpt-5',
         input: expect.any(String),
         reasoning: { effort: 'low' },
         tools: [{ type: 'web_search' }],
