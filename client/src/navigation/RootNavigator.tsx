@@ -64,9 +64,11 @@ export const RootNavigator: React.FC = () => {
         console.log('[Navigation] Subscribe received URL:', url);
         const { path } = Linking.parse(url);
         
-        // Jeśli to auth/google/callback, nie przekazuj do React Navigation
-        // oauth.service.ts obsłuży to
-        if (path === 'auth/google/callback') {
+        console.log('[Navigation] Subscribe parsed path:', path);
+        
+        // Jeśli to auth/google/callback (zarówno dla standalone jak i Expo Go), 
+        // nie przekazuj do React Navigation - oauth.service.ts obsłuży to
+        if (path === 'auth/google/callback' || path?.includes('auth/google/callback')) {
           console.log('[Navigation] Ignoring auth/google/callback in navigation');
           return;
         }
@@ -105,19 +107,19 @@ export const RootNavigator: React.FC = () => {
 
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
-      console.log('[Navigation] Deep link received:', event.url);
+      console.log('[Navigation] handleDeepLink received:', event.url);
       const { path, queryParams } = Linking.parse(event.url);
-      console.log('[Navigation] Parsed path:', path, 'queryParams:', queryParams);
+      console.log('[Navigation] handleDeepLink parsed - path:', path, 'queryParams:', queryParams);
       
       if (path === 'reset-password' && queryParams?.token) {
         navigationRef.current?.navigate('ResetPassword', {
           token: queryParams.token as string,
         });
-      } else if (path === 'auth/google/callback') {
+      } else if (path === 'auth/google/callback' || path?.includes('auth/google/callback')) {
         const code = queryParams?.code as string;
         const error = queryParams?.error as string;
         
-        console.log('[Navigation] Google callback - code:', !!code, 'error:', error);
+        console.log('[Navigation] Google callback detected - code:', !!code, 'error:', error);
         
         if (error) {
           console.error('[Navigation] Google OAuth error:', error);
@@ -126,6 +128,7 @@ export const RootNavigator: React.FC = () => {
         
         if (code) {
           console.log('[Navigation] Code received, will be handled by oauth.service');
+          // oauth.service.ts ma własny listener, który obsłuży wymianę code na token
           return;
         }
       }
