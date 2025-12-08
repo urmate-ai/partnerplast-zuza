@@ -133,6 +133,7 @@ describe('OpenAIService', () => {
         [],
         undefined,
         undefined,
+        false,
       );
       expect(result).toBe(reply);
     });
