@@ -110,7 +110,12 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
         console.log('[LoginScreen] Saving auth data to store...');
         await useAuthStore.getState().setAuth(result.user as unknown as User, result.token);
         console.log('[LoginScreen] Auth data saved, navigating to Home...');
-        navigation.replace('Home');
+        setTimeout(() => {
+          const { isAuthenticated } = useAuthStore.getState();
+          if (isAuthenticated) {
+            navigation.replace('Home');
+          }
+        }, 100);
       } else if (result.type === 'error' || result.error) {
         console.error('[LoginScreen] Google login error:', result.error);
         setGoogleError('Błąd logowania Google: ' + (result.error || 'Nieznany błąd'));

@@ -58,7 +58,6 @@ export const RootNavigator: React.FC = () => {
         ChatDetail: 'chat/:chatId',
       },
     },
-    // Dodaj subscribe do obsługi deep linków, które nie pasują do żadnej ścieżki
     subscribe(listener: (url: string) => void) {
       const onReceiveURL = ({ url }: { url: string }) => {
         console.log('[Navigation] Subscribe received URL:', url);
@@ -66,14 +65,11 @@ export const RootNavigator: React.FC = () => {
         
         console.log('[Navigation] Subscribe parsed path:', path);
         
-        // Jeśli to auth/google/callback (zarówno dla standalone jak i Expo Go), 
-        // nie przekazuj do React Navigation - oauth.service.ts obsłuży to
         if (path === 'auth/google/callback' || path?.includes('auth/google/callback')) {
           console.log('[Navigation] Ignoring auth/google/callback in navigation');
           return;
         }
-        
-        // Dla innych ścieżek, przekaż do React Navigation
+          
         listener(url);
       };
 
@@ -128,7 +124,6 @@ export const RootNavigator: React.FC = () => {
         
         if (code) {
           console.log('[Navigation] Code received, will be handled by oauth.service');
-          // oauth.service.ts ma własny listener, który obsłuży wymianę code na token
           return;
         }
       }
