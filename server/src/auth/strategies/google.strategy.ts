@@ -22,7 +22,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       explicitCallbackUrl ||
       (publicUrl
         ? `${publicUrl}/api/v1/auth/google/callback`
-        : 'http://localhost:3000/api/v1/auth/google/callback');
+        : 'https://partnerplast-zuza.onrender.com/api/v1/auth/google/callback');
 
     if (!global.oauthStates) {
       global.oauthStates = new Map();
