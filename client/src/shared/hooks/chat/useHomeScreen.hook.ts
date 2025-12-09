@@ -75,6 +75,18 @@ export const useHomeScreen = () => {
         const aiStartTime = performance.now();
         console.log(`[PERF] 🤖 [useHomeScreen] START AI processing | location: ${locationData.label ? 'provided' : 'none'} | lat: ${locationData.latitude} | lng: ${locationData.longitude} | timestamp: ${new Date().toISOString()}`);
         
+        // Callback wywoływany zaraz po transkrypcji - użytkownik zobaczy transkrypcję od razu!
+        const handleTranscript = (transcript: string) => {
+          console.log('[useHomeScreen] 📝 Transkrypcja otrzymana, aktualizuję wiadomość:', transcript);
+          setMessages((prev) => 
+            prev.map(msg => 
+              msg.id === userMessageId 
+                ? { ...msg, content: transcript }
+                : msg
+            )
+          );
+        };
+        
         const result = await voiceAiMutation.mutateAsync({
           uri,
           options: { 
@@ -82,6 +94,7 @@ export const useHomeScreen = () => {
             location: locationData.label || undefined,
             latitude: locationData.latitude,
             longitude: locationData.longitude,
+            onTranscript: handleTranscript, // Przekazujemy callback
           },
         });
         
@@ -90,6 +103,7 @@ export const useHomeScreen = () => {
         console.log(`[PERF] ✅ [useHomeScreen] END AI processing | AI duration: ${aiDuration.toFixed(2)}ms | total hook duration: ${totalHookDuration.toFixed(2)}ms | timestamp: ${new Date().toISOString()}`);
         console.log('[useHomeScreen] ✅ Odpowiedź z AI:', result);
 
+        // Upewnij się, że transkrypcja jest zaktualizowana (na wypadek gdyby callback nie zadziałał)
         setMessages((prev) => 
           prev.map(msg => 
             msg.id === userMessageId 
