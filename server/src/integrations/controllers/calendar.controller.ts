@@ -49,8 +49,7 @@ export class CalendarController {
     try {
       await this.calendarService.handleCallback(query.code, query.state);
 
-      const deepLink =
-        'exp://192.168.0.23:8081/--/integrations?calendar=success';
+      const deepLink = 'urmate-ai-zuza://integrations?calendar=success';
 
       return res.send(`
         <!DOCTYPE html>
@@ -144,7 +143,7 @@ export class CalendarController {
     } catch (error) {
       console.error('Error in Calendar callback:', error);
 
-      const deepLink = 'exp://192.168.0.23:8081/--/integrations?calendar=error';
+      const deepLink = 'urmate-ai-zuza://integrations?calendar=error';
 
       return res.send(`
         <!DOCTYPE html>
