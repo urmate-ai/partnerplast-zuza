@@ -45,6 +45,12 @@ export class GoogleOAuthService {
     expoRedirectUri?: string,
   ): { authUrl: string; state: string; expoRedirectUrl?: string } {
     const redirectUri = expoRedirectUri || this.buildRedirectUri(redirectPath);
+    this.logger.debug(
+      `[GoogleOAuth] Building auth URL with redirectUri: ${redirectUri}`,
+    );
+    this.logger.debug(
+      `[GoogleOAuth] PUBLIC_URL: ${this.configService.get<string>('PUBLIC_URL')}`,
+    );
     const state = this.stateService.generate(userId, redirectUri);
 
     const tempClient = new google.auth.OAuth2(
@@ -290,11 +296,22 @@ export class GoogleOAuthService {
     const publicUrl = this.configService.get<string>('PUBLIC_URL');
 
     if (explicitRedirectUri) {
+      this.logger.debug(
+        `[GoogleOAuth] Using explicit redirect URI: ${explicitRedirectUri}`,
+      );
       return explicitRedirectUri;
     }
     if (publicUrl) {
-      return `${publicUrl}${path}`;
+      const builtUri = `${publicUrl}${path}`;
+      this.logger.debug(
+        `[GoogleOAuth] Built redirect URI from PUBLIC_URL: ${builtUri}`,
+      );
+      return builtUri;
     }
-    return `http://localhost:3000${path}`;
+    const fallbackUri = `http://localhost:3000${path}`;
+    this.logger.warn(
+      `[GoogleOAuth] No PUBLIC_URL or explicit redirect URI, using fallback: ${fallbackUri}`,
+    );
+    return fallbackUri;
   }
 }

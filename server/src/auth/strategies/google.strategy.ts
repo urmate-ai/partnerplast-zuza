@@ -41,6 +41,9 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     });
 
     this.logger.log(`Google OAuth callback URL: ${callbackURL}`);
+    this.logger.debug(
+      `[GoogleStrategy] PUBLIC_URL: ${publicUrl}, explicitCallbackUrl: ${explicitCallbackUrl}`,
+    );
   }
 
   async validate(
