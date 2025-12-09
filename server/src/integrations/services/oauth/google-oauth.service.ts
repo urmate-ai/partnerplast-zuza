@@ -73,7 +73,7 @@ export class GoogleOAuthService {
   async handleCallback(
     code: string,
     state: string,
-  ): Promise<{ userId: string; tokens: GoogleTokens }> {
+  ): Promise<{ userId: string; tokens: GoogleTokens; redirectUri?: string }> {
     const { userId, redirectUri } = this.stateService.validateAndConsume(state);
 
     try {
@@ -99,6 +99,7 @@ export class GoogleOAuthService {
           expiry_date: tokens.expiry_date ?? null,
           scope: tokens.scope ?? null,
         },
+        redirectUri,
       };
     } catch (error) {
       this.logger.error('Failed to handle OAuth callback:', error);
