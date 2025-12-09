@@ -1,11 +1,18 @@
 {
   "cli": {
-    "version": ">= 13.2.0"
+    "version": ">= 13.2.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://partnerplast-zuza.onrender.com",
+        "[REDACTED]": "[REDACTED]",
+        "[REDACTED]": "[REDACTED]",
+        "[REDACTED]": "[REDACTED]"
+      },
       "android": {
         "gradleCommand": ":app:assembleDebug"
       },
@@ -15,16 +22,36 @@
     },
     "preview": {
       "distribution": "internal",
+      "cache": {
+        "disabled": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://partnerplast-zuza.onrender.com",
+        "[REDACTED]": "[REDACTED]",
+        "[REDACTED]": "[REDACTED]",
+        "[REDACTED]": "[REDACTED]"
+      },
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       },
       "ios": {
         "simulator": false
       }
     },
     "production": {
+      "cache": {
+        "disabled": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://partnerplast-zuza.onrender.com",
+        "[REDACTED]": "[REDACTED]",
+        "[REDACTED]": "[REDACTED]",
+        "[REDACTED]": "[REDACTED]"
+      },
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       },
       "ios": {
         "simulator": false
