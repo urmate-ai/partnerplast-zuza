@@ -2,6 +2,8 @@ import React from 'react';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
 import { Button } from '../../shared/components/Button.component';
+import { SafeAreaView } from '../../shared/components/SafeAreaView.component';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DrawerMenu } from '../../components/DrawerMenu.component';
 import { useAuthStore } from '../../stores/authStore';
 import { useLogout } from '../../shared/hooks/auth/useAuth.hook';
@@ -17,6 +19,7 @@ import { useCreateEvent } from '../../shared/hooks/integrations/useCalendarInteg
 export const HomeScreen: React.FC = () => {
   const { user } = useAuthStore();
   const logoutMutation = useLogout();
+  const insets = useSafeAreaInsets();
   const {
     isDrawerOpen,
     setIsDrawerOpen,
@@ -72,7 +75,7 @@ export const HomeScreen: React.FC = () => {
   };
 
   return (
-    <View className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       {isDrawerOpen && (
         <DrawerMenu
           onClose={() => setIsDrawerOpen(false)}
@@ -81,7 +84,7 @@ export const HomeScreen: React.FC = () => {
         />
       )}
 
-      <View className="pt-14 px-4">
+      <View className="pt-4 px-4">
         <HomeHeader
           onMenuPress={() => setIsDrawerOpen(true)}
           onLogout={handleLogout}
@@ -104,7 +107,7 @@ export const HomeScreen: React.FC = () => {
         </View>
       )}
 
-      <View className="items-center pb-4 pt-4">
+      <View style={{ paddingBottom: Math.max(insets.bottom, 16) }} className="items-center pt-4">
         <VoiceControl
           isListening={voiceState.isListening}
           onPress={() =>
@@ -114,7 +117,7 @@ export const HomeScreen: React.FC = () => {
       </View>
 
       {messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && (
-        <View className="px-4 pb-4">
+        <View style={{ paddingBottom: Math.max(insets.bottom, 16) }} className="px-4">
           <Button
             onPress={() => {
               if (ttsState.isSpeaking) {
@@ -160,6 +163,6 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 };

@@ -3,6 +3,8 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { View } from '../../shared/components/View.component';
+import { SafeAreaView } from '../../shared/components/SafeAreaView.component';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../shared/components/ScreenHeader.component';
 import { LoadingState } from '../../shared/components/LoadingState.component';
 import { ErrorState } from '../../shared/components/ErrorState.component';
@@ -23,6 +25,7 @@ type ChatDetailScreenNavigationProp = NativeStackNavigationProp<
 export const ChatDetailScreen: React.FC = () => {
   const route = useRoute<ChatDetailScreenRouteProp>();
   const navigation = useNavigation<ChatDetailScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { chatId } = route.params;
 
   const { data: chat, isLoading, error } = useQuery<ChatWithMessages>({
@@ -34,29 +37,31 @@ export const ChatDetailScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-white">
+      <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
         <ScreenHeader title="Czat" onBack={() => navigation.goBack()} />
         <LoadingState message="Ładowanie czatu..." />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (error || !chat) {
     return (
-      <View className="flex-1 bg-white">
+      <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
         <ScreenHeader title="Czat" onBack={() => navigation.goBack()} />
         <ErrorState message={error ? getErrorMessage(error) : 'Błąd podczas ładowania czatu'} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <ScreenHeader title={chat.title} onBack={() => navigation.goBack()} />
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={{
+          paddingBottom: Math.max(insets.bottom, 32),
+        }}
         showsVerticalScrollIndicator={false}
       >
         <View className="px-6 py-4">
@@ -72,13 +77,7 @@ export const ChatDetailScreen: React.FC = () => {
           )}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  scrollContent: {
-    paddingBottom: 32,
-  },
-});
 

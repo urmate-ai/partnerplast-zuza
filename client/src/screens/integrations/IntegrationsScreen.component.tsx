@@ -4,6 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
+import { SafeAreaView } from '../../shared/components/SafeAreaView.component';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../shared/components/ScreenHeader.component';
 import { SearchBar } from '../../shared/components/SearchBar.component';
 import { LoadingState } from '../../shared/components/LoadingState.component';
@@ -22,6 +24,7 @@ type IntegrationsScreenNavigationProp = NativeStackNavigationProp<
 
 export const IntegrationsScreen: React.FC = () => {
   const navigation = useNavigation<IntegrationsScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState<string>('');
   const { data: integrations, isLoading, error } = useIntegrations(
     searchQuery.trim() || undefined,
@@ -43,7 +46,7 @@ export const IntegrationsScreen: React.FC = () => {
   );
 
   return (
-    <View className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <ScreenHeader title="Integracje" onBack={() => navigation.goBack()} />
       <View className="px-6 mt-6">
         <SearchBar
@@ -56,7 +59,9 @@ export const IntegrationsScreen: React.FC = () => {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ 
+          paddingBottom: Math.max(insets.bottom, 32) 
+        }}
       >
         {isLoading ? (
           <LoadingState message="Ładowanie integracji..." />
@@ -101,6 +106,6 @@ export const IntegrationsScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };

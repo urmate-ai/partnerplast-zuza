@@ -4,6 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Controller } from 'react-hook-form';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
+import { SafeAreaView } from '../../shared/components/SafeAreaView.component';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Input } from '../../shared/components/Input.component';
 import { Button } from '../../shared/components/Button.component';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner.component';
@@ -20,6 +22,7 @@ type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<
 
 export const ForgotPasswordScreen: React.FC = () => {
   const navigation = useNavigation<ForgotPasswordScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const {
     control,
     errors,
@@ -42,15 +45,20 @@ export const ForgotPasswordScreen: React.FC = () => {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-white"
-    >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1"
       >
-        <View className="flex-1 px-6 pt-14">
+        <ScrollView
+          contentContainerStyle={{ 
+            flexGrow: 1,
+            paddingTop: Math.max(insets.top, 14),
+            paddingBottom: Math.max(insets.bottom, 20),
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="flex-1 px-6">
           <Pressable
             onPress={handleBackToLogin}
             className="mb-8 self-start"
@@ -102,6 +110,7 @@ export const ForgotPasswordScreen: React.FC = () => {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

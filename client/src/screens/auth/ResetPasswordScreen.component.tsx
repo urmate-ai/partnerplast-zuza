@@ -4,6 +4,8 @@ import { useRoute, RouteProp } from '@react-navigation/native';
 import { Controller } from 'react-hook-form';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
+import { SafeAreaView } from '../../shared/components/SafeAreaView.component';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PasswordInput } from '../../shared/components/PasswordInput.component';
 import { Button } from '../../shared/components/Button.component';
 import { LoadingSpinner } from '../../shared/components/LoadingSpinner.component';
@@ -17,6 +19,7 @@ type ResetPasswordScreenRouteProp = RouteProp<RootStackParamList, 'ResetPassword
 
 export const ResetPasswordScreen: React.FC = () => {
   const route = useRoute<ResetPasswordScreenRouteProp>();
+  const insets = useSafeAreaInsets();
   const token = route.params?.token || '';
 
   const {
@@ -52,15 +55,20 @@ export const ResetPasswordScreen: React.FC = () => {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-white"
-    >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1"
       >
-        <View className="flex-1 px-6 pt-14">
+        <ScrollView
+          contentContainerStyle={{ 
+            flexGrow: 1,
+            paddingTop: Math.max(insets.top, 14),
+            paddingBottom: Math.max(insets.bottom, 20),
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="flex-1 px-6">
           <Pressable
             onPress={handleBackToLogin}
             className="mb-8 self-start"
@@ -130,6 +138,7 @@ export const ResetPasswordScreen: React.FC = () => {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
