@@ -13,6 +13,7 @@ type VoiceProcessOptions = {
   location?: string;
   latitude?: number;
   longitude?: number;
+  onTranscript?: (transcript: string) => void; // Callback wywoływany zaraz po transkrypcji
 };
 
 type IntentClassification = {
@@ -184,6 +185,15 @@ export async function transcribeAndRespond(
   const transcriptionDuration = performance.now() - transcriptionStartTime;
   stageTimings.transcription = transcriptionDuration;
   console.log(`[PERF] ✅ [ETAP 1/6] END transcription | ⏱️ CZAS: ${transcriptionDuration.toFixed(2)}ms (${(transcriptionDuration/1000).toFixed(2)}s) | transcript: "${transcript.trim()}" | timestamp: ${new Date().toISOString()}`);
+
+  // Wywołaj callback z transkrypcją - użytkownik zobaczy ją od razu!
+  if (options.onTranscript) {
+    try {
+      options.onTranscript(transcript.trim());
+    } catch (error) {
+      console.error('[voice-ai] Error in onTranscript callback:', error);
+    }
+  }
 
   // 2. Lokalna klasyfikacja (<1ms)
   const classificationStartTime = performance.now();

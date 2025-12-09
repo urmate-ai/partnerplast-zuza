@@ -9,6 +9,7 @@ type SendVoiceToAiOptions = {
   location?: string;
   latitude?: number;
   longitude?: number;
+  onTranscript?: (transcript: string) => void; // Callback wywoływany zaraz po transkrypcji
 };
 
 const sendVoiceToAiRequest = async (
