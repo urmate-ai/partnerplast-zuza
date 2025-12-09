@@ -92,10 +92,7 @@ export const useGmailIntegration = (enabled: boolean) => {
 
       console.log('Gmail auth result:', result);
 
-      if (result.type === 'cancel' || result.type === 'dismiss') {
-        setIsConnecting(false);
-        return;
-      }
+      setIsConnecting(false);
 
     } catch (error) {
       console.error('Gmail connection error:', error);

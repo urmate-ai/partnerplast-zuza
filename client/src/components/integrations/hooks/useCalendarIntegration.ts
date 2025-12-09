@@ -92,10 +92,9 @@ export function useCalendarIntegration(enabled: boolean) {
 
       console.log('Calendar auth result:', result);
 
-      if (result.type === 'cancel' || result.type === 'dismiss') {
-        setIsConnecting(false);
-        return;
-      }
+      // Zatrzym ładowanie niezależnie od wyniku
+      // Deep link listener obsłuży sukces/błąd
+      setIsConnecting(false);
 
     } catch (error) {
       console.error('Calendar connection error:', error);

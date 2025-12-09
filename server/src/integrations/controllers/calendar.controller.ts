@@ -55,14 +55,41 @@ export class CalendarController {
       const deepLink = redirectUri
         ? `${redirectUri}?calendar=success`
         : 'urmate-ai-zuza://integrations?calendar=success';
-
-      return res.redirect(deepLink);
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Google Calendar połączony</title>
+          </head>
+          <body>
+            <script>
+              window.location.replace('${deepLink}');
+            </script>
+          </body>
+        </html>
+      `);
     } catch (error) {
       console.error('Error in Calendar callback:', error);
 
       const errorDeepLink = 'urmate-ai-zuza://integrations?calendar=error';
 
-      return res.redirect(errorDeepLink);
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Błąd połączenia Google Calendar</title>
+          </head>
+          <body>
+            <script>
+              window.location.replace('${errorDeepLink}');
+            </script>
+          </body>
+        </html>
+      `);
     }
   }
 
