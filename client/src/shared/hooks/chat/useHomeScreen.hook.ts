@@ -57,25 +57,31 @@ export const useHomeScreen = () => {
           .then((location) => {
             const locationDuration = performance.now() - locationStartTime;
             console.log(`[PERF] ✅ [useHomeScreen] END location fetch | duration: ${locationDuration.toFixed(2)}ms | location:`, location, `| timestamp: ${new Date().toISOString()}`);
-            return formatLocationForAi(location);
+            return {
+              label: formatLocationForAi(location),
+              latitude: location?.latitude,
+              longitude: location?.longitude,
+            };
           })
           .catch((e) => {
             const locationDuration = performance.now() - locationStartTime;
             console.log(`[PERF] ❌ [useHomeScreen] ERROR location fetch | duration: ${locationDuration.toFixed(2)}ms | error: ${e.message} | timestamp: ${new Date().toISOString()}`);
-            return null;
+            return { label: null, latitude: undefined, longitude: undefined };
           });
 
         console.log('[useHomeScreen] 🚀 Wysyłam do AI...');
 
-        const locationLabel = await locationPromise;
+        const locationData = await locationPromise;
         const aiStartTime = performance.now();
-        console.log(`[PERF] 🤖 [useHomeScreen] START AI processing | location: ${locationLabel ? 'provided' : 'none'} | timestamp: ${new Date().toISOString()}`);
+        console.log(`[PERF] 🤖 [useHomeScreen] START AI processing | location: ${locationData.label ? 'provided' : 'none'} | lat: ${locationData.latitude} | lng: ${locationData.longitude} | timestamp: ${new Date().toISOString()}`);
         
         const result = await voiceAiMutation.mutateAsync({
           uri,
           options: { 
             language: 'pl',
-            location: locationLabel || undefined,
+            location: locationData.label || undefined,
+            latitude: locationData.latitude,
+            longitude: locationData.longitude,
           },
         });
         
@@ -134,12 +140,21 @@ export const useHomeScreen = () => {
               ? [result.smsIntent.to]
               : [];
 
+          console.log('[useHomeScreen] 📱 SMS details - recipients:', recipients, 'body:', smsBody);
+
           // SMS w tle - nie blokuj UI
           SMS.isAvailableAsync().then((available: boolean) => {
+            console.log('[useHomeScreen] 📱 SMS available:', available);
             if (available) {
-              SMS.sendSMSAsync(recipients, smsBody).catch(console.error);
+              SMS.sendSMSAsync(recipients, smsBody)
+                .then(() => console.log('[useHomeScreen] ✅ SMS sent successfully'))
+                .catch((e: unknown) => console.error('[useHomeScreen] ❌ SMS error:', e));
+            } else {
+              console.error('[useHomeScreen] ❌ SMS not available on this device');
             }
-          }).catch(console.error);
+          }).catch((e: unknown) => console.error('[useHomeScreen] ❌ SMS availability check error:', e));
+        } else {
+          console.log('[useHomeScreen] 📱 Brak intencji SMS lub shouldSendSms = false:', result.smsIntent);
         }
         
         // Zapis czatu w TLE - nie blokuj odpowiedzi!
