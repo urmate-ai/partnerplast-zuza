@@ -1,9 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { Pressable, Animated } from 'react-native';
+import { Pressable, Animated, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
+import { SafeAreaView } from '../../shared/components/SafeAreaView.component';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRegisterScreen } from '../../shared/hooks/auth/useRegisterScreen.hook';
 import { RegisterForm } from '../../components/register/RegisterForm.component';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
@@ -15,6 +17,7 @@ type RegisterScreenNavigationProp = NativeStackNavigationProp<
 
 export const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<RegisterScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const {
     control,
     errors,
@@ -65,49 +68,59 @@ export const RegisterScreen: React.FC = () => {
   }, [currentStep, fadeAnim, slideAnim]);
 
   return (
-    <View className="flex-1 bg-white pt-14 px-6">
-      <View className="flex-row justify-between items-center mb-8">
-        <Pressable onPress={onBack} className="py-2 pr-4">
-          <Text className="text-base text-gray-900 font-medium">Wróć</Text>
-        </Pressable>
-        <Text className="text-sm text-gray-500">
-          Krok {currentStep === 'name' ? 1 : currentStep === 'email' ? 2 : 3} z 3
-        </Text>
-      </View>
-
-      <View className="flex-1">
-        <Animated.View
-          style={{
-            opacity: fadeAnim,
-            transform: [{ translateX: slideAnim }],
-          }}
-        >
-          <Text variant="h1" className="mb-4">
-            {getStepTitle()}
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+      <ScrollView
+        className="flex-1 px-6"
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingTop: Math.max(insets.top, 14),
+          paddingBottom: Math.max(insets.bottom, 20),
+        }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View className="flex-row justify-between items-center mb-8">
+          <Pressable onPress={onBack} className="py-2 pr-4">
+            <Text className="text-base text-gray-900 font-medium">Wróć</Text>
+          </Pressable>
+          <Text className="text-sm text-gray-500">
+            Krok {currentStep === 'name' ? 1 : currentStep === 'email' ? 2 : 3} z 3
           </Text>
+        </View>
 
-          <RegisterForm
-            control={control}
-            errors={errors}
-            currentStep={currentStep}
-            onNext={onNext}
-            isLoading={isLoading}
-            getButtonText={getButtonText}
-            registerError={registerError}
-          />
-
-          <View className="flex-row justify-center items-center mt-10">
-            <Text variant="caption" className="text-gray-500">
-              Masz już konto?{' '}
+        <View className="flex-1">
+          <Animated.View
+            style={{
+              opacity: fadeAnim,
+              transform: [{ translateX: slideAnim }],
+            }}
+          >
+            <Text variant="h1" className="mb-4">
+              {getStepTitle()}
             </Text>
-            <Pressable onPress={() => navigation.navigate('Login')}>
-              <Text variant="caption" className="text-gray-900 font-semibold">
-                Zaloguj się
+
+            <RegisterForm
+              control={control}
+              errors={errors}
+              currentStep={currentStep}
+              onNext={onNext}
+              isLoading={isLoading}
+              getButtonText={getButtonText}
+              registerError={registerError}
+            />
+
+            <View className="flex-row justify-center items-center mt-10">
+              <Text variant="caption" className="text-gray-500">
+                Masz już konto?{' '}
               </Text>
-            </Pressable>
-          </View>
-        </Animated.View>
-      </View>
-    </View>
+              <Pressable onPress={() => navigation.navigate('Login')}>
+                <Text variant="caption" className="text-gray-900 font-semibold">
+                  Zaloguj się
+                </Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };

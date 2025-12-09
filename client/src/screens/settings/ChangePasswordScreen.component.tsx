@@ -6,6 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
+import { SafeAreaView } from '../../shared/components/SafeAreaView.component';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../shared/components/ScreenHeader.component';
 import { PasswordInput } from '../../shared/components/PasswordInput.component';
 import { Button } from '../../shared/components/Button.component';
@@ -33,6 +35,7 @@ type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 
 export const ChangePasswordScreen: React.FC = () => {
   const navigation = useNavigation<ChangePasswordScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const changePasswordMutation = useChangePassword();
 
   const {
@@ -63,18 +66,19 @@ export const ChangePasswordScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-white"
-    >
-      <ScreenHeader title="Zmień hasło" onBack={() => navigation.goBack()} />
-
-      <ScrollView
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
-        keyboardShouldPersistTaps="handled"
       >
+        <ScreenHeader title="Zmień hasło" onBack={() => navigation.goBack()} />
+
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 32) }}
+          keyboardShouldPersistTaps="handled"
+        >
         <View className="px-6 pt-6">
           <View className="mb-6">
             <Text variant="body" className="text-gray-600 mb-6">
@@ -151,6 +155,7 @@ export const ChangePasswordScreen: React.FC = () => {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

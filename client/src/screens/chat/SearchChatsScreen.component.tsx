@@ -3,6 +3,8 @@ import { ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { View } from '../../shared/components/View.component';
+import { SafeAreaView } from '../../shared/components/SafeAreaView.component';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../shared/components/ScreenHeader.component';
 import { SearchBar } from '../../shared/components/SearchBar.component';
 import { LoadingState } from '../../shared/components/LoadingState.component';
@@ -21,6 +23,7 @@ type SearchChatsScreenNavigationProp = NativeStackNavigationProp<
 
 export const SearchChatsScreen: React.FC = () => {
   const navigation = useNavigation<SearchChatsScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const { data: chats, isLoading, error } = useChats(searchQuery.trim() || undefined);
 
@@ -30,7 +33,7 @@ export const SearchChatsScreen: React.FC = () => {
   }, [chats]);
 
   return (
-    <View className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <ScreenHeader title="Wyszukaj czaty" onBack={() => navigation.goBack()} />
       <View className="px-6">
         <SearchBar
@@ -43,7 +46,7 @@ export const SearchChatsScreen: React.FC = () => {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 32) }}
       >
         {isLoading ? (
           <LoadingState message="Ładowanie czatów..." />
@@ -71,7 +74,7 @@ export const SearchChatsScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

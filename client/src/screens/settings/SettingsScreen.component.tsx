@@ -3,6 +3,8 @@ import { ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { View } from '../../shared/components/View.component';
+import { SafeAreaView } from '../../shared/components/SafeAreaView.component';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../shared/components/ScreenHeader.component';
 import { LoadingState } from '../../shared/components/LoadingState.component';
 import { useAuthStore } from '../../stores/authStore';
@@ -21,6 +23,7 @@ type SettingsScreenNavigationProp = NativeStackNavigationProp<
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { user: authUser } = useAuthStore();
   const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const {
@@ -35,21 +38,21 @@ export const SettingsScreen: React.FC = () => {
 
   if (isLoadingProfile) {
     return (
-      <View className="flex-1 bg-white">
+      <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
         <ScreenHeader title="Ustawienia" onBack={() => navigation.goBack()} />
         <LoadingState />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
       <ScreenHeader title="Ustawienia" onBack={() => navigation.goBack()} />
 
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 32) }}
       >
         <View className="px-6 pt-6">
           <SettingsProfileSection
@@ -69,7 +72,7 @@ export const SettingsScreen: React.FC = () => {
           <SettingsAppSection onLogout={handleLogout} />
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

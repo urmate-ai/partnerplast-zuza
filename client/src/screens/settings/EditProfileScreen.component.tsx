@@ -6,6 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { View } from '../../shared/components/View.component';
 import { Text } from '../../shared/components/Text.component';
+import { SafeAreaView } from '../../shared/components/SafeAreaView.component';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from '../../shared/components/ScreenHeader.component';
 import { Input } from '../../shared/components/Input.component';
 import { Button } from '../../shared/components/Button.component';
@@ -30,6 +32,7 @@ type EditProfileFormData = z.infer<typeof editProfileSchema>;
 
 export const EditProfileScreen: React.FC = () => {
   const navigation = useNavigation<EditProfileScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const updateProfileMutation = useUpdateProfile();
 
@@ -57,18 +60,19 @@ export const EditProfileScreen: React.FC = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-white"
-    >
-      <ScreenHeader title="Edytuj profil" onBack={() => navigation.goBack()} />
-
-      <ScrollView
+    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
-        keyboardShouldPersistTaps="handled"
       >
+        <ScreenHeader title="Edytuj profil" onBack={() => navigation.goBack()} />
+
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 32) }}
+          keyboardShouldPersistTaps="handled"
+        >
         <View className="px-6 pt-6">
           <View className="mb-6">
             <Text variant="body" className="text-gray-600 mb-6">
@@ -128,6 +132,7 @@ export const EditProfileScreen: React.FC = () => {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
