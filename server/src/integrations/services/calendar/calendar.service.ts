@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { google } from 'googleapis';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { GoogleOAuthService } from '../oauth/google-oauth.service';
@@ -23,6 +24,7 @@ export class CalendarService {
     private readonly prisma: PrismaService,
     private readonly oauthService: GoogleOAuthService,
     private readonly integrationService: GoogleIntegrationService,
+    private readonly configService: ConfigService,
   ) {}
 
   generateAuthUrl(
@@ -40,14 +42,17 @@ export class CalendarService {
   async handleCallback(
     code: string,
     state: string,
-  ): Promise<{ userId: string }> {
-    const { userId, tokens } = await this.oauthService.handleCallback(
-      code,
-      state,
-    );
+  ): Promise<{ userId: string; redirectUri?: string }> {
+    const { userId, tokens, redirectUri } =
+      await this.oauthService.handleCallback(code, state);
 
     try {
-      const client = new google.auth.OAuth2();
+      const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+      const clientSecret = this.configService.get<string>(
+        'GOOGLE_CLIENT_SECRET',
+      );
+
+      const client = new google.auth.OAuth2(clientId, clientSecret);
       client.setCredentials({
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token ?? undefined,
@@ -105,7 +110,7 @@ export class CalendarService {
       await this.oauthService.saveUserIntegration(userIntegrationData);
 
       this.logger.log(`Calendar connected successfully for user ${userId}`);
-      return { userId };
+      return { userId, redirectUri };
     } catch (error) {
       this.logger.error('Failed to handle Calendar callback:', error);
       throw new BadRequestException('Failed to connect Calendar account');
