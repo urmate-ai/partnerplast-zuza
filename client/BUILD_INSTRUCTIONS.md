@@ -146,6 +146,19 @@ eas credentials
 eas credentials
 ```
 
+### Android: Błąd CMake z expo-av (ReactAndroid::reactnativejni not found)
+Jeśli otrzymujesz błąd związany z CMake i `expo-av` podczas budowania z włączoną nową architekturą React Native (`newArchEnabled: true`), jest to znany problem z kompatybilnością.
+
+**Rozwiązanie:**
+Nowa architektura jest tymczasowo wyłączona w `app.json` (`newArchEnabled: false`) ze względu na problemy z `expo-av` i innymi modułami natywnymi.
+
+Gdy `expo-av` zostanie zaktualizowane do pełnej kompatybilności z nową architekturą, można ją ponownie włączyć.
+
+### Android: Błąd Metro config
+Jeśli otrzymujesz błąd "metro.config.js that could not be loaded", upewnij się, że:
+- Plik używa składni CommonJS (nie ES modules)
+- Nie używa optional chaining (`?.`) w starszych wersjach Node.js
+
 ## Więcej informacji
 
 - [Dokumentacja EAS Build](https://docs.expo.dev/build/introduction/)

@@ -19,12 +19,16 @@
       "infoPlist": {
         "CFBundleURLTypes": [
           {
-            "CFBundleURLSchemes": ["urmate-ai-zuza"],
+            "CFBundleURLSchemes": [
+              "urmate-ai-zuza"
+            ],
             "CFBundleURLName": "com.urmate.ai.zuza"
           }
         ],
         "NSLocationWhenInUseUsageDescription": "Potrzebujemy Twojej lokalizacji, aby lepiej odpowiadać na pytania o pogodę i lokalne wydarzenia.",
-        "LSApplicationQueriesSchemes": ["urmate-ai-zuza"]
+        "LSApplicationQueriesSchemes": [
+          "urmate-ai-zuza"
+        ]
       }
     },
     "android": {
@@ -48,13 +52,21 @@
               "scheme": "urmate-ai-zuza"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d617390d-960c-4fe8-8ca3-c98d05a70e8a"
+      }
     }
   }
 }

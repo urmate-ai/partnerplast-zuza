@@ -17,6 +17,8 @@ if (fs.existsSync(reactNativeIndexPath)) {
 const setupPath = path.join(__dirname, 'node_modules/jest-expo/src/preset/setup.js');
 if (fs.existsSync(setupPath)) {
   let setupContent = fs.readFileSync(setupPath, 'utf8');
+  const originalContent = setupContent;
+  let hasChanges = false;
   
   // Add a guard to ensure UIManager exists before trying to define properties on it
   if (!setupContent.includes('// Ensure UIManager exists')) {
@@ -33,7 +35,10 @@ Object.keys(mockNativeModules.NativeUnimoduleProxy.viewManagersMetadata || {}).f
   (viewManagerName) => {
     Object.defineProperty(mockNativeModules.UIManager, \`ViewManagerAdapter_\${viewManagerName}\`, {`;
     
-    setupContent = setupContent.replace(oldCode, newCode);
+    if (setupContent.includes(oldCode)) {
+      setupContent = setupContent.replace(oldCode, newCode);
+      hasChanges = true;
+    }
   }
   
   // Comment out Refs mock if it causes module resolution issues
@@ -63,7 +68,10 @@ jest.doMock('expo-modules-core/src/Refs', () => ({
 //   },
 // }));`;
     
-    setupContent = setupContent.replace(oldRefsCode, newRefsCode);
+    if (setupContent.includes(oldRefsCode)) {
+      setupContent = setupContent.replace(oldRefsCode, newRefsCode);
+      hasChanges = true;
+    }
   }
   
   // Comment out web/index.web require if it doesn't exist
@@ -73,10 +81,22 @@ require('expo-modules-core/src/web/index.web');`;
     const newWebCode = `// Installs web implementations of global things that are normally installed through JSI.
 // Commented out due to module resolution issues - not needed for Jest tests
 // require('expo-modules-core/src/web/index.web');`;
-    setupContent = setupContent.replace(oldWebCode, newWebCode);
+    if (setupContent.includes(oldWebCode)) {
+      setupContent = setupContent.replace(oldWebCode, newWebCode);
+      hasChanges = true;
+    }
   }
   
-  fs.writeFileSync(setupPath, setupContent);
-  console.log('Fixed jest-expo setup.js');
+  // Only write if changes were made
+  if (hasChanges && setupContent !== originalContent) {
+    try {
+      fs.writeFileSync(setupPath, setupContent);
+      console.log('Fixed jest-expo setup.js');
+    } catch (error) {
+      console.warn('Could not write jest-expo setup.js (may already be fixed):', error.message);
+    }
+  } else {
+    console.log('jest-expo setup.js already has required fixes');
+  }
 }
 

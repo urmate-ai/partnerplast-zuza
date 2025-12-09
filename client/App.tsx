@@ -1,4 +1,5 @@
 import "./global.css"
+import "./src/shared/utils/nativewind-setup"
 import { useEffect } from 'react';
 import { AppState, Platform } from 'react-native';
 import type { AppStateStatus } from 'react-native';

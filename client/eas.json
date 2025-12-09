@@ -1,11 +1,18 @@
 {
   "cli": {
-    "version": ">= 13.2.0"
+    "version": ">= 13.2.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://partnerplast-zuza.onrender.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "136688670188-dfb7lm0qurk79vdg98s4ag6n53a3itur.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "136688670188-6ebd8lmhebejjvetcrus6a0difdper48.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "136688670188-kmlqiqljpje66ththlo26b7vs1ifacgf.apps.googleusercontent.com"
+      },
       "android": {
         "gradleCommand": ":app:assembleDebug"
       },
@@ -15,16 +22,36 @@
     },
     "preview": {
       "distribution": "internal",
+      "cache": {
+        "disabled": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://partnerplast-zuza.onrender.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "136688670188-dfb7lm0qurk79vdg98s4ag6n53a3itur.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "136688670188-6ebd8lmhebejjvetcrus6a0difdper48.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "136688670188-kmlqiqljpje66ththlo26b7vs1ifacgf.apps.googleusercontent.com"
+      },
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       },
       "ios": {
         "simulator": false
       }
     },
     "production": {
+      "cache": {
+        "disabled": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://partnerplast-zuza.onrender.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "136688670188-dfb7lm0qurk79vdg98s4ag6n53a3itur.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "136688670188-6ebd8lmhebejjvetcrus6a0difdper48.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "136688670188-kmlqiqljpje66ththlo26b7vs1ifacgf.apps.googleusercontent.com"
+      },
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       },
       "ios": {
         "simulator": false
