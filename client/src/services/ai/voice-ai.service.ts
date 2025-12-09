@@ -4,11 +4,15 @@ import { getGmailMessages, getGmailStatus } from '../gmail.service';
 import { getEvents, getCalendarStatus } from '../calendar.service';
 import { GmailFormatter } from '../../shared/utils/gmail-formatter.utils';
 import { CalendarFormatter } from '../../shared/utils/calendar-formatter.utils';
+import { searchNearbyPlaces } from '../places/google-places.service';
+import { PlacesFormatter } from '../../shared/utils/places-formatter.utils';
 
 type VoiceProcessOptions = {
   language?: string;
   context?: string;
   location?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 type IntentClassification = {
@@ -21,12 +25,17 @@ type IntentClassification = {
   confidence: 'high' | 'medium' | 'low';
 };
 
-const buildSystemPrompt = (userName?: string, context?: string, location?: string): string => {
+const buildSystemPrompt = (userName?: string, context?: string, location?: string, needsWebSearch?: boolean): string => {
   // ZOPTYMALIZOWANY - krótszy prompt = szybsza odpowiedź
   const nameInstruction = userName ? ` Zwracaj się po imieniu "${userName}".` : '';
   
   // Skrócony base prompt (495 → ~200 chars)
   let basePrompt = `ZUZA - asystent głosowy. Odpowiadaj krótko (1-2 zdania), po polsku.${nameInstruction}`;
+
+  // Jeśli użytkownik pyta o wyszukiwanie w internecie, wyjaśnij możliwości
+  if (needsWebSearch) {
+    basePrompt += ' Możesz wyszukiwać informacje w internecie (pogoda, wiadomości, fakty, kursy walut, wyniki sportowe itp.). Odpowiedz na pytanie użytkownika.';
+  }
 
   if (context) {
     basePrompt = `${basePrompt}\n\nKontekst: ${context}`;
@@ -48,12 +57,24 @@ function classifyIntent(transcript: string): IntentClassification {
 function localClassifyIntent(transcript: string): IntentClassification {
   const lower = transcript.toLowerCase().trim();
   
-  // Proste powitania - INSTANT response
+  // Sprawdź najpierw czy są inne intencje
+  const hasOtherIntent = 
+    lower.includes('wyślij') ||
+    lower.includes('napisz') ||
+    lower.includes('dodaj') ||
+    lower.includes('szukaj') ||
+    lower.includes('pogoda') ||
+    lower.includes('ile') ||
+    lower.includes('gdzie') ||
+    lower.includes('numer');
+  
+  // Proste powitania - INSTANT response (tylko jeśli NIE ma innych intencji)
   const greetingPatterns = [
     /^(cześć|hej|hejka|siema|witaj|dzień dobry|dobry wieczór|dobranoc|yo|elo|hello|hi)[\s!.,?]*$/i,
     /^(cześć|hej|hejka|siema|witaj)\s+(zuza|zuzo)[\s!.,?]*$/i,
+    /^(co tam|co słychać|jak leci|co u ciebie|jak się masz)[\s!.,?]*$/i,
   ];
-  const isSimpleGreeting = greetingPatterns.some(p => p.test(lower));
+  const isSimpleGreeting = !hasOtherIntent && greetingPatterns.some(p => p.test(lower));
   
   // Email intencje
   const needsEmailIntent = 
@@ -61,6 +82,7 @@ function localClassifyIntent(transcript: string): IntentClassification {
     lower.includes('wyślij email') ||
     lower.includes('napisz mail') ||
     lower.includes('napisz email') ||
+    lower.includes('napisz do') ||
     lower.includes('email do') ||
     lower.includes('mail do');
   
@@ -69,16 +91,24 @@ function localClassifyIntent(transcript: string): IntentClassification {
     lower.includes('dodaj spotkanie') ||
     lower.includes('dodaj wydarzenie') ||
     lower.includes('zapisz termin') ||
-    lower.includes('przypomnij mi') ||
+    lower.includes('zaplanuj') ||
+    lower.includes('przypomnij') ||
     lower.includes('do kalendarza') ||
-    lower.includes('w kalendarzu');
+    lower.includes('w kalendarzu') ||
+    lower.includes('kalendarz');
   
-  // SMS intencje
+  // SMS intencje - NAPRAWIONE!
   const needsSmsIntent = 
     lower.includes('wyślij sms') ||
+    lower.includes('wyślij smsa') ||
+    lower.includes('wyślij wiadomość') ||
     lower.includes('wyślij esemes') ||
     lower.includes('napisz sms') ||
-    lower.includes('sms do');
+    lower.includes('sms do') ||
+    lower.includes('sms na numer') ||
+    lower.includes('esemes') ||
+    // Wykryj numer telefonu w tekście
+    (lower.includes('wyślij') && (lower.includes('numer') || /\d{3}[-\s]?\d{3}[-\s]?\d{3}/.test(lower)));
   
   // Miejsca w okolicy
   const needsPlacesSearch =
@@ -86,19 +116,36 @@ function localClassifyIntent(transcript: string): IntentClassification {
     lower.includes('jak daleko') ||
     lower.includes('najbliższ') ||
     lower.includes('gdzie jest') ||
+    lower.includes('gdzie znajdę') ||
     lower.includes('restauracj') ||
     lower.includes('sklep') ||
     lower.includes('apteka') ||
     lower.includes('kawiarni') ||
     lower.includes('bar ') ||
+    lower.includes('bank') ||
+    lower.includes('szpital') ||
     lower.includes('stacj');
 
-  // Web search
+  // Web search - NAPRAWIONE!
   const needsWebSearch =
     (lower.includes('pogoda') ||
       lower.includes('temperatura') ||
       lower.includes('wynik') ||
       lower.includes('kurs') ||
+      lower.includes('wiadomości') ||
+      lower.includes('wydarzenia') ||
+      lower.includes('szukaj') ||
+      lower.includes('znajdź') ||
+      lower.includes('internet') ||
+      lower.includes('google') ||
+      lower.includes('wyszukaj') ||
+      lower.includes('sprawdź') ||
+      lower.includes('co to jest') ||
+      lower.includes('kim jest') ||
+      lower.includes('gdzie można') ||
+      lower.includes('jak zrobić') ||
+      lower.includes('umiesz szukać') ||
+      lower.includes('umiesz wyszukiwać') ||
       lower.includes('wiadomo')) &&
     !needsPlacesSearch;
 
@@ -193,7 +240,7 @@ export async function transcribeAndRespond(
   console.log(`[PERF] 📦 [ETAP 3/6] START context fetching (parallel) | needsEmail: ${intentClass.needsEmailIntent} | needsCalendar: ${intentClass.needsCalendarIntent} | timestamp: ${new Date().toISOString()}`);
   const contextStartTime = performance.now();
   
-  const [gmailContextResult, calendarContextResult] = await Promise.all([
+  const [gmailContextResult, calendarContextResult, placesContextResult] = await Promise.all([
     intentClass.needsEmailIntent
       ? (() => {
           const gmailStartTime = performance.now();
@@ -261,6 +308,34 @@ export async function transcribeAndRespond(
             });
         })()
       : Promise.resolve({ context: null, isConnected: false }),
+    
+    intentClass.needsPlacesSearch && options.latitude && options.longitude
+      ? (() => {
+          const placesStartTime = performance.now();
+          console.log(`[PERF] 📍 START Places search | lat: ${options.latitude} | lng: ${options.longitude} | query: "${transcript}" | timestamp: ${new Date().toISOString()}`);
+          return searchNearbyPlaces({
+            latitude: options.latitude,
+            longitude: options.longitude,
+            query: transcript, // Użyj transkrypcji jako query
+            radius: 5000,
+            maxResults: 5,
+          })
+            .then((places) => {
+              const placesDuration = performance.now() - placesStartTime;
+              if (places.length > 0) {
+                const context = PlacesFormatter.formatForAiContext(places);
+                console.log(`[PERF] ✅ END Places search | duration: ${placesDuration.toFixed(2)}ms | places: ${places.length} | context length: ${context.length} | timestamp: ${new Date().toISOString()}`);
+                return { context, places };
+              }
+              console.log(`[PERF] ⚠️ END Places search (empty) | duration: ${placesDuration.toFixed(2)}ms | timestamp: ${new Date().toISOString()}`);
+              return { context: null, places: [] };
+            })
+            .catch((e) => {
+              console.log(`[PERF] ❌ ERROR Places search | error: ${e.message} | timestamp: ${new Date().toISOString()}`);
+              return { context: null, places: [] };
+            });
+        })()
+      : Promise.resolve({ context: null, places: [] }),
   ]);
   
   const contextDuration = performance.now() - contextStartTime;
@@ -277,8 +352,11 @@ export async function transcribeAndRespond(
   if (calendarContextResult.context) {
     context = `${context || ''}\n\n${calendarContextResult.context}`;
   }
+  if (placesContextResult?.context) {
+    context = `${context || ''}\n\n${placesContextResult.context}`;
+  }
 
-  const systemPrompt = buildSystemPrompt(undefined, context, options.location);
+  const systemPrompt = buildSystemPrompt(undefined, context, options.location, intentClass.needsWebSearch);
   
   // BEZ historii czatu - każde zapytanie jest niezależne (szybsze!)
   const allMessages = [
@@ -290,10 +368,10 @@ export async function transcribeAndRespond(
   const userMessageLength = transcript.length;
   const totalPromptTokens = Math.ceil((systemPromptLength + userMessageLength) / 4); // ~4 chars per token
   
-  console.log(`[PERF] 📊 [ETAP 4/6] Prompt preparation | system: ${systemPromptLength} chars | user: ${userMessageLength} chars | estimated tokens: ~${totalPromptTokens} | timestamp: ${new Date().toISOString()}`);
+  console.log(`[PERF] 📊 [ETAP 4/6] Prompt preparation | system: ${systemPromptLength} chars | user: ${userMessageLength} chars | estimated tokens: ~${totalPromptTokens} | needsWebSearch: ${intentClass.needsWebSearch} | timestamp: ${new Date().toISOString()}`);
 
   // ZOPTYMALIZOWANE - mniejsze max_tokens i wyższa temperature = szybsza odpowiedź
-  // Odpowiedź ma tylko ~14 tokenów, więc 150 wystarczy (było 250)
+  // Dla web search dajemy więcej tokenów (300), dla normalnych zapytań 150
   const maxTokens = intentClass.needsWebSearch ? 300 : 150;
   // Wyższa temperature (0.8) = szybsze generowanie, bardziej kreatywne odpowiedzi
   const temperature = 0.8;

@@ -7,6 +7,8 @@ type SendVoiceToAiOptions = {
   language?: string;
   context?: string;
   location?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 const sendVoiceToAiRequest = async (
