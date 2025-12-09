@@ -41,11 +41,9 @@ export class GmailService {
   async handleCallback(
     code: string,
     state: string,
-  ): Promise<{ userId: string }> {
-    const { userId, tokens } = await this.oauthService.handleCallback(
-      code,
-      state,
-    );
+  ): Promise<{ userId: string; redirectUri?: string }> {
+    const { userId, tokens, redirectUri } =
+      await this.oauthService.handleCallback(code, state);
 
     try {
       const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
@@ -91,7 +89,7 @@ export class GmailService {
       await this.oauthService.saveUserIntegration(userIntegrationData);
 
       this.logger.log(`Gmail connected successfully for user ${userId}`);
-      return { userId };
+      return { userId, redirectUri };
     } catch (error) {
       this.logger.error('Failed to handle Gmail callback:', error);
       throw new BadRequestException('Failed to connect Gmail account');
