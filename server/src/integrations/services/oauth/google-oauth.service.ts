@@ -290,11 +290,20 @@ export class GoogleOAuthService {
     const publicUrl = this.configService.get<string>('PUBLIC_URL');
 
     if (explicitRedirectUri) {
+      this.logger.debug(`Using explicit redirect URI: ${explicitRedirectUri}`);
       return explicitRedirectUri;
     }
     if (publicUrl) {
-      return `${publicUrl}${path}`;
+      const fullUri = `${publicUrl}${path}`;
+      this.logger.debug(`Using PUBLIC_URL to build redirect URI: ${fullUri}`);
+      return fullUri;
     }
-    return `http://localhost:3000${path}`;
+
+    const fallbackUri = `https://partnerplast-zuza.onrender.com${path}`;
+    this.logger.warn(
+      `No PUBLIC_URL or explicit redirect URI set! Using fallback: ${fallbackUri}. ` +
+        `Please set PUBLIC_URL environment variable for production.`,
+    );
+    return fallbackUri;
   }
 }

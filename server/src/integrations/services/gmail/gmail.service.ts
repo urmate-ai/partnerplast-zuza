@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { google } from 'googleapis';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { GoogleOAuthService } from '../oauth/google-oauth.service';
@@ -22,6 +23,7 @@ export class GmailService {
     private readonly prisma: PrismaService,
     private readonly oauthService: GoogleOAuthService,
     private readonly integrationService: GoogleIntegrationService,
+    private readonly configService: ConfigService,
   ) {}
 
   generateAuthUrl(
@@ -46,13 +48,19 @@ export class GmailService {
     );
 
     try {
-      const client = new google.auth.OAuth2();
+      const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+      const clientSecret = this.configService.get<string>(
+        'GOOGLE_CLIENT_SECRET',
+      );
+
+      const client = new google.auth.OAuth2(clientId, clientSecret);
       client.setCredentials({
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token ?? undefined,
         expiry_date: tokens.expiry_date ?? undefined,
         scope: tokens.scope ?? undefined,
       });
+
       const gmail = google.gmail({ version: 'v1', auth: client });
       const profile = await gmail.users.getProfile({ userId: 'me' });
 

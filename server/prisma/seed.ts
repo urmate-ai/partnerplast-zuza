@@ -5,43 +5,51 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding database...');
 
-  await prisma.integration.deleteMany({
-    where: {
-      NOT: {
-        name: {
-          in: ['Gmail', 'Google Calendar'],
-        },
-      },
-    },
-  });
-
   const integrations = [
     {
       name: 'Gmail',
-      description: 'Czytaj i wysyłaj emaile',
+      description: 'Czytaj i wysyłaj emaile przez Gmail',
       icon: 'mail',
       category: 'communication',
-      isActive: false,
+      isActive: true,
+      config: {
+        provider: 'google',
+        scopes: ['gmail.readonly', 'gmail.send'],
+      },
     },
     {
       name: 'Google Calendar',
-      description: 'Zarządzaj swoim kalendarzem',
+      description: 'Zarządzaj wydarzeniami w Google Calendar',
       icon: 'calendar',
       category: 'productivity',
-      isActive: false,
+      isActive: true,
+      config: {
+        provider: 'google',
+        scopes: ['calendar.readonly', 'calendar.events'],
+      },
     },
   ];
 
-  await prisma.integration.createMany({
-    data: integrations,
-    skipDuplicates: true,
-  });
+  for (const integration of integrations) {
+    await prisma.integration.upsert({
+      where: { name: integration.name },
+      update: {
+        description: integration.description,
+        icon: integration.icon,
+        category: integration.category,
+        isActive: integration.isActive,
+        config: integration.config,
+      },
+      create: integration,
+    });
+    console.log(
+      `✅ ${integration.name} - ${integration.isActive ? 'aktywna' : 'nieaktywna'}`,
+    );
+  }
 
   console.log(
-    `✅ Created/Updated ${integrations.length} integrations (skipDuplicates enabled)`,
+    `✨ Seeding completed! ${integrations.length} integrations processed.`,
   );
-
-  console.log('✨ Seeding completed!');
 }
 
 main()
