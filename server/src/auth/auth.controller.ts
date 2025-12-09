@@ -127,7 +127,7 @@ export class AuthController {
       const stateFromQuery =
         state || req.query?.state || stateFromUser || stateFromSession;
 
-      let redirectUri = 'exp://192.168.0.23:8081/--/auth/google/callback';
+      let redirectUri = 'urmate-ai-zuza://auth/google/callback';
 
       if (stateFromQuery) {
         if (global.oauthStates) {
@@ -350,8 +350,7 @@ export class AuthController {
       `);
     } catch (error) {
       console.error('Google callback error:', error);
-      const redirectUri =
-        state || 'exp://192.168.0.23:8081/--/auth/google/callback';
+      const redirectUri = state || 'urmate-ai-zuza://auth/google/callback';
       const errorUrl = `${redirectUri}?error=callback_failed`;
 
       if (
