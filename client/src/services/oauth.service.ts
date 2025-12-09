@@ -3,7 +3,7 @@ import * as Linking from 'expo-linking';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://urmate-ai-zuza.onrender.com';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://partnerplast-zuza.onrender.com';
 
 export const useGoogleAuth = () => {
   const handleGoogleLogin = async (): Promise<{
@@ -87,13 +87,15 @@ export const useGoogleAuth = () => {
         }
       });
 
-      const redirectUrl = Linking.createURL('auth/google/callback');
-      const authUrl = `${API_URL}/api/v1/auth/google?state=${encodeURIComponent(redirectUrl)}`;
+      const expoDeepLink = Linking.createURL('auth/google/callback');
+      const serverCallbackUrl = `${API_URL}/api/v1/auth/google/callback`;
+      const authUrl = `${API_URL}/api/v1/auth/google?state=${encodeURIComponent(expoDeepLink)}`;
       
-      console.log('[OAuth] Opening auth session with redirect URL:', redirectUrl);
+      console.log('[OAuth] Opening auth session with redirect URL:', serverCallbackUrl);
+      console.log('[OAuth] Expo deep link (in state):', expoDeepLink);
       console.log('[OAuth] Auth URL:', authUrl);
 
-      WebBrowser.openAuthSessionAsync(authUrl, redirectUrl, {
+      WebBrowser.openAuthSessionAsync(authUrl, serverCallbackUrl, {
         preferEphemeralSession: false,
       })
         .then(async (result) => {
