@@ -6,6 +6,7 @@ import { useVoiceAi } from './useVoiceAi.hook';
 import { useAuthStore } from '../../../stores/authStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { getApproximateLocation, formatLocationForAi } from '../../utils/location.utils';
+import { apiClient } from '../../utils/api';
 import type { EmailIntent, CalendarIntent, SmsIntent } from '../../types/ai.types';
 
 type Message = {
@@ -127,6 +128,22 @@ export const useHomeScreen = () => {
           } catch (smsError) {
             console.error('[useHomeScreen] ❌ Błąd przy otwieraniu aplikacji SMS:', smsError);
           }
+        }
+        try {
+          const { createNewChat } = await import('../../../services/chats.service');
+          const chatId = await createNewChat().then((res) => res.chatId).catch(() => null);
+          if (chatId) {
+            await apiClient.post(`/ai/chats/${chatId}/messages`, {
+              role: 'user',
+              content: result.transcript,
+            }).catch(() => {});
+            await apiClient.post(`/ai/chats/${chatId}/messages`, {
+              role: 'assistant',
+              content: result.reply,
+            }).catch(() => {});
+          }
+        } catch (saveError) {
+          console.warn('[useHomeScreen] Failed to save chat:', saveError);
         }
 
         queryClient.invalidateQueries({ queryKey: ['chats'] });
