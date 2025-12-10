@@ -28,8 +28,16 @@ export class OpenAIClient {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(error.message || `OpenAI API error: ${response.status}`);
+      const errorText = await response.text().catch(() => 'Unknown error');
+      let errorMessage = errorText;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.error?.message || errorJson.message || errorText;
+        console.error(`[OpenAI] API Error ${response.status}:`, errorJson);
+      } catch {
+        console.error(`[OpenAI] API Error ${response.status}:`, errorText);
+      }
+      throw new Error(errorMessage || `OpenAI API error: ${response.status}`);
     }
 
     return response.json();
