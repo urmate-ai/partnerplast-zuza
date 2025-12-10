@@ -19,30 +19,39 @@ export const useGmailIntegration = (enabled: boolean) => {
   const {
     data: status,
     isLoading: isLoadingStatus,
+    isFetching: isFetchingStatus,
     error: statusError,
+    refetch: refetchStatus,
   } = useQuery<GmailConnectionStatus>({
     queryKey: ['gmail', 'status'],
     queryFn: getGmailStatus,
     enabled,
-    staleTime: 30 * 1000, 
+    staleTime: 5 * 1000,
     retry: 1,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   useEffect(() => {
     if (!enabled) return;
 
-    const handleDeepLink = (event: { url: string }) => {
+    const handleDeepLink = async (event: { url: string }) => {
       const { path, queryParams } = Linking.parse(event.url);
 
       if (path === 'integrations') {
         const gmailStatus = queryParams?.gmail as string | undefined;
 
         if (gmailStatus === 'success') {
-          setIsConnecting(false);
+          console.log('[Gmail] Deep link success detected, refetching status...');
           
-          queryClient.invalidateQueries({ queryKey: ['gmail', 'status'] });
-          queryClient.invalidateQueries({ queryKey: ['integrations'] });
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['gmail', 'status'] }),
+            queryClient.invalidateQueries({ queryKey: ['integrations'] }),
+          ]);
+          
+          await refetchStatus();
+          
+          setIsConnecting(false);
           
           Alert.alert(
             'Sukces!',
@@ -64,14 +73,14 @@ export const useGmailIntegration = (enabled: boolean) => {
 
     Linking.getInitialURL().then((url) => {
       if (url) {
-        handleDeepLink({ url });
+        void handleDeepLink({ url });
       }
     });
 
     return () => {
       subscription.remove();
     };
-  }, [enabled, queryClient]);
+  }, [enabled, queryClient, refetchStatus]);
 
   const handleConnect = useCallback(async () => {
     try {
@@ -96,40 +105,35 @@ export const useGmailIntegration = (enabled: boolean) => {
       console.log('Gmail auth result:', result);
 
       if (result.type === 'success' && result.url) {
-        console.log('Gmail auth result.url:', result.url);
+        console.log('[Gmail] OAuth result.url:', result.url);
         
         if (result.url.includes('urmate-ai-zuza://') || result.url.includes('integrations')) {
-          const { path, queryParams } = Linking.parse(result.url);
+          console.log('[Gmail] Deep link detected, will be handled by useEffect');
+          return;
+        }
+        
+        if (result.url.includes('/integrations/gmail/callback')) {
+          console.log('[Gmail] Server callback URL detected, refetching status...');
           
-          if (path === 'integrations' || result.url.includes('integrations')) {
-            const gmailStatus = queryParams?.gmail as string | undefined;
-            
-            if (gmailStatus === 'success') {
-              queryClient.invalidateQueries({ queryKey: ['gmail', 'status'] });
-              queryClient.invalidateQueries({ queryKey: ['integrations'] });
-              Alert.alert('Sukces!', 'Gmail został pomyślnie połączony.', [{ text: 'OK' }]);
-            } else if (gmailStatus === 'error') {
-              Alert.alert('Błąd', 'Nie udało się połączyć z Gmail. Spróbuj ponownie.', [{ text: 'OK' }]);
-            }
-          }
-        } else if (result.url.includes('/integrations/gmail/callback')) {
-          console.log('Gmail callback URL detected, checking status...');
-          queryClient.invalidateQueries({ queryKey: ['gmail', 'status'] });
-          queryClient.invalidateQueries({ queryKey: ['integrations'] });
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['gmail', 'status'] }),
+            queryClient.invalidateQueries({ queryKey: ['integrations'] }),
+          ]);
           
-          setTimeout(async () => {
-            try {
-              const status = await getGmailStatus();
-              if (status.isConnected) {
-                Alert.alert('Sukces!', 'Gmail został pomyślnie połączony.', [{ text: 'OK' }]);
-              }
-            } catch (e) {
-              console.error('Error checking Gmail status:', e);
-            }
-          }, 1000);
+          await refetchStatus();
+          
+          setIsConnecting(false);
+          Alert.alert('Sukces!', 'Gmail został pomyślnie połączony.', [{ text: 'OK' }]);
+          return;
         }
       } else if (result.type === 'cancel') {
-        console.log('Gmail auth cancelled by user');
+        console.log('[Gmail] OAuth cancelled by user');
+        setIsConnecting(false);
+        return;
+      } else if (result.type === 'dismiss') {
+        console.log('[Gmail] OAuth dismissed');
+        setIsConnecting(false);
+        return;
       }
 
       setIsConnecting(false);
@@ -145,7 +149,7 @@ export const useGmailIntegration = (enabled: boolean) => {
         [{ text: 'OK' }]
       );
     }
-  }, [queryClient]);
+  }, [queryClient, refetchStatus]);
 
   const handleDisconnect = useCallback(async () => {
     Alert.alert(
@@ -195,7 +199,7 @@ export const useGmailIntegration = (enabled: boolean) => {
   return {
     isConnected: status?.isConnected ?? false,
     connectedEmail: status?.email,
-    isLoading: isLoadingStatus || isConnecting,
+    isLoading: isConnecting,
     error: statusError ? (statusError instanceof Error ? statusError.message : 'Nieznany błąd') : null,
     handleConnect,
     handleDisconnect,

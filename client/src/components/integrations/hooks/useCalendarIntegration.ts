@@ -19,30 +19,39 @@ export function useCalendarIntegration(enabled: boolean) {
   const {
     data: status,
     isLoading: isLoadingStatus,
+    isFetching: isFetchingStatus,
     error: statusError,
+    refetch: refetchStatus,
   } = useQuery<CalendarConnectionStatus>({
     queryKey: ['calendar', 'status'],
     queryFn: getCalendarStatus,
     enabled,
-    staleTime: 30 * 1000, 
+    staleTime: 5 * 1000,
     retry: 1,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   useEffect(() => {
     if (!enabled) return;
 
-    const handleDeepLink = (event: { url: string }) => {
+    const handleDeepLink = async (event: { url: string }) => {
       const { path, queryParams } = Linking.parse(event.url);
 
       if (path === 'integrations') {
         const calendarStatus = queryParams?.calendar as string | undefined;
 
         if (calendarStatus === 'success') {
-          setIsConnecting(false);
+          console.log('[Calendar] Deep link success detected, refetching status...');
           
-          queryClient.invalidateQueries({ queryKey: ['calendar', 'status'] });
-          queryClient.invalidateQueries({ queryKey: ['integrations'] });
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['calendar', 'status'] }),
+            queryClient.invalidateQueries({ queryKey: ['integrations'] }),
+          ]);
+            
+          await refetchStatus();
+          
+          setIsConnecting(false);
           
           Alert.alert(
             'Sukces!',
@@ -64,14 +73,14 @@ export function useCalendarIntegration(enabled: boolean) {
 
     Linking.getInitialURL().then((url) => {
       if (url) {
-        handleDeepLink({ url });
+        void handleDeepLink({ url });
       }
     });
 
     return () => {
       subscription.remove();
     };
-  }, [enabled, queryClient]);
+  }, [enabled, queryClient, refetchStatus]);
 
   const handleConnect = useCallback(async () => {
     try {
@@ -96,40 +105,35 @@ export function useCalendarIntegration(enabled: boolean) {
       console.log('Calendar auth result:', result);
 
       if (result.type === 'success' && result.url) {
-        console.log('Calendar auth result.url:', result.url);
-        
+        console.log('[Calendar] OAuth result.url:', result.url);
+
         if (result.url.includes('urmate-ai-zuza://') || result.url.includes('integrations')) {
-          const { path, queryParams } = Linking.parse(result.url);
+          console.log('[Calendar] Deep link detected, will be handled by useEffect');
+          return;
+        }
+        
+        if (result.url.includes('/integrations/calendar/callback')) {
+          console.log('[Calendar] Server callback URL detected, refetching status...');
           
-          if (path === 'integrations' || result.url.includes('integrations')) {
-            const calendarStatus = queryParams?.calendar as string | undefined;
-            
-            if (calendarStatus === 'success') {
-              queryClient.invalidateQueries({ queryKey: ['calendar', 'status'] });
-              queryClient.invalidateQueries({ queryKey: ['integrations'] });
-              Alert.alert('Sukces!', 'Google Calendar został pomyślnie połączony.', [{ text: 'OK' }]);
-            } else if (calendarStatus === 'error') {
-              Alert.alert('Błąd', 'Nie udało się połączyć z Google Calendar. Spróbuj ponownie.', [{ text: 'OK' }]);
-            }
-          }
-        } else if (result.url.includes('/integrations/calendar/callback')) {
-          console.log('Calendar callback URL detected, checking status...');
-          queryClient.invalidateQueries({ queryKey: ['calendar', 'status'] });
-          queryClient.invalidateQueries({ queryKey: ['integrations'] });
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['calendar', 'status'] }),
+            queryClient.invalidateQueries({ queryKey: ['integrations'] }),
+          ]);
           
-          setTimeout(async () => {
-            try {
-              const status = await getCalendarStatus();
-              if (status.isConnected) {
-                Alert.alert('Sukces!', 'Google Calendar został pomyślnie połączony.', [{ text: 'OK' }]);
-              }
-            } catch (e) {
-              console.error('Error checking Calendar status:', e);
-            }
-          }, 1000);
+          await refetchStatus();
+          
+          setIsConnecting(false);
+          Alert.alert('Sukces!', 'Google Calendar został pomyślnie połączony.', [{ text: 'OK' }]);
+          return;
         }
       } else if (result.type === 'cancel') {
-        console.log('Calendar auth cancelled by user');
+        console.log('[Calendar] OAuth cancelled by user');
+        setIsConnecting(false);
+        return;
+      } else if (result.type === 'dismiss') {
+        console.log('[Calendar] OAuth dismissed');
+        setIsConnecting(false);
+        return;
       }
 
       setIsConnecting(false);
@@ -146,7 +150,7 @@ export function useCalendarIntegration(enabled: boolean) {
         [{ text: 'OK' }],
       );
     }
-  }, [queryClient]);
+  }, [queryClient, refetchStatus]);
 
   const handleDisconnect = useCallback(async () => {
     Alert.alert(
@@ -197,7 +201,7 @@ export function useCalendarIntegration(enabled: boolean) {
   return {
     isConnected: status?.isConnected ?? false,
     connectedEmail: status?.email,
-    isLoading: isLoadingStatus || isConnecting,
+    isLoading: isConnecting,
     error: statusError ? (statusError instanceof Error ? statusError.message : 'Nieznany błąd') : null,
     handleConnect,
     handleDisconnect,
