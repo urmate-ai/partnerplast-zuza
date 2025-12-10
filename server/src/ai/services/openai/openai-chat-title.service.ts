@@ -23,7 +23,7 @@ export class OpenAIChatTitleService {
       const prompt = PromptUtils.generateTitlePrompt(firstMessage);
 
       const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4.1 nano',
+        model: 'gpt-4.1-nano',
         messages: [
           {
             role: 'system',

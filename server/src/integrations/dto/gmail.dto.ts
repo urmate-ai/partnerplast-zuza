@@ -1,13 +1,13 @@
 import { IsString, IsNotEmpty, IsOptional, IsArray } from 'class-validator';
 
 export class GmailCallbackDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  code: string;
+  code?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  state: string;
+  state?: string;
 
   @IsOptional()
   @IsString()
@@ -20,6 +20,10 @@ export class GmailCallbackDto {
   @IsOptional()
   @IsString()
   prompt?: string;
+
+  @IsOptional()
+  @IsString()
+  gmail?: string;
 }
 
 export class GmailDisconnectDto {
