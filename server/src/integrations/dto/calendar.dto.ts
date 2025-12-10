@@ -11,13 +11,13 @@ import {
 import { Type } from 'class-transformer';
 
 export class CalendarCallbackDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  code: string;
+  code?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  state: string;
+  state?: string;
 
   @IsOptional()
   @IsString()
@@ -30,6 +30,10 @@ export class CalendarCallbackDto {
   @IsOptional()
   @IsString()
   prompt?: string;
+
+  @IsOptional()
+  @IsString()
+  calendar?: string;
 }
 
 export class CalendarDisconnectDto {

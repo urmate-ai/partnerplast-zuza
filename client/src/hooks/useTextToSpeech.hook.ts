@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
-import { API_URL } from '../shared/utils/api';
+import { synthesizeToAudio } from '../services/tts/elevenlabs-tts.service';
+import * as Speech from 'expo-speech';
 
 export type UseTextToSpeechState = {
   isSpeaking: boolean;
@@ -26,6 +27,10 @@ export const useTextToSpeech = () => {
       }
       soundRef.current = null;
     }
+    try {
+      Speech.stop();
+    } catch {
+    }
     setState((prev) => ({ ...prev, isSpeaking: false }));
   }, []);
 
@@ -48,31 +53,67 @@ export const useTextToSpeech = () => {
         playThroughEarpieceAndroid: false,
       });
 
-      const ttsUrl = `${API_URL}/api/v1/ai/tts?text=${encodeURIComponent(
-        trimmed,
-      )}`;
-
       try {
-        const { sound } = await Audio.Sound.createAsync({ uri: ttsUrl });
-        soundRef.current = sound;
+        // Próbuj użyć ElevenLabs TTS (jeśli skonfigurowane)
+        const audioResult = await synthesizeToAudio(trimmed);
+        
+        if (audioResult) {
+          // Używamy ElevenLabs TTS
+          const { sound } = await Audio.Sound.createAsync({ uri: audioResult.uri });
+          soundRef.current = sound;
 
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (!status.isLoaded) return;
+          sound.setOnPlaybackStatusUpdate((status) => {
+            if (!status.isLoaded) return;
 
-          const hasFinished =
-            status.didJustFinish ||
-            (typeof status.durationMillis === 'number' &&
-              status.positionMillis >= status.durationMillis);
+            const hasFinished =
+              status.didJustFinish ||
+              (typeof status.durationMillis === 'number' &&
+                status.positionMillis >= status.durationMillis);
 
-          if (hasFinished) {
-            setState((prev) => ({ ...prev, isSpeaking: false }));
-          }
-        });
+            if (hasFinished) {
+              setState((prev) => ({ ...prev, isSpeaking: false }));
+            }
+          });
 
-        await sound.playAsync();
+          await sound.playAsync();
+        } else {
+          // Fallback do expo-speech (wbudowany TTS)
+          console.log('[useTextToSpeech] Using expo-speech as fallback');
+          await Speech.speak(trimmed, {
+            language: lang,
+            onDone: () => {
+              setState((prev) => ({ ...prev, isSpeaking: false }));
+            },
+            onStopped: () => {
+              setState((prev) => ({ ...prev, isSpeaking: false }));
+            },
+            onError: (error) => {
+              console.error('[useTextToSpeech] Speech error:', error);
+              setState((prev) => ({ ...prev, isSpeaking: false }));
+            },
+          });
+        }
       } catch (error) {
-        console.error('[useTextToSpeech] Failed to play ElevenLabs TTS', error);
-        setState((prev) => ({ ...prev, isSpeaking: false }));
+        console.error('[useTextToSpeech] Failed to play TTS', error);
+        // Fallback do expo-speech
+        try {
+          await Speech.speak(trimmed, {
+            language: lang,
+            onDone: () => {
+              setState((prev) => ({ ...prev, isSpeaking: false }));
+            },
+            onStopped: () => {
+              setState((prev) => ({ ...prev, isSpeaking: false }));
+            },
+            onError: (error) => {
+              console.error('[useTextToSpeech] Speech error:', error);
+              setState((prev) => ({ ...prev, isSpeaking: false }));
+            },
+          });
+        } catch (speechError) {
+          console.error('[useTextToSpeech] Failed to use expo-speech fallback', speechError);
+          setState((prev) => ({ ...prev, isSpeaking: false }));
+        }
       }
     },
     [stop],
@@ -82,7 +123,7 @@ export const useTextToSpeech = () => {
     return () => {
       void stop();
     };
-  }, []);
+  }, [stop]);
 
   return { state, speak, stop };
 };

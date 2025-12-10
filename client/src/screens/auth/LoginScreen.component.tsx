@@ -47,66 +47,66 @@ export const LoginScreen: React.FC = () => {
         }}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="flex-1 justify-center items-center">
-          <View className="w-full max-w-md">
-            <Text variant="h1" className="text-center mb-8">
-              Cześć, Witaj ponownie !
+      <View className="flex-1 justify-center items-center">
+        <View className="w-full max-w-md">
+          <Text variant="h1" className="text-center mb-8">
+            Cześć, Witaj ponownie !
+          </Text>
+
+          <LoginForm
+            control={control}
+            errors={errors}
+            showPassword={showPassword}
+            onTogglePassword={onTogglePassword}
+            emailSubmitted={emailSubmitted}
+            onEmailSubmit={onEmailSubmit}
+            onPasswordSubmit={handlePasswordSubmit}
+            isLoading={isLoading}
+            loginError={loginError}
+            getValues={getValues}
+            onEmailChange={onEmailChange}
+            onEmailChangeRequest={() => setEmailSubmitted(false)}
+          />
+
+          <Pressable
+            onPress={() => navigation.navigate('ForgotPassword')}
+            className="mt-4"
+          >
+            <View className="flex-row justify-center items-center">
+              <Text variant="caption" className="text-center text-gray-600">
+                Nie pamiętasz hasła?{' '}
+              </Text>
+              <Text variant="caption" className="text-left text-gray-900 font-semibold">
+                Zresetuj hasło
+              </Text>
+            </View>
+          </Pressable>
+
+          <View className="flex-row items-center my-8">
+            <View className="flex-1 h-px bg-gray-200" />
+            <Text variant="caption" className="mx-4 text-gray-400 font-medium">
+              LUB
             </Text>
+            <View className="flex-1 h-px bg-gray-200" />
+          </View>
 
-            <LoginForm
-              control={control}
-              errors={errors}
-              showPassword={showPassword}
-              onTogglePassword={onTogglePassword}
-              emailSubmitted={emailSubmitted}
-              onEmailSubmit={onEmailSubmit}
-              onPasswordSubmit={handlePasswordSubmit}
-              isLoading={isLoading}
-              loginError={loginError}
-              getValues={getValues}
-              onEmailChange={onEmailChange}
-              onEmailChangeRequest={() => setEmailSubmitted(false)}
-            />
+          <SocialLogin
+            onGoogleLogin={handleGoogleLogin}
+            googleError={googleError}
+          />
 
-            <Pressable
-              onPress={() => navigation.navigate('ForgotPassword')}
-              className="mt-4"
-            >
-              <View className="flex-row justify-center items-center">
-                <Text variant="caption" className="text-center text-gray-600">
-                  Nie pamiętasz hasła?{' '}
-                </Text>
-                <Text variant="caption" className="text-left text-gray-900 font-semibold">
-                  Zresetuj hasło
-                </Text>
-              </View>
+          <View className="flex-row justify-center items-center mt-6">
+            <Text variant="caption" className="text-gray-500">
+              Nie masz konta?{' '}
+            </Text>
+            <Pressable onPress={() => navigation.navigate('Register')}>
+              <Text variant="caption" className="text-gray-900 font-semibold">
+                Zarejestruj się
+              </Text>
             </Pressable>
-
-            <View className="flex-row items-center my-8">
-              <View className="flex-1 h-px bg-gray-200" />
-              <Text variant="caption" className="mx-4 text-gray-400 font-medium">
-                LUB
-              </Text>
-              <View className="flex-1 h-px bg-gray-200" />
-            </View>
-
-            <SocialLogin
-              onGoogleLogin={handleGoogleLogin}
-              googleError={googleError}
-            />
-
-            <View className="flex-row justify-center items-center mt-6">
-              <Text variant="caption" className="text-gray-500">
-                Nie masz konta?{' '}
-              </Text>
-              <Pressable onPress={() => navigation.navigate('Register')}>
-                <Text variant="caption" className="text-gray-900 font-semibold">
-                  Zarejestruj się
-                </Text>
-              </Pressable>
-            </View>
           </View>
         </View>
+      </View>
       </ScrollView>
     </SafeAreaView>
   );

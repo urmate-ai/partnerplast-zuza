@@ -6,6 +6,7 @@ import { useVoiceAi } from './useVoiceAi.hook';
 import { useAuthStore } from '../../../stores/authStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { getApproximateLocation, formatLocationForAi } from '../../utils/location.utils';
+import { apiClient } from '../../utils/api';
 import type { EmailIntent, CalendarIntent, SmsIntent } from '../../types/ai.types';
 
 type Message = {
@@ -46,26 +47,63 @@ export const useHomeScreen = () => {
         setMessages((prev) => [...prev, userMessage]);
 
         setIsTyping(true);
+        const hookStartTime = performance.now();
+        console.log(`[PERF] 🎤 [useHomeScreen] START voice processing | uri: ${uri.substring(0, 50)}... | timestamp: ${new Date().toISOString()}`);
 
-        console.log('[useHomeScreen] 📍 Pobieram lokalizację przed wysłaniem do AI...');
-        const location = await getApproximateLocation();
-        console.log('[useHomeScreen] 📍 Pobrana lokalizacja:', location);
+        const locationStartTime = performance.now();
+        console.log(`[PERF] 📍 [useHomeScreen] START location fetch | timestamp: ${new Date().toISOString()}`);
         
-        const locationLabel = formatLocationForAi(location);
-        console.log('[useHomeScreen] 📍 Lokalizacja dla AI:', locationLabel);
+        const locationPromise = getApproximateLocation()
+          .then((location) => {
+            const locationDuration = performance.now() - locationStartTime;
+            console.log(`[PERF] ✅ [useHomeScreen] END location fetch | duration: ${locationDuration.toFixed(2)}ms | location:`, location, `| timestamp: ${new Date().toISOString()}`);
+            return {
+              label: formatLocationForAi(location),
+              latitude: location?.latitude,
+              longitude: location?.longitude,
+            };
+          })
+          .catch((e) => {
+            const locationDuration = performance.now() - locationStartTime;
+            console.log(`[PERF] ❌ [useHomeScreen] ERROR location fetch | duration: ${locationDuration.toFixed(2)}ms | error: ${e.message} | timestamp: ${new Date().toISOString()}`);
+            return { label: null, latitude: undefined, longitude: undefined };
+          });
 
-        console.log('[useHomeScreen] 🚀 Wysyłam do AI z opcjami:', {
-          language: 'pl',
-          location: locationLabel,
-        });
+        console.log('[useHomeScreen] 🚀 Wysyłam do AI...');
 
+        const locationData = await locationPromise;
+        const aiStartTime = performance.now();
+        console.log(`[PERF] 🤖 [useHomeScreen] START AI processing | location: ${locationData.label ? 'provided' : 'none'} | lat: ${locationData.latitude} | lng: ${locationData.longitude} | timestamp: ${new Date().toISOString()}`);
+        
+        // Callback wywoływany zaraz po transkrypcji - użytkownik zobaczy transkrypcję od razu!
+        const handleTranscript = (transcript: string) => {
+          console.log('[useHomeScreen] 📝 Transkrypcja otrzymana, aktualizuję wiadomość:', transcript);
+          setMessages((prev) => 
+            prev.map(msg => 
+              msg.id === userMessageId 
+                ? { ...msg, content: transcript }
+                : msg
+            )
+          );
+        };
+        
         const result = await voiceAiMutation.mutateAsync({
           uri,
-          options: { language: 'pl', location: locationLabel },
+          options: { 
+            language: 'pl',
+            location: locationData.label || undefined,
+            latitude: locationData.latitude,
+            longitude: locationData.longitude,
+            onTranscript: handleTranscript, // Przekazujemy callback
+          },
         });
-
+        
+        const aiDuration = performance.now() - aiStartTime;
+        const totalHookDuration = performance.now() - hookStartTime;
+        console.log(`[PERF] ✅ [useHomeScreen] END AI processing | AI duration: ${aiDuration.toFixed(2)}ms | total hook duration: ${totalHookDuration.toFixed(2)}ms | timestamp: ${new Date().toISOString()}`);
         console.log('[useHomeScreen] ✅ Odpowiedź z AI:', result);
 
+        // Upewnij się, że transkrypcja jest zaktualizowana (na wypadek gdyby callback nie zadziałał)
         setMessages((prev) => 
           prev.map(msg => 
             msg.id === userMessageId 
@@ -116,20 +154,39 @@ export const useHomeScreen = () => {
               ? [result.smsIntent.to]
               : [];
 
-          try {
-            const isSmsAvailable = await SMS.isAvailableAsync();
-            if (!isSmsAvailable) {
-              console.error('[useHomeScreen] ❌ SMS nie jest dostępny na tym urządzeniu');
-            } else {
-              console.log('[useHomeScreen] 📱 Otwieranie aplikacji SMS z odbiorcą:', recipients, 'i treścią:', smsBody);
-              await SMS.sendSMSAsync(recipients, smsBody);
-            }
-          } catch (smsError) {
-            console.error('[useHomeScreen] ❌ Błąd przy otwieraniu aplikacji SMS:', smsError);
-          }
-        }
+          console.log('[useHomeScreen] 📱 SMS details - recipients:', recipients, 'body:', smsBody);
 
-        queryClient.invalidateQueries({ queryKey: ['chats'] });
+          // SMS w tle - nie blokuj UI
+          SMS.isAvailableAsync().then((available: boolean) => {
+            console.log('[useHomeScreen] 📱 SMS available:', available);
+            if (available) {
+              SMS.sendSMSAsync(recipients, smsBody)
+                .then(() => console.log('[useHomeScreen] ✅ SMS sent successfully'))
+                .catch((e: unknown) => console.error('[useHomeScreen] ❌ SMS error:', e));
+            } else {
+              console.error('[useHomeScreen] ❌ SMS not available on this device');
+            }
+          }).catch((e: unknown) => console.error('[useHomeScreen] ❌ SMS availability check error:', e));
+        } else {
+          console.log('[useHomeScreen] 📱 Brak intencji SMS lub shouldSendSms = false:', result.smsIntent);
+        }
+        
+        // Zapis czatu w TLE - nie blokuj odpowiedzi!
+        (async () => {
+          try {
+            const { createNewChat } = await import('../../../services/chats.service');
+            const chatId = await createNewChat().then((res) => res.chatId).catch(() => null);
+            if (chatId) {
+              await Promise.all([
+                apiClient.post(`/ai/chats/${chatId}/messages`, { role: 'user', content: result.transcript }),
+                apiClient.post(`/ai/chats/${chatId}/messages`, { role: 'assistant', content: result.reply }),
+              ]).catch(() => {});
+            }
+            queryClient.invalidateQueries({ queryKey: ['chats'] });
+          } catch {
+            // Ignoruj błędy zapisu - nie blokuj UI
+          }
+        })();
       } catch (err) {
         setError(
           err instanceof Error ? err.message : 'Coś poszło nie tak po stronie AI.',

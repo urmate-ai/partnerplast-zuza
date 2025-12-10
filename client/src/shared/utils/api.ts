@@ -3,7 +3,7 @@ import { useAuthStore } from '../../stores/authStore';
 import type { ApiSuccessResponse } from '../types/api.types';
 
 export const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+  process.env.EXPO_PUBLIC_API_URL ?? 'https://partnerplast-zuza.onrender.com';
 
 export const apiClient = axios.create({
   baseURL: `${API_URL}/api/v1`,

@@ -70,7 +70,7 @@ describe('OpenAIChatTitleService', () => {
 
       expect(result).toBe(mockTitle);
       expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith({
-        model: 'gpt-4o',
+        model: 'gpt-4.1-nano',
         messages: [
           {
             role: 'system',

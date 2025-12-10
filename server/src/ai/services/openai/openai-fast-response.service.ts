@@ -38,7 +38,7 @@ export class OpenAIFastResponseService {
 
     try {
       const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1 nano',
         messages: messages as Array<{
           role: 'system' | 'user' | 'assistant';
           content: string;

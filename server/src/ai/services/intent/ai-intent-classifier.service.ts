@@ -35,7 +35,7 @@ export class AIIntentClassifierService {
       const prompt = this.buildClassificationPrompt(transcript);
 
       const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1 nano',
         messages: [
           {
             role: 'system',

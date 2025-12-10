@@ -33,6 +33,38 @@ export class GmailController {
 
   @Get('callback')
   async handleCallback(@Query() query: GmailCallbackDto, @Res() res: Response) {
+    if (query.gmail) {
+      return res.status(200).send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Gmail</title>
+          </head>
+          <body>
+            <p>Przekierowanie do aplikacji...</p>
+          </body>
+        </html>
+      `);
+    }
+
+    if (!query.code || !query.state) {
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Błąd</title>
+          </head>
+          <body>
+            <p>Brak wymaganych parametrów OAuth (code, state)</p>
+          </body>
+        </html>
+      `);
+    }
+
     try {
       const { redirectUri } = await this.gmailService.handleCallback(
         query.code,
