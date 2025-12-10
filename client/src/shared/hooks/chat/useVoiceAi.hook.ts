@@ -1,40 +1,27 @@
 import { useMutation } from '@tanstack/react-query';
-import { apiClient } from '../../utils/api';
-import type { VoiceAiResponse } from '../../../shared/types';
+import { transcribeAndRespond } from '../../../services/ai/voice-ai.service';
+import type { VoiceProcessResult } from '../../../shared/types/ai.types';
+import { useAuthStore } from '../../../stores/authStore';
 
 type SendVoiceToAiOptions = {
   language?: string;
   context?: string;
   location?: string;
+  latitude?: number;
+  longitude?: number;
+  onTranscript?: (transcript: string) => void; // Callback wywoływany zaraz po transkrypcji
 };
 
 const sendVoiceToAiRequest = async (
   uri: string,
   options?: SendVoiceToAiOptions,
-): Promise<VoiceAiResponse> => {
-  const form = new FormData();
-  form.append('audio', {
-    uri: uri,
-    name: 'voice.m4a',
-    type: 'audio/m4a',
-  } as unknown as Blob);
-
-  if (options?.language) {
-    form.append('language', options.language);
-  }
-  if (options?.context) {
-    form.append('context', options.context);
-  }
-  if (options?.location) {
-    form.append('location', options.location);
+): Promise<VoiceProcessResult> => {
+  const userId = useAuthStore.getState().user?.id;
+  if (!userId) {
+    throw new Error('User not authenticated');
   }
 
-  const response = await apiClient.post<VoiceAiResponse>('/ai/voice', form, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
-  return response.data;
+  return transcribeAndRespond(uri, userId, options);
 };
 
 export const useVoiceAi = () => {
