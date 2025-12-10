@@ -19,6 +19,19 @@ export class GmailService {
   private readonly logger = new Logger(GmailService.name);
   private readonly integrationName = 'Gmail';
 
+  private readonly PERSONAL_EMAILS_FILTER =
+    'category:primary ' +
+    '-category:promotions ' +
+    '-category:social ' +
+    '-category:updates ' +
+    '-category:forums ' +
+    '-from:noreply ' +
+    '-from:no-reply ' +
+    '-from:donotreply ' +
+    '-from:notifications ' +
+    '-subject:unsubscribe ' +
+    '-is:spam';
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly oauthService: GoogleOAuthService,
@@ -26,11 +39,11 @@ export class GmailService {
     private readonly configService: ConfigService,
   ) {}
 
-  generateAuthUrl(
+  async generateAuthUrl(
     userId: string,
     expoRedirectUri?: string,
-  ): GmailAuthUrlResponse {
-    return this.oauthService.generateAuthUrl(
+  ): Promise<GmailAuthUrlResponse> {
+    return await this.oauthService.generateAuthUrl(
       userId,
       GMAIL_SCOPES,
       '/api/v1/integrations/gmail/callback',
@@ -118,6 +131,14 @@ export class GmailService {
     userId: string,
     maxResults = 10,
   ): Promise<GmailMessage[]> {
+    return this.searchMessages(userId, 'in:inbox', maxResults);
+  }
+
+  async searchMessages(
+    userId: string,
+    userQuery?: string,
+    maxResults = 10,
+  ): Promise<GmailMessage[]> {
     const { client } = await this.oauthService.getAuthenticatedClient(
       userId,
       this.integrationName,
@@ -125,10 +146,15 @@ export class GmailService {
     const gmail = google.gmail({ version: 'v1', auth: client });
 
     try {
+      const baseQuery = userQuery || 'in:inbox';
+      const fullQuery = `${baseQuery} ${this.PERSONAL_EMAILS_FILTER}`;
+
+      this.logger.debug(`Gmail search query: ${fullQuery}`);
+
       const response = await gmail.users.messages.list({
         userId: 'me',
         maxResults,
-        q: 'in:inbox',
+        q: fullQuery,
       });
 
       const messages = response.data.messages || [];
@@ -146,10 +172,13 @@ export class GmailService {
         detailedMessages.push(GmailMapper.toMessageDto(detail.data));
       }
 
+      this.logger.log(
+        `Found ${detailedMessages.length} messages for query: ${fullQuery}`,
+      );
       return detailedMessages;
     } catch (error) {
-      this.logger.error('Failed to fetch Gmail messages:', error);
-      throw new BadRequestException('Failed to fetch messages');
+      this.logger.error('Failed to search Gmail messages:', error);
+      throw new BadRequestException('Failed to search messages');
     }
   }
 
