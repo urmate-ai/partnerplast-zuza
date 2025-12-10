@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import { getChats } from '../../../services/chats.service';
+import { getChatHistory } from '../../../services/chats.service';
 import type { ChatHistoryItem } from '../../../shared/types';
 
 export const useChatHistory = () => {
   return useQuery({
     queryKey: ['chatHistory'],
     queryFn: async (): Promise<ChatHistoryItem[]> => {
-      return getChats();
+      // Tylko 10 najwcześniejszych chatów dla menu
+      return getChatHistory(10);
     },
     staleTime: 2 * 60 * 1000,
     retry: 1,

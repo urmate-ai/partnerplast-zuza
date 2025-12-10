@@ -131,12 +131,15 @@ export class ChatService {
     }
   }
 
-  async getChatHistory(userId: string): Promise<ChatHistoryItem[]> {
+  async getChatHistory(
+    userId: string,
+    limit?: number,
+  ): Promise<ChatHistoryItem[]> {
     try {
       const chats = await this.prisma.chat.findMany({
         where: { userId },
         orderBy: { updatedAt: 'desc' },
-        take: 100,
+        take: limit || 100,
         select: { id: true, title: true, updatedAt: true },
       });
 
@@ -228,5 +231,28 @@ export class ChatService {
       where: { id: chatId },
       data: { updatedAt: new Date() },
     });
+  }
+
+  async deleteChat(chatId: string, userId: string): Promise<void> {
+    try {
+      // Sprawdź, czy chat należy do użytkownika
+      const chat = await this.prisma.chat.findFirst({
+        where: { id: chatId, userId },
+      });
+
+      if (!chat) {
+        throw new NotFoundException('Chat not found');
+      }
+
+      // Usuń chat (wiadomości zostaną usunięte automatycznie przez cascade)
+      await this.prisma.chat.delete({
+        where: { id: chatId },
+      });
+
+      this.logger.log(`Chat deleted: ${chatId} for user: ${userId}`);
+    } catch (error) {
+      this.logger.error('Error deleting chat:', error);
+      throw error;
+    }
   }
 }
