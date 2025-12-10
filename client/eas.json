@@ -37,10 +37,6 @@
         "disabled": true
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://partnerplast-zuza.onrender.com",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "136688670188-dfb7lm0qurk79vdg98s4ag6n53a3itur.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "136688670188-6ebd8lmhebejjvetcrus6a0difdper48.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "136688670188-kmlqiqljpje66ththlo26b7vs1ifacgf.apps.googleusercontent.com"
       },
       "android": {
         "buildType": "apk",
