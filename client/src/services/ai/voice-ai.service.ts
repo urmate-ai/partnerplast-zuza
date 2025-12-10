@@ -32,7 +32,7 @@ type IntentClassification = {
   confidence: 'high' | 'medium' | 'low';
 };
 
-const buildSystemPrompt = (userName?: string, context?: string, location?: string, needsWebSearch?: boolean, isGmailConnected?: boolean, isContactsAvailable?: boolean, needsGmailButNotConnected?: boolean): string => {
+const buildSystemPrompt = (userName?: string, context?: string, location?: string, needsWebSearch?: boolean, isGmailConnected?: boolean, isContactsAvailable?: boolean, needsGmailButNotConnected?: boolean, hasCalendarContext?: boolean): string => {
   const nameInstruction = userName ? ` Zwracaj się po imieniu "${userName}".` : '';
   
   let basePrompt = `ZUZA - asystent głosowy. Nazywasz się Zuza i jesteś kobietą. Odpowiadaj krótko (1-2 zdania), po polsku, używając form żeńskich (np. "sprawdziłam", "znalazłam", "powiedziałam").${nameInstruction}`;
@@ -53,6 +53,10 @@ const buildSystemPrompt = (userName?: string, context?: string, location?: strin
 
   if (context) {
     basePrompt = `${basePrompt}\n\nKontekst: ${context}`;
+    
+    if (hasCalendarContext && context.includes('wydarzenia w kalendarzu')) {
+      basePrompt += '\n\nWAŻNE: Jeśli użytkownik pyta o konkretny dzień (np. "jutro", "dzisiaj", "w poniedziałek"), filtruj wydarzenia tylko z tego dnia. Sprawdź datę każdego wydarzenia i odpowiadaj tylko o wydarzenia z dnia, o który pyta użytkownik. Jeśli użytkownik pyta o "jutro", pokaż tylko wydarzenia z jutra. Jeśli pyta o "dzisiaj", pokaż tylko wydarzenia z dzisiaj.';
+    }
   }
 
   if (location) {
@@ -465,8 +469,9 @@ export async function transcribeAndRespond(
                 isConnected: true,
               };
             }
+            const emptyCalendarContext = `Sprawdziłem kalendarz użytkownika. Kalendarz jest podłączony, ale nie znalazłem żadnych wydarzeń w zakresie od ${timeMin} do ${timeMax}. Odpowiedz użytkownikowi, że sprawdziłeś jego kalendarz, ale nie znalazłeś żadnych wydarzeń/zadań w tym okresie.`;
             console.log(`[PERF] ⚠️ END Calendar context fetch (empty) | duration: ${calendarDuration.toFixed(2)}ms | connected: ${status.isConnected} | timestamp: ${new Date().toISOString()}`);
-            return { context: null, isConnected: false };
+            return { context: emptyCalendarContext, isConnected: true };
           } catch (e: any) {
             console.log(`[PERF] ❌ ERROR Calendar context fetch | error: ${e.message} | timestamp: ${new Date().toISOString()}`);
             return { context: null, isConnected: false };
@@ -580,7 +585,8 @@ export async function transcribeAndRespond(
   }
 
   const isContactsAvailable = contactsContextResult?.isAvailable || false;
-  const systemPrompt = buildSystemPrompt(undefined, context, options.location, intentClass.needsWebSearch, isGmailConnected, isContactsAvailable, needsGmailButNotConnected);
+  const hasCalendarContext = !!calendarContextResult?.context && calendarContextResult.isConnected;
+  const systemPrompt = buildSystemPrompt(undefined, context, options.location, intentClass.needsWebSearch, isGmailConnected, isContactsAvailable, needsGmailButNotConnected, hasCalendarContext);
   
   const allMessages = [
     { role: 'system' as const, content: systemPrompt },
@@ -663,11 +669,17 @@ export async function transcribeAndRespond(
     console.log(`[PERF] 🎯 [ETAP 6/6] START intent detection (parallel) | needsEmail: ${intentClass.needsEmailIntent && isGmailConnected} | needsCalendar: ${intentClass.needsCalendarIntent && isCalendarConnected} | needsSms: ${intentClass.needsSmsIntent} | timestamp: ${new Date().toISOString()}`);
   }
   
+  const wantsToAddCalendarEvent = intentClass.needsCalendarIntent && 
+    (transcript.toLowerCase().includes('dodaj') || 
+     transcript.toLowerCase().includes('zapisz') || 
+     transcript.toLowerCase().includes('zaplanuj') ||
+     transcript.toLowerCase().includes('przypomnij'));
+  
   const [emailIntent, calendarIntent, smsIntent] = await Promise.all([
     intentClass.needsEmailIntent && isGmailConnected
       ? detectEmailIntent(transcript)
       : Promise.resolve(undefined),
-    intentClass.needsCalendarIntent && isCalendarConnected
+    wantsToAddCalendarEvent && isCalendarConnected
       ? detectCalendarIntent(transcript)
       : Promise.resolve(undefined),
     intentClass.needsSmsIntent ? detectSmsIntent(transcript) : Promise.resolve(undefined),
@@ -979,19 +991,29 @@ async function detectCalendarIntent(transcript: string): Promise<CalendarIntent 
           role: 'user',
           content: `Użytkownik powiedział: "${transcript}"
 
-Czy użytkownik chce dodać wydarzenie do kalendarza? Jeśli tak, wyodrębnij:
-- Tytuł wydarzenia (summary)
+Czy użytkownik chce dodać wydarzenie/zadanie/spotkanie do kalendarza? 
+WAŻNE: "zadanie", "wydarzenie", "spotkanie", "przypomnienie" to to samo - wszystkie powinny być dodane do kalendarza.
+
+Jeśli użytkownik chce dodać coś do kalendarza (wydarzenie, zadanie, spotkanie, przypomnienie), wyodrębnij:
+- Tytuł wydarzenia (summary) - jeśli użytkownik mówi "zadanie o treści X", to summary = "X"
 - Opis (description) - jeśli podany
 - Miejsce (location) - jeśli podane
 - Data i godzina rozpoczęcia (startDateTime) - w formacie ISO 8601
-- Data i godzina zakończenia (endDateTime) - w formacie ISO 8601
-- Czy cały dzień (isAllDay) - true jeśli nie ma godziny
+- Data i godzina zakończenia (endDateTime) - w formacie ISO 8601 (jeśli nie podano, dodaj 1 godzinę do startDateTime)
+- Czy cały dzień (isAllDay) - true tylko jeśli wyraźnie mówi "cały dzień" lub nie ma godziny
 
-Dla dat użyj: "jutro" = ${tomorrow.toISOString().split('T')[0]}, "dzisiaj" = ${now.toISOString().split('T')[0]}
+Dla dat użyj: 
+- "jutro" = ${tomorrow.toISOString().split('T')[0]}
+- "dzisiaj" = ${now.toISOString().split('T')[0]}
+- Jeśli podano tylko godzinę (np. "15:00"), użyj daty z jutro/dzisiaj + godzina
+
+Przykłady:
+- "dodaj zadanie do kalendarza o treści kup prezent o godzinie 15.00" → shouldCreateEvent: true, summary: "kup prezent", startDateTime: "${tomorrow.toISOString().split('T')[0]}T15:00:00"
+- "dodaj spotkanie jutro o 10:00" → shouldCreateEvent: true, summary: "spotkanie", startDateTime: "${tomorrow.toISOString().split('T')[0]}T10:00:00"
 
 Odpowiedz w formacie JSON:
 {
-  "shouldCreateEvent": true,
+  "shouldCreateEvent": true/false,
   "summary": "tytuł lub null",
   "description": "opis lub null",
   "location": "miejsce lub null",

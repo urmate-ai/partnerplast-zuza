@@ -9,6 +9,11 @@ export class CalendarFormatter {
       return `Brak wydarzeń w kalendarzu w najbliższych ${daysAhead} dniach.`;
     }
 
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     const formattedEvents = events.map((event, index) => {
       const startDate = event.start.dateTime
         ? new Date(event.start.dateTime)
@@ -21,6 +26,16 @@ export class CalendarFormatter {
         : event.end.date
           ? new Date(event.end.date)
           : null;
+
+      let dayLabel = '';
+      if (startDate) {
+        const eventDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        if (eventDate.getTime() === today.getTime()) {
+          dayLabel = 'DZISIAJ';
+        } else if (eventDate.getTime() === tomorrow.getTime()) {
+          dayLabel = 'JUTRO';
+        }
+      }
 
       const dateStr = startDate
         ? startDate.toLocaleString('pl-PL', {
@@ -50,7 +65,7 @@ export class CalendarFormatter {
             : '';
 
       return `${index + 1}. ${event.summary}
-Data: ${dateStr}${timeStr ? `\n   Godzina: ${timeStr}` : ''}${event.location ? `\n   Miejsce: ${event.location}` : ''}${event.description ? `\n   Opis: ${event.description.substring(0, 100)}${event.description.length > 100 ? '...' : ''}` : ''}`;
+${dayLabel ? `${dayLabel} - ` : ''}Data: ${dateStr}${timeStr ? `\n   Godzina: ${timeStr}` : ''}${event.location ? `\n   Miejsce: ${event.location}` : ''}${event.description ? `\n   Opis: ${event.description.substring(0, 100)}${event.description.length > 100 ? '...' : ''}` : ''}`;
     });
 
     return `Nadchodzące wydarzenia w kalendarzu (${events.length}):\n\n${formattedEvents.join('\n\n')}`;
