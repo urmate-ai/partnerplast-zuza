@@ -32,7 +32,7 @@ type IntentClassification = {
   confidence: 'high' | 'medium' | 'low';
 };
 
-const buildSystemPrompt = (userName?: string, context?: string, location?: string, needsWebSearch?: boolean, isGmailConnected?: boolean, isContactsAvailable?: boolean, needsGmailButNotConnected?: boolean, hasCalendarContext?: boolean): string => {
+const buildSystemPrompt = (userName?: string, context?: string, location?: string, needsWebSearch?: boolean, isGmailConnected?: boolean, isContactsAvailable?: boolean, needsGmailButNotConnected?: boolean, hasCalendarContext?: boolean, needsCalendarButNotConnected?: boolean): string => {
   const nameInstruction = userName ? ` Zwracaj się po imieniu "${userName}".` : '';
   
   let basePrompt = `ZUZA - asystent głosowy. Nazywasz się Zuza i jesteś kobietą. Odpowiadaj krótko (1-2 zdania), po polsku, używając form żeńskich (np. "sprawdziłam", "znalazłam", "powiedziałam").${nameInstruction}`;
@@ -45,6 +45,10 @@ const buildSystemPrompt = (userName?: string, context?: string, location?: strin
     basePrompt += '\n\nWAŻNE: Masz dostęp do skrzynki mailowej użytkownika (Gmail jest połączony). Możesz odpowiadać na pytania o emaile.';
   } else if (needsGmailButNotConnected) {
     basePrompt += '\n\nWAŻNE: NIE MASZ dostępu do skrzynki mailowej użytkownika. Gmail nie jest podłączony. Poinformuj użytkownika, że aby sprawdzić emaile, musi najpierw połączyć swoje konto Gmail w ustawieniach aplikacji (Ustawienia → Integracje → Gmail).';
+  }
+
+  if (needsCalendarButNotConnected) {
+    basePrompt += '\n\nWAŻNE: NIE MASZ dostępu do kalendarza użytkownika. Google Calendar nie jest podłączony. Poinformuj użytkownika, że aby sprawdzić wydarzenia w kalendarzu, musi najpierw połączyć swoje konto Google Calendar w ustawieniach aplikacji (Ustawienia → Integracje → Google Calendar).';
   }
 
   if (isContactsAvailable) {
@@ -453,12 +457,31 @@ export async function transcribeAndRespond(
             const timeMax = new Date(
               now.getTime() + 7 * 24 * 60 * 60 * 1000,
             ).toISOString();
-            const events = await getEvents({
-              calendarId: 'primary',
-              timeMin,
-              timeMax,
-              maxResults: 20,
-            }).catch(() => []);
+            
+            let events: any[] = [];
+            let calendarError: any = null;
+            
+            try {
+              events = await getEvents({
+                calendarId: 'primary',
+                timeMin,
+                timeMax,
+                maxResults: 20,
+              });
+            } catch (error: any) {
+              calendarError = error;
+              const isAuthError = error?.response?.status === 401 || 
+                                 error?.message?.includes('401') ||
+                                 error?.message?.includes('Unauthorized') ||
+                                 error?.message?.includes('autoryzacji');
+              
+              if (isAuthError) {
+                console.log(`[PERF] ⚠️ END Calendar context fetch (auth error - not connected) | duration: ${(performance.now() - calendarStartTime).toFixed(2)}ms | timestamp: ${new Date().toISOString()}`);
+                return { context: null, isConnected: false };
+              }
+              
+              console.warn(`[PERF] ⚠️ Calendar getEvents error (non-auth): ${error?.message} | timestamp: ${new Date().toISOString()}`);
+            }
 
             const calendarDuration = performance.now() - calendarStartTime;
             if (events.length > 0) {
@@ -469,6 +492,7 @@ export async function transcribeAndRespond(
                 isConnected: true,
               };
             }
+                
             const emptyCalendarContext = `Sprawdziłem kalendarz użytkownika. Kalendarz jest podłączony, ale nie znalazłem żadnych wydarzeń w zakresie od ${timeMin} do ${timeMax}. Odpowiedz użytkownikowi, że sprawdziłeś jego kalendarz, ale nie znalazłeś żadnych wydarzeń/zadań w tym okresie.`;
             console.log(`[PERF] ⚠️ END Calendar context fetch (empty) | duration: ${calendarDuration.toFixed(2)}ms | connected: ${status.isConnected} | timestamp: ${new Date().toISOString()}`);
             return { context: emptyCalendarContext, isConnected: true };
@@ -569,6 +593,7 @@ export async function transcribeAndRespond(
   const isGmailConnected = gmailContextResult.isConnected;
   const isCalendarConnected = calendarContextResult.isConnected;
   const needsGmailButNotConnected = intentClass.needsEmailIntent && !gmailContextResult.isConnected;
+  const needsCalendarButNotConnected = intentClass.needsCalendarIntent && !calendarContextResult.isConnected;
   
   let context = options.context;
   if (gmailContextResult.context) {
@@ -586,7 +611,7 @@ export async function transcribeAndRespond(
 
   const isContactsAvailable = contactsContextResult?.isAvailable || false;
   const hasCalendarContext = !!calendarContextResult?.context && calendarContextResult.isConnected;
-  const systemPrompt = buildSystemPrompt(undefined, context, options.location, intentClass.needsWebSearch, isGmailConnected, isContactsAvailable, needsGmailButNotConnected, hasCalendarContext);
+  const systemPrompt = buildSystemPrompt(undefined, context, options.location, intentClass.needsWebSearch, isGmailConnected, isContactsAvailable, needsGmailButNotConnected, hasCalendarContext, needsCalendarButNotConnected);
   
   const allMessages = [
     { role: 'system' as const, content: systemPrompt },
