@@ -1,11 +1,14 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import * as SecureStore from 'expo-secure-store';
+import axios from 'axios';
 import { useAuthStore } from '../authStore';
 import type { User } from '../authStore';
 
 jest.mock('expo-secure-store');
+jest.mock('axios');
 
 const mockSecureStore = SecureStore as jest.Mocked<typeof SecureStore>;
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('authStore', () => {
   beforeEach(() => {
@@ -16,6 +19,8 @@ describe('authStore', () => {
       isLoading: true,
       isAuthenticated: false,
     });
+
+    mockedAxios.get.mockReset();
   });
 
   describe('setAuth', () => {
@@ -103,18 +108,29 @@ describe('authStore', () => {
         .mockResolvedValueOnce(mockToken)
         .mockResolvedValueOnce(JSON.stringify(mockUser));
 
+      mockedAxios.get.mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: mockUser,
+        },
+      } as any);
+
       const { result } = renderHook(() => useAuthStore());
 
       await act(async () => {
         await result.current.loadAuth();
       });
 
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
+      await waitFor(
+        () => {
+          expect(result.current.isLoading).toBe(false);
+        },
+        { timeout: 3000 },
+      );
 
       expect(mockSecureStore.getItemAsync).toHaveBeenCalledWith('auth_token');
       expect(mockSecureStore.getItemAsync).toHaveBeenCalledWith('auth_user');
+      expect(mockedAxios.get).toHaveBeenCalled();
       expect(result.current.user).toEqual(mockUser);
       expect(result.current.token).toBe(mockToken);
       expect(result.current.isAuthenticated).toBe(true);
@@ -125,36 +141,48 @@ describe('authStore', () => {
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null);
 
-      const { result } = renderHook(() => useAuthStore());
+      const { result, unmount } = renderHook(() => useAuthStore());
 
       await act(async () => {
         await result.current.loadAuth();
       });
 
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
+      await waitFor(
+        () => {
+          expect(result.current.isLoading).toBe(false);
+        },
+        { timeout: 3000 },
+      );
 
       expect(result.current.user).toBeNull();
       expect(result.current.token).toBeNull();
       expect(result.current.isAuthenticated).toBe(false);
+      expect(mockedAxios.get).not.toHaveBeenCalled();
+      
+      unmount();
     });
 
     it('should handle secure store error gracefully', async () => {
       mockSecureStore.getItemAsync.mockRejectedValue(new Error('Storage error'));
 
-      const { result } = renderHook(() => useAuthStore());
+      const { result, unmount } = renderHook(() => useAuthStore());
 
       await act(async () => {
         await result.current.loadAuth();
       });
 
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
+      await waitFor(
+        () => {
+          expect(result.current.isLoading).toBe(false);
+        },
+        { timeout: 3000 },
+      );
 
       expect(result.current.user).toBeNull();
       expect(result.current.token).toBeNull();
+      expect(mockedAxios.get).not.toHaveBeenCalled();
+      
+      unmount();
     });
 
     it('should handle invalid JSON in user data', async () => {
@@ -162,18 +190,24 @@ describe('authStore', () => {
         .mockResolvedValueOnce(mockToken)
         .mockResolvedValueOnce('invalid json');
 
-      const { result } = renderHook(() => useAuthStore());
+      const { result, unmount } = renderHook(() => useAuthStore());
 
       await act(async () => {
         await result.current.loadAuth();
       });
 
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
+      await waitFor(
+        () => {
+          expect(result.current.isLoading).toBe(false);
+        },
+        { timeout: 3000 },
+      );
 
       expect(result.current.user).toBeNull();
       expect(result.current.token).toBeNull();
+      expect(mockedAxios.get).not.toHaveBeenCalled();
+      
+      unmount();
     });
   });
 });
