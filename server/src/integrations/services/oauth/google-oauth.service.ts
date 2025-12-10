@@ -46,13 +46,12 @@ export class GoogleOAuthService {
   ): Promise<{ authUrl: string; state: string; expoRedirectUrl?: string }> {
     const serverRedirectUri = this.buildRedirectUri(redirectPath);
 
-    // Deep link przechowujemy w state, aby później przekierować użytkownika
     const state = await this.stateService.generate(userId, expoRedirectUri);
 
     const tempClient = new google.auth.OAuth2(
       this.config.clientId,
       this.config.clientSecret,
-      serverRedirectUri, // Zawsze URL serwera
+      serverRedirectUri,
     );
 
     const authUrl = tempClient.generateAuthUrl({
@@ -85,8 +84,6 @@ export class GoogleOAuthService {
       await this.stateService.validateAndConsume(state);
 
     try {
-      // Musimy użyć tego samego redirectUri co w generateAuthUrl
-      // Google wymaga, aby redirect_uri był identyczny
       const serverRedirectUri = this.buildRedirectUri(redirectPath);
 
       const client = new google.auth.OAuth2(
@@ -109,7 +106,7 @@ export class GoogleOAuthService {
           expiry_date: tokens.expiry_date ?? null,
           scope: tokens.scope ?? null,
         },
-        redirectUri, // Deep link do przekierowania użytkownika
+        redirectUri,
       };
     } catch (error) {
       this.logger.error('Failed to handle OAuth callback:', error);
@@ -203,8 +200,42 @@ export class GoogleOAuthService {
           userIntegration.accessToken,
         );
         await this.oauth2Client.revokeToken(decryptedToken);
-      } catch (error) {
-        this.logger.warn('Failed to revoke Google token:', error);
+      } catch (error: unknown) {
+        const isGaxiosError =
+          error &&
+          typeof error === 'object' &&
+          'response' in error &&
+          error.response &&
+          typeof error.response === 'object' &&
+          'data' in error.response;
+
+        const errorData = isGaxiosError
+          ? (
+              error.response as {
+                data?: { error?: string; error_description?: string };
+              }
+            ).data
+          : null;
+
+        const errorMessage =
+          errorData?.error ||
+          (error instanceof Error ? error.message : String(error));
+        const errorDescription = errorData?.error_description || '';
+
+        if (
+          errorMessage === 'invalid_token' &&
+          typeof errorDescription === 'string' &&
+          errorDescription.includes('not revocable')
+        ) {
+          this.logger.debug(
+            `Token for ${integrationName} cannot be revoked (likely expired or already revoked). Continuing with disconnect.`,
+          );
+        } else {
+          this.logger.warn(
+            `Failed to revoke Google token for ${integrationName}:`,
+            errorMessage,
+          );
+        }
       }
     }
 
