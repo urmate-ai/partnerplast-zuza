@@ -48,8 +48,8 @@ export class CalendarController {
   ) {
     try {
       const { redirectUri } = await this.calendarService.handleCallback(
-        query.code,
-        query.state,
+        query.code ?? '',
+        query.state ?? '',
       );
 
       const deepLink = redirectUri
