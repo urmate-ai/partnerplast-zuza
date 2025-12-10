@@ -7,12 +7,14 @@ interface UseAutoScrollOptions {
   messagesCount: number;
   displayedText?: string;
   isTyping?: boolean;
+  bottomControlsHeight?: number;
 }
 
 export function useAutoScroll({
   messagesCount,
   displayedText,
   isTyping,
+  bottomControlsHeight = 0,
 }: UseAutoScrollOptions) {
   const scrollViewRef = useRef<ScrollView | null>(null);
   const shouldScrollToEndRef = useRef<boolean>(true);
@@ -21,7 +23,7 @@ export function useAutoScroll({
     if (scrollViewRef.current && (shouldScrollToEndRef.current || force)) {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated });
-      }, 100);
+      }, 200);
     }
   }, []);
 
@@ -60,10 +62,20 @@ export function useAutoScroll({
   }, [displayedText, scrollToEnd]);
 
   useEffect(() => {
-    if (!isTyping && displayedText) {
-      scrollToEnd(true, true);
+    if (!isTyping && displayedText) { 
+      setTimeout(() => {
+        scrollToEnd(true, true);
+      }, 300);
     }
   }, [isTyping, displayedText, scrollToEnd]);
+
+  useEffect(() => {
+    if (bottomControlsHeight > 0) {
+      setTimeout(() => {
+        scrollToEnd(true, true);
+      }, 100);
+    }
+  }, [bottomControlsHeight, scrollToEnd]);
 
   return {
     scrollViewRef,

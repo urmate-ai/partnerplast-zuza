@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View } from '../../../shared/components/View.component';
 import { MessageBubble } from './MessageBubble.component';
 import { EmptyState } from './EmptyState.component';
@@ -12,16 +13,17 @@ export function ChatMessages({
   messages,
   isTyping = false,
   onTypingComplete,
+  bottomControlsHeight = 0,
 }: ChatMessagesProps) {
+  const insets = useSafeAreaInsets();
+  
   const lastAssistantMessage = useMemo(
     () => messages.filter((m) => m.role === 'assistant').pop(),
     [messages],
   );
 
-  // Sprawdź czy ostatnia wiadomość asystenta ma status (zastępuje TypingIndicator)
   const hasActiveStatus = lastAssistantMessage?.status !== null && lastAssistantMessage?.status !== undefined;
   
-  // Używaj animacji tylko gdy nie ma aktywnego statusu
   const shouldShowTypingAnimation = isTyping && !hasActiveStatus;
 
   const {
@@ -43,22 +45,28 @@ export function ChatMessages({
     messagesCount: messages.length,
     displayedText,
     isTyping: shouldShowTypingAnimation,
+    bottomControlsHeight,
   });
 
   if (messages.length === 0 && !isTyping && !hasActiveStatus) {
     return <EmptyState />;
   }
 
+  const bottomPadding = bottomControlsHeight > 0 
+    ? bottomControlsHeight + 32
+    : Math.max(insets.bottom, 16) + 180;
+
   return (
     <ScrollView
       ref={scrollViewRef}
       className="flex-1"
-      contentContainerStyle={{ paddingBottom: 16 }}
+      contentContainerStyle={{ paddingBottom: bottomPadding }}
       showsVerticalScrollIndicator={false}
       onContentSizeChange={handleContentSizeChange}
       onLayout={handleLayout}
       onScroll={handleScroll}
       onMomentumScrollEnd={handleMomentumScrollEnd}
+      scrollEventThrottle={16}
     >
       <View className="gap-4 px-2">
         {messages.map((message, index) => (
@@ -70,8 +78,7 @@ export function ChatMessages({
             typingMessageId={typingMessageId}
           />
         ))}
-
-        {/* Pokazuj TypingIndicator tylko gdy nie ma aktywnego statusu */}
+  
         {isTyping && !hasActiveStatus && (
           <View 
             style={{ 
