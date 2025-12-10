@@ -3,11 +3,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
-
 COPY prisma ./prisma
-
-RUN npx prisma generate
+RUN npm ci
 
 COPY . .
 RUN npm run build
@@ -19,12 +16,10 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 COPY package*.json ./
+COPY prisma ./prisma
 RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
-COPY prisma ./prisma
-
-RUN npx prisma generate
 
 EXPOSE 3000
 CMD ["npm", "run", "start:prod"]
