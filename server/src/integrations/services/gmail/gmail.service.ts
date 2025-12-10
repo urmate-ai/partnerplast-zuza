@@ -56,7 +56,11 @@ export class GmailService {
     state: string,
   ): Promise<{ userId: string; redirectUri?: string }> {
     const { userId, tokens, redirectUri } =
-      await this.oauthService.handleCallback(code, state);
+      await this.oauthService.handleCallback(
+        code,
+        state,
+        '/api/v1/integrations/gmail/callback',
+      );
 
     try {
       const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
