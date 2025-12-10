@@ -1,6 +1,8 @@
 export type ProcessingStatus = 
   | 'transcribing'      
   | 'classifying'       
+  | 'checking_email'    
+  | 'checking_calendar' 
   | 'web_searching'     
   | 'preparing_response' 
   | null;                

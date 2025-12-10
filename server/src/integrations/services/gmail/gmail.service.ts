@@ -151,7 +151,8 @@ export class GmailService {
 
     try {
       const baseQuery = userQuery || 'in:inbox';
-      const fullQuery = `${baseQuery} ${this.PERSONAL_EMAILS_FILTER}`;
+      // Użyj tylko zapytania użytkownika bez dodatkowych filtrów
+      const fullQuery = baseQuery;
 
       this.logger.debug(`Gmail search query: ${fullQuery}`);
 
