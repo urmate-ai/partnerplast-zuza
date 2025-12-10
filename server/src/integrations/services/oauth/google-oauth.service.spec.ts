@@ -147,7 +147,7 @@ describe('GoogleOAuthService', () => {
       expect(result.state).toBe(mockState);
       expect(stateService.generate).toHaveBeenCalledWith(
         mockUserId,
-        expect.any(String),
+        undefined, // expoRedirectUri nie jest przekazane w tym teście
       );
     });
   });
