@@ -6,7 +6,6 @@ export const useChatHistory = () => {
   return useQuery({
     queryKey: ['chatHistory'],
     queryFn: async (): Promise<ChatHistoryItem[]> => {
-      // Tylko 10 najwcześniejszych chatów dla menu
       return getChatHistory(10);
     },
     staleTime: 2 * 60 * 1000,
