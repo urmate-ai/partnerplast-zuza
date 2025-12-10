@@ -32,7 +32,7 @@ type IntentClassification = {
 const buildSystemPrompt = (userName?: string, context?: string, location?: string, needsWebSearch?: boolean, isGmailConnected?: boolean): string => {
   const nameInstruction = userName ? ` Zwracaj się po imieniu "${userName}".` : '';
   
-  let basePrompt = `ZUZA - asystent głosowy. Odpowiadaj krótko (1-2 zdania), po polsku.${nameInstruction}`;
+  let basePrompt = `ZUZA - asystent głosowy. Nazywasz się Zuza i jesteś kobietą. Odpowiadaj krótko (1-2 zdania), po polsku, używając form żeńskich (np. "sprawdziłam", "znalazłam", "powiedziałam").${nameInstruction}`;
 
   if (needsWebSearch) {
     basePrompt += ' Możesz wyszukiwać informacje w internecie (pogoda, wiadomości, fakty, kursy walut, wyniki sportowe itp.). Odpowiedz na pytanie użytkownika.';
@@ -295,7 +295,7 @@ export async function transcribeAndRespond(
     console.log(`[PERF] ⚡ [FAST PATH] Simple greeting detected | timestamp: ${new Date().toISOString()}`);
     
     const fastPathStartTime = performance.now();  
-    const systemPrompt = 'ZUZA - asystent. Odpowiedz krótko na powitanie.';
+    const systemPrompt = 'ZUZA - asystent głosowy. Nazywasz się Zuza i jesteś kobietą. Odpowiedz krótko na powitanie, używając form żeńskich (np. "cześć", "witam").';
     
     console.log(`[PERF] 💬 [ETAP 3/3] START chat completion (fast path) | model: gpt-4.1-nano | max_tokens: 40 | temperature: 0.9 | timestamp: ${new Date().toISOString()}`);
     

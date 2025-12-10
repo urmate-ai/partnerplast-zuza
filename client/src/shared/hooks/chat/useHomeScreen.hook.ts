@@ -86,11 +86,11 @@ export const useHomeScreen = () => {
           console.log('[useHomeScreen] 🔄 Zmiana statusu:', status);
           
           const statusTexts: Record<string, string> = {
-            'classifying': 'Badam intencję',
-            'checking_email': 'Sprawdzam maila',
-            'checking_calendar': 'Sprawdzam kalendarz',
-            'web_searching': 'Szukam w internecie',
-            'preparing_response': 'Szykuję odpowiedź',
+            'classifying': 'Badam intencję...',
+            'checking_email': 'Sprawdzam maila...',
+            'checking_calendar': 'Sprawdzam kalendarz...',
+            'web_searching': 'Szukam w internecie...',
+            'preparing_response': 'Szykuję odpowiedź...',
           };
           
           if (status === null) {
