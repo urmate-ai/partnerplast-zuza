@@ -166,7 +166,28 @@ export class GoogleOAuthService {
       userIntegration.tokenExpiresAt &&
       userIntegration.tokenExpiresAt < new Date()
     ) {
-      await this.refreshToken(userId, integration.id, client);
+      try {
+        await this.refreshToken(userId, integration.id, client);
+      } catch (error) {
+        const updatedIntegration = await this.prisma.userIntegration.findUnique(
+          {
+            where: {
+              userId_integrationId: {
+                userId,
+                integrationId: integration.id,
+              },
+            },
+          },
+        );
+
+        if (!updatedIntegration || !updatedIntegration.isConnected) {
+          throw new UnauthorizedException(
+            `${integrationName} not connected. Token expired or revoked.`,
+          );
+        }
+
+        throw error;
+      }
     }
 
     return { client, integrationId: integration.id };
@@ -308,7 +329,41 @@ export class GoogleOAuthService {
           },
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      const isInvalidGrant =
+        error &&
+        typeof error === 'object' &&
+        'response' in error &&
+        error.response &&
+        typeof error.response === 'object' &&
+        'data' in error.response &&
+        error.response.data &&
+        typeof error.response.data === 'object' &&
+        'error' in error.response.data &&
+        error.response.data.error === 'invalid_grant';
+
+      if (isInvalidGrant) {
+        this.logger.warn(
+          `Token for user ${userId} has been expired or revoked. Marking integration as requiring reconnection.`,
+        );
+
+        await this.prisma.userIntegration.update({
+          where: {
+            userId_integrationId: {
+              userId,
+              integrationId,
+            },
+          },
+          data: {
+            isConnected: false,
+          },
+        });
+
+        throw new UnauthorizedException(
+          'Token has been expired or revoked. Please reconnect your account in Settings → Integrations.',
+        );
+      }
+
       this.logger.error('Failed to refresh access token:', error);
       throw new UnauthorizedException('Failed to refresh access token');
     }

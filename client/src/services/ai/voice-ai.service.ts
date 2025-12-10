@@ -32,7 +32,7 @@ type IntentClassification = {
   confidence: 'high' | 'medium' | 'low';
 };
 
-const buildSystemPrompt = (userName?: string, context?: string, location?: string, needsWebSearch?: boolean, isGmailConnected?: boolean, isContactsAvailable?: boolean): string => {
+const buildSystemPrompt = (userName?: string, context?: string, location?: string, needsWebSearch?: boolean, isGmailConnected?: boolean, isContactsAvailable?: boolean, needsGmailButNotConnected?: boolean): string => {
   const nameInstruction = userName ? ` Zwracaj się po imieniu "${userName}".` : '';
   
   let basePrompt = `ZUZA - asystent głosowy. Nazywasz się Zuza i jesteś kobietą. Odpowiadaj krótko (1-2 zdania), po polsku, używając form żeńskich (np. "sprawdziłam", "znalazłam", "powiedziałam").${nameInstruction}`;
@@ -43,6 +43,8 @@ const buildSystemPrompt = (userName?: string, context?: string, location?: strin
 
   if (isGmailConnected) {
     basePrompt += '\n\nWAŻNE: Masz dostęp do skrzynki mailowej użytkownika (Gmail jest połączony). Możesz odpowiadać na pytania o emaile.';
+  } else if (needsGmailButNotConnected) {
+    basePrompt += '\n\nWAŻNE: NIE MASZ dostępu do skrzynki mailowej użytkownika. Gmail nie jest podłączony. Poinformuj użytkownika, że aby sprawdzić emaile, musi najpierw połączyć swoje konto Gmail w ustawieniach aplikacji (Ustawienia → Integracje → Gmail).';
   }
 
   if (isContactsAvailable) {
@@ -561,6 +563,7 @@ export async function transcribeAndRespond(
 
   const isGmailConnected = gmailContextResult.isConnected;
   const isCalendarConnected = calendarContextResult.isConnected;
+  const needsGmailButNotConnected = intentClass.needsEmailIntent && !gmailContextResult.isConnected;
   
   let context = options.context;
   if (gmailContextResult.context) {
@@ -577,7 +580,7 @@ export async function transcribeAndRespond(
   }
 
   const isContactsAvailable = contactsContextResult?.isAvailable || false;
-  const systemPrompt = buildSystemPrompt(undefined, context, options.location, intentClass.needsWebSearch, isGmailConnected, isContactsAvailable);
+  const systemPrompt = buildSystemPrompt(undefined, context, options.location, intentClass.needsWebSearch, isGmailConnected, isContactsAvailable, needsGmailButNotConnected);
   
   const allMessages = [
     { role: 'system' as const, content: systemPrompt },

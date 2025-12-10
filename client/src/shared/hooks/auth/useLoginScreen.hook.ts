@@ -62,6 +62,25 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
   const onSubmit = async (data: LoginFormData) => {
     try {
       await loginMutation.mutateAsync(data);
+      
+      await new Promise<void>((resolve) => {
+        const checkAuth = () => {
+          const { isAuthenticated } = useAuthStore.getState();
+          if (isAuthenticated) {
+            console.log('[LoginScreen] ✅ Autoryzacja zaktualizowana, przechodzę do Home');
+            resolve();
+          } else {
+            setTimeout(checkAuth, 50);
+          }
+        };
+        checkAuth();
+        
+        setTimeout(() => {
+          console.log('[LoginScreen] ⚠️ Timeout podczas oczekiwania na autoryzację, przechodzę do Home');
+          resolve();
+        }, 2000);
+      });
+      
       navigation.replace('Home');
     } catch (error: unknown) {
       console.error('Login error:', error);
