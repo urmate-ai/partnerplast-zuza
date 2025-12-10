@@ -67,18 +67,18 @@ export const ChangePasswordScreen: React.FC = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
-      >
-        <ScreenHeader title="Zmień hasło" onBack={() => navigation.goBack()} />
+    >
+      <ScreenHeader title="Zmień hasło" onBack={() => navigation.goBack()} />
 
-        <ScrollView
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 32) }}
-          keyboardShouldPersistTaps="handled"
-        >
+        keyboardShouldPersistTaps="handled"
+      >
         <View className="px-6 pt-6">
           <View className="mb-6">
             <Text variant="body" className="text-gray-600 mb-6">

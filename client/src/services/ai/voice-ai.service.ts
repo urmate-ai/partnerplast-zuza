@@ -1,4 +1,5 @@
 import { openAIClient } from './openai-client';
+import { geminiClient } from './gemini-client';
 import type { VoiceProcessResult, EmailIntent, CalendarIntent, SmsIntent } from '../../shared/types/ai.types';
 import { getGmailMessages, getGmailStatus } from '../gmail.service';
 import { getEvents, getCalendarStatus } from '../calendar.service';
@@ -13,7 +14,7 @@ type VoiceProcessOptions = {
   location?: string;
   latitude?: number;
   longitude?: number;
-  onTranscript?: (transcript: string) => void; // Callback wywoływany zaraz po transkrypcji
+  onTranscript?: (transcript: string) => void; 
 };
 
 type IntentClassification = {
@@ -27,13 +28,10 @@ type IntentClassification = {
 };
 
 const buildSystemPrompt = (userName?: string, context?: string, location?: string, needsWebSearch?: boolean): string => {
-  // ZOPTYMALIZOWANY - krótszy prompt = szybsza odpowiedź
   const nameInstruction = userName ? ` Zwracaj się po imieniu "${userName}".` : '';
   
-  // Skrócony base prompt (495 → ~200 chars)
   let basePrompt = `ZUZA - asystent głosowy. Odpowiadaj krótko (1-2 zdania), po polsku.${nameInstruction}`;
 
-  // Jeśli użytkownik pyta o wyszukiwanie w internecie, wyjaśnij możliwości
   if (needsWebSearch) {
     basePrompt += ' Możesz wyszukiwać informacje w internecie (pogoda, wiadomości, fakty, kursy walut, wyniki sportowe itp.). Odpowiedz na pytanie użytkownika.';
   }
@@ -49,16 +47,71 @@ const buildSystemPrompt = (userName?: string, context?: string, location?: strin
   return basePrompt;
 };
 
-// Używamy LOKALNEJ klasyfikacji - nie wymaga API, instant!
-function classifyIntent(transcript: string): IntentClassification {
-  return localClassifyIntent(transcript);
+async function classifyIntent(transcript: string): Promise<IntentClassification> {
+  const localResult = localClassifyIntent(transcript);
+  
+  if (localResult.isSimpleGreeting && localResult.confidence === 'high') {
+    return localResult;
+  }
+
+  return await aiClassifyIntent(transcript);
 }
 
-// SZYBKA lokalna klasyfikacja intencji - nie wymaga API!
+async function aiClassifyIntent(transcript: string): Promise<IntentClassification> {
+  try {
+    const systemPrompt = `Jesteś klasyfikatorem intencji. Przeanalizuj wiadomość użytkownika i zwróć JSON z intencjami.
+Odpowiedz TYLKO JSON w formacie:
+{
+  "needsEmailIntent": true/false,
+  "needsCalendarIntent": true/false,
+  "needsSmsIntent": true/false,
+  "isSimpleGreeting": true/false,
+  "needsWebSearch": true/false,
+  "needsPlacesSearch": true/false,
+  "confidence": "high"/"medium"/"low"
+}
+
+Zasady:
+- needsEmailIntent: użytkownik chce wysłać email/mail
+- needsCalendarIntent: użytkownik chce dodać wydarzenie/spotkanie do kalendarza
+- needsSmsIntent: użytkownik chce wysłać SMS/wiadomość tekstową
+- isSimpleGreeting: proste powitanie (cześć, hej, dzień dobry) BEZ innych intencji
+- needsWebSearch: użytkownik pyta o informacje z internetu (pogoda, wiadomości, fakty, kursy, aktualne wydarzenia, "kto jest", "kim jest", "aktualnie", "obecnie", "premier", "prezydent", ceny, wydarzenia)
+- needsPlacesSearch: użytkownik pyta o miejsca w okolicy (restauracje, sklepy, apteki, odległości)
+- confidence: "high" jeśli jesteś pewny, "medium" jeśli prawdopodobny, "low" jeśli niepewny`;
+
+    const completion = await openAIClient.chatCompletions({
+      model: 'gpt-4.1-nano',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: transcript },
+      ],
+      max_tokens: 150,
+      temperature: 0.3, 
+      response_format: { type: 'json_object' },
+    });
+
+    const responseText = completion.choices[0]?.message?.content?.trim() || '{}';
+    const parsed = JSON.parse(responseText) as IntentClassification;
+    
+    return {
+      needsEmailIntent: Boolean(parsed.needsEmailIntent),
+      needsCalendarIntent: Boolean(parsed.needsCalendarIntent),
+      needsSmsIntent: Boolean(parsed.needsSmsIntent),
+      isSimpleGreeting: Boolean(parsed.isSimpleGreeting),
+      needsWebSearch: Boolean(parsed.needsWebSearch),
+      needsPlacesSearch: Boolean(parsed.needsPlacesSearch),
+      confidence: parsed.confidence || 'medium',
+    };
+  } catch (error) {
+    console.warn('[AI Intent] Classification failed, using local fallback:', error);
+    return localClassifyIntent(transcript);
+  }
+}
+
 function localClassifyIntent(transcript: string): IntentClassification {
   const lower = transcript.toLowerCase().trim();
   
-  // Sprawdź najpierw czy są inne intencje
   const hasOtherIntent = 
     lower.includes('wyślij') ||
     lower.includes('napisz') ||
@@ -69,7 +122,6 @@ function localClassifyIntent(transcript: string): IntentClassification {
     lower.includes('gdzie') ||
     lower.includes('numer');
   
-  // Proste powitania - INSTANT response (tylko jeśli NIE ma innych intencji)
   const greetingPatterns = [
     /^(cześć|hej|hejka|siema|witaj|dzień dobry|dobry wieczór|dobranoc|yo|elo|hello|hi)[\s!.,?]*$/i,
     /^(cześć|hej|hejka|siema|witaj)\s+(zuza|zuzo)[\s!.,?]*$/i,
@@ -77,7 +129,6 @@ function localClassifyIntent(transcript: string): IntentClassification {
   ];
   const isSimpleGreeting = !hasOtherIntent && greetingPatterns.some(p => p.test(lower));
   
-  // Email intencje
   const needsEmailIntent = 
     lower.includes('wyślij mail') ||
     lower.includes('wyślij email') ||
@@ -87,7 +138,6 @@ function localClassifyIntent(transcript: string): IntentClassification {
     lower.includes('email do') ||
     lower.includes('mail do');
   
-  // Kalendarz intencje
   const needsCalendarIntent = 
     lower.includes('dodaj spotkanie') ||
     lower.includes('dodaj wydarzenie') ||
@@ -98,7 +148,6 @@ function localClassifyIntent(transcript: string): IntentClassification {
     lower.includes('w kalendarzu') ||
     lower.includes('kalendarz');
   
-  // SMS intencje - NAPRAWIONE!
   const needsSmsIntent = 
     lower.includes('wyślij sms') ||
     lower.includes('wyślij smsa') ||
@@ -108,10 +157,8 @@ function localClassifyIntent(transcript: string): IntentClassification {
     lower.includes('sms do') ||
     lower.includes('sms na numer') ||
     lower.includes('esemes') ||
-    // Wykryj numer telefonu w tekście
     (lower.includes('wyślij') && (lower.includes('numer') || /\d{3}[-\s]?\d{3}[-\s]?\d{3}/.test(lower)));
   
-  // Miejsca w okolicy
   const needsPlacesSearch =
     lower.includes('ile metrów') ||
     lower.includes('jak daleko') ||
@@ -127,7 +174,6 @@ function localClassifyIntent(transcript: string): IntentClassification {
     lower.includes('szpital') ||
     lower.includes('stacj');
 
-  // Web search - NAPRAWIONE!
   const needsWebSearch =
     (lower.includes('pogoda') ||
       lower.includes('temperatura') ||
@@ -143,11 +189,26 @@ function localClassifyIntent(transcript: string): IntentClassification {
       lower.includes('sprawdź') ||
       lower.includes('co to jest') ||
       lower.includes('kim jest') ||
+      lower.includes('kto jest') || 
       lower.includes('gdzie można') ||
       lower.includes('jak zrobić') ||
       lower.includes('umiesz szukać') ||
       lower.includes('umiesz wyszukiwać') ||
-      lower.includes('wiadomo')) &&
+      lower.includes('wiadomo') ||
+      lower.includes('aktualnie') ||
+      lower.includes('obecnie') ||
+      lower.includes('teraz') ||
+      lower.includes('dzisiaj') ||
+      lower.includes('premier') ||
+      lower.includes('prezydent') ||
+      lower.includes('minister') ||
+      lower.includes('rząd') ||
+      lower.includes('ile kosztuje') ||
+      lower.includes('jaka cena') ||
+      lower.includes('gdzie kupić') ||
+      lower.includes('kiedy') ||
+      lower.includes('co się dzieje') ||
+      lower.includes('co się stało')) &&
     !needsPlacesSearch;
 
   return {
@@ -173,7 +234,6 @@ export async function transcribeAndRespond(
   console.log(`[PERF] 🎯 START transcribeAndRespond | audioUri: ${audioUri.substring(0, 50)}... | timestamp: ${new Date().toISOString()}`);
   console.log(`[PERF] 🎯 ========================================`);
   
-  // 1. Transkrypcja (1-3s - GŁÓWNE wąskie gardło, nie da się przyspieszyć)
   const transcriptionStartTime = performance.now();
   console.log(`[PERF] 📝 [ETAP 1/6] START transcription | timestamp: ${new Date().toISOString()}`);
   
@@ -186,7 +246,6 @@ export async function transcribeAndRespond(
   stageTimings.transcription = transcriptionDuration;
   console.log(`[PERF] ✅ [ETAP 1/6] END transcription | ⏱️ CZAS: ${transcriptionDuration.toFixed(2)}ms (${(transcriptionDuration/1000).toFixed(2)}s) | transcript: "${transcript.trim()}" | timestamp: ${new Date().toISOString()}`);
 
-  // Wywołaj callback z transkrypcją - użytkownik zobaczy ją od razu!
   if (options.onTranscript) {
     try {
       options.onTranscript(transcript.trim());
@@ -195,22 +254,19 @@ export async function transcribeAndRespond(
     }
   }
 
-  // 2. Lokalna klasyfikacja (<1ms)
   const classificationStartTime = performance.now();
-  console.log(`[PERF] 🔍 [ETAP 2/6] START intent classification | timestamp: ${new Date().toISOString()}`);
+  console.log(`[PERF] 🔍 [ETAP 2/6] START intent classification (AI) | timestamp: ${new Date().toISOString()}`);
   
-  const intentClass = classifyIntent(transcript);
+  const intentClass = await classifyIntent(transcript);
   
   const classificationDuration = performance.now() - classificationStartTime;
   stageTimings.classification = classificationDuration;
-  console.log(`[PERF] ✅ [ETAP 2/6] END intent classification | ⏱️ CZAS: ${classificationDuration.toFixed(2)}ms | intent:`, JSON.stringify(intentClass), `| timestamp: ${new Date().toISOString()}`);
+  console.log(`[PERF] ✅ [ETAP 2/6] END intent classification (AI) | ⏱️ CZAS: ${classificationDuration.toFixed(2)}ms (${(classificationDuration/1000).toFixed(2)}s) | intent:`, JSON.stringify(intentClass), `| timestamp: ${new Date().toISOString()}`);
 
-  // 3. FAST PATH dla prostych powitań - pomiń historię i kontekst!
   if (intentClass.isSimpleGreeting && intentClass.confidence === 'high') {
     console.log(`[PERF] ⚡ [FAST PATH] Simple greeting detected | timestamp: ${new Date().toISOString()}`);
     
-    const fastPathStartTime = performance.now();
-    // Ultra-krótki prompt dla fast path
+    const fastPathStartTime = performance.now();  
     const systemPrompt = 'ZUZA - asystent. Odpowiedz krótko na powitanie.';
     
     console.log(`[PERF] 💬 [ETAP 3/3] START chat completion (fast path) | model: gpt-4.1-nano | max_tokens: 40 | temperature: 0.9 | timestamp: ${new Date().toISOString()}`);
@@ -221,8 +277,8 @@ export async function transcribeAndRespond(
         { role: 'system' as const, content: systemPrompt },
         { role: 'user' as const, content: transcript },
       ],
-      max_tokens: 40, // Zmniejszone z 50
-      temperature: 0.9, // Wyższa = szybsza odpowiedź
+      max_tokens: 40, 
+      temperature: 0.9, 
     });
     
     const fastPathDuration = performance.now() - fastPathStartTime;
@@ -246,7 +302,6 @@ export async function transcribeAndRespond(
     return { transcript, reply };
   }
 
-  // 4. Dla złożonych zapytań - pobierz kontekst równolegle (BEZ historii czatu!)
   console.log(`[PERF] 📦 [ETAP 3/6] START context fetching (parallel) | needsEmail: ${intentClass.needsEmailIntent} | needsCalendar: ${intentClass.needsCalendarIntent} | timestamp: ${new Date().toISOString()}`);
   const contextStartTime = performance.now();
   
@@ -326,7 +381,7 @@ export async function transcribeAndRespond(
           return searchNearbyPlaces({
             latitude: options.latitude,
             longitude: options.longitude,
-            query: transcript, // Użyj transkrypcji jako query
+            query: transcript, 
             radius: 5000,
             maxResults: 5,
           })
@@ -368,7 +423,6 @@ export async function transcribeAndRespond(
 
   const systemPrompt = buildSystemPrompt(undefined, context, options.location, intentClass.needsWebSearch);
   
-  // BEZ historii czatu - każde zapytanie jest niezależne (szybsze!)
   const allMessages = [
     { role: 'system' as const, content: systemPrompt },
     { role: 'user' as const, content: transcript },
@@ -376,33 +430,59 @@ export async function transcribeAndRespond(
 
   const systemPromptLength = systemPrompt.length;
   const userMessageLength = transcript.length;
-  const totalPromptTokens = Math.ceil((systemPromptLength + userMessageLength) / 4); // ~4 chars per token
+  const totalPromptTokens = Math.ceil((systemPromptLength + userMessageLength) / 4);  
   
   console.log(`[PERF] 📊 [ETAP 4/6] Prompt preparation | system: ${systemPromptLength} chars | user: ${userMessageLength} chars | estimated tokens: ~${totalPromptTokens} | needsWebSearch: ${intentClass.needsWebSearch} | timestamp: ${new Date().toISOString()}`);
 
-  const maxTokens = intentClass.needsWebSearch ? 300 : 150;
-  const temperature = 0.8;  
-  const model = intentClass.needsWebSearch ? 'gpt-5' : 'gpt-4.1-nano';
+  const maxTokens = intentClass.needsWebSearch ? 1000 : 150;
+  
+  const useGemini = intentClass.needsWebSearch;
+  const model = useGemini ? 'gemini-2.0-flash-exp' : 'gpt-4.1-nano';
   
   const completionStartTime = performance.now();
-  console.log(`[PERF] 💬 [ETAP 5/6] START chat completion | model: ${model} | max_tokens: ${maxTokens} | temperature: ${temperature} | needsWebSearch: ${intentClass.needsWebSearch} | timestamp: ${new Date().toISOString()}`);
+  console.log(`[PERF] 💬 [ETAP 5/6] START ${useGemini ? 'Gemini (websearch)' : 'chat completion'} | model: ${model} | max_tokens: ${maxTokens} | needsWebSearch: ${intentClass.needsWebSearch} | timestamp: ${new Date().toISOString()}`);
   
-  const completion = await openAIClient.chatCompletions({
-    model: model,
-    messages: allMessages,
-    max_tokens: maxTokens,
-    temperature: temperature,
-  });
+  let reply: string;
+  
+  if (useGemini) {
+    const systemMessage = allMessages.find(m => m.role === 'system');
+    const userMessage = allMessages.find(m => m.role === 'user');
+    
+    const response = await geminiClient.generateContent({
+      model: 'gemini-2.0-flash-exp',
+      systemInstruction: systemMessage?.content,
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: userMessage?.content || '' }],
+        },
+      ],
+      generationConfig: {
+        maxOutputTokens: maxTokens,
+        temperature: 0.8,
+      },
+      tools: [{ googleSearch: {} }], 
+    });
+    
+    reply = response.text?.trim() || 'Przepraszam, nie zrozumiałam.';
+  } else {
+    const completion = await openAIClient.chatCompletions({
+      model: 'gpt-4.1-nano',
+      messages: allMessages,
+      max_tokens: maxTokens,
+      temperature: 0.8,
+    });
+    
+    reply = completion.choices[0]?.message?.content?.trim() || 'Przepraszam, nie zrozumiałam.';
+  }
   
   const completionDuration = performance.now() - completionStartTime;
   stageTimings.completion = completionDuration;
-  const reply = completion.choices[0]?.message?.content?.trim() || 'Przepraszam, nie zrozumiałam.';
   const replyLength = reply.length;
   const estimatedReplyTokens = Math.ceil(replyLength / 4);
   
-  console.log(`[PERF] ✅ [ETAP 5/6] END chat completion | ⏱️ CZAS: ${completionDuration.toFixed(2)}ms (${(completionDuration/1000).toFixed(2)}s) | reply length: ${replyLength} chars (~${estimatedReplyTokens} tokens) | timestamp: ${new Date().toISOString()}`);
+  console.log(`[PERF] ✅ [ETAP 5/6] END ${useGemini ? 'Gemini (websearch)' : 'chat completion'} | ⏱️ CZAS: ${completionDuration.toFixed(2)}ms (${(completionDuration/1000).toFixed(2)}s) | reply length: ${replyLength} chars (~${estimatedReplyTokens} tokens) | timestamp: ${new Date().toISOString()}`);
 
-  // 6. Wykrywanie intencji email/calendar/sms (tylko jeśli potrzebne)
   const intentDetectionStartTime = performance.now();
   const needsIntentDetection = (intentClass.needsEmailIntent && isGmailConnected) || 
                                (intentClass.needsCalendarIntent && isCalendarConnected) || 
