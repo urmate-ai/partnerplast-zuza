@@ -13,6 +13,7 @@ describe('OAuthStateService', () => {
         findUnique: jest.fn(),
         delete: jest.fn(),
         deleteMany: jest.fn(),
+        count: jest.fn(),
       },
     };
 
@@ -154,6 +155,7 @@ describe('OAuthStateService', () => {
       (prismaService.oAuthState.findUnique as jest.Mock).mockResolvedValue(
         null,
       );
+      (prismaService.oAuthState.count as jest.Mock).mockResolvedValue(0);
 
       await expect(service.validateAndConsume(invalidState)).rejects.toThrow(
         'Invalid or expired state parameter',
@@ -166,6 +168,7 @@ describe('OAuthStateService', () => {
       (prismaService.oAuthState.findUnique as jest.Mock).mockResolvedValue(
         null,
       );
+      (prismaService.oAuthState.count as jest.Mock).mockResolvedValue(0);
 
       await expect(service.validateAndConsume(state)).rejects.toThrow(
         'Invalid or expired state parameter',
@@ -211,6 +214,7 @@ describe('OAuthStateService', () => {
       (prismaService.oAuthState.delete as jest.Mock).mockResolvedValue(
         mockStateData,
       );
+      (prismaService.oAuthState.count as jest.Mock).mockResolvedValue(0);
 
       await service.validateAndConsume(state);
 

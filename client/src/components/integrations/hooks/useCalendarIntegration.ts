@@ -77,14 +77,17 @@ export function useCalendarIntegration(enabled: boolean) {
     try {
       setIsConnecting(true);
 
-      const { authUrl } = await getCalendarAuthUrl();
+      const deepLink = Linking.createURL('integrations');
+      const serverCallbackUrl = `${process.env.EXPO_PUBLIC_API_URL || 'https://partnerplast-zuza.onrender.com'}/api/v1/integrations/calendar/callback`;
+      
+      console.log('Calendar deep link:', deepLink);
+      console.log('Calendar server callback URL:', serverCallbackUrl);
 
-      const redirectUrl = Linking.createURL('integrations');
-      console.log('Calendar redirect URL:', redirectUrl);
+      const { authUrl } = await getCalendarAuthUrl(deepLink);
 
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
-        redirectUrl,
+        serverCallbackUrl,
         {
           preferEphemeralSession: false,
         }
@@ -92,8 +95,43 @@ export function useCalendarIntegration(enabled: boolean) {
 
       console.log('Calendar auth result:', result);
 
-      // Zatrzym ładowanie niezależnie od wyniku
-      // Deep link listener obsłuży sukces/błąd
+      if (result.type === 'success' && result.url) {
+        console.log('Calendar auth result.url:', result.url);
+        
+        if (result.url.includes('urmate-ai-zuza://') || result.url.includes('integrations')) {
+          const { path, queryParams } = Linking.parse(result.url);
+          
+          if (path === 'integrations' || result.url.includes('integrations')) {
+            const calendarStatus = queryParams?.calendar as string | undefined;
+            
+            if (calendarStatus === 'success') {
+              queryClient.invalidateQueries({ queryKey: ['calendar', 'status'] });
+              queryClient.invalidateQueries({ queryKey: ['integrations'] });
+              Alert.alert('Sukces!', 'Google Calendar został pomyślnie połączony.', [{ text: 'OK' }]);
+            } else if (calendarStatus === 'error') {
+              Alert.alert('Błąd', 'Nie udało się połączyć z Google Calendar. Spróbuj ponownie.', [{ text: 'OK' }]);
+            }
+          }
+        } else if (result.url.includes('/integrations/calendar/callback')) {
+          console.log('Calendar callback URL detected, checking status...');
+          queryClient.invalidateQueries({ queryKey: ['calendar', 'status'] });
+          queryClient.invalidateQueries({ queryKey: ['integrations'] });
+          
+          setTimeout(async () => {
+            try {
+              const status = await getCalendarStatus();
+              if (status.isConnected) {
+                Alert.alert('Sukces!', 'Google Calendar został pomyślnie połączony.', [{ text: 'OK' }]);
+              }
+            } catch (e) {
+              console.error('Error checking Calendar status:', e);
+            }
+          }, 1000);
+        }
+      } else if (result.type === 'cancel') {
+        console.log('Calendar auth cancelled by user');
+      }
+
       setIsConnecting(false);
 
     } catch (error) {
@@ -108,7 +146,7 @@ export function useCalendarIntegration(enabled: boolean) {
         [{ text: 'OK' }],
       );
     }
-  }, []);
+  }, [queryClient]);
 
   const handleDisconnect = useCallback(async () => {
     Alert.alert(

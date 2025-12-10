@@ -77,20 +77,60 @@ export const useGmailIntegration = (enabled: boolean) => {
     try {
       setIsConnecting(true);
 
-      const { authUrl } = await getGmailAuthUrl();
+      const deepLink = Linking.createURL('integrations');
+      const serverCallbackUrl = `${process.env.EXPO_PUBLIC_API_URL || 'https://partnerplast-zuza.onrender.com'}/api/v1/integrations/gmail/callback`;
+      
+      console.log('Gmail deep link:', deepLink);
+      console.log('Gmail server callback URL:', serverCallbackUrl);
 
-      const redirectUrl = Linking.createURL('integrations');
-      console.log('Gmail redirect URL:', redirectUrl);
+      const { authUrl } = await getGmailAuthUrl(deepLink);
 
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
-        redirectUrl,
+        serverCallbackUrl,
         {
           preferEphemeralSession: false,
         }
       );
 
       console.log('Gmail auth result:', result);
+
+      if (result.type === 'success' && result.url) {
+        console.log('Gmail auth result.url:', result.url);
+        
+        if (result.url.includes('urmate-ai-zuza://') || result.url.includes('integrations')) {
+          const { path, queryParams } = Linking.parse(result.url);
+          
+          if (path === 'integrations' || result.url.includes('integrations')) {
+            const gmailStatus = queryParams?.gmail as string | undefined;
+            
+            if (gmailStatus === 'success') {
+              queryClient.invalidateQueries({ queryKey: ['gmail', 'status'] });
+              queryClient.invalidateQueries({ queryKey: ['integrations'] });
+              Alert.alert('Sukces!', 'Gmail został pomyślnie połączony.', [{ text: 'OK' }]);
+            } else if (gmailStatus === 'error') {
+              Alert.alert('Błąd', 'Nie udało się połączyć z Gmail. Spróbuj ponownie.', [{ text: 'OK' }]);
+            }
+          }
+        } else if (result.url.includes('/integrations/gmail/callback')) {
+          console.log('Gmail callback URL detected, checking status...');
+          queryClient.invalidateQueries({ queryKey: ['gmail', 'status'] });
+          queryClient.invalidateQueries({ queryKey: ['integrations'] });
+          
+          setTimeout(async () => {
+            try {
+              const status = await getGmailStatus();
+              if (status.isConnected) {
+                Alert.alert('Sukces!', 'Gmail został pomyślnie połączony.', [{ text: 'OK' }]);
+              }
+            } catch (e) {
+              console.error('Error checking Gmail status:', e);
+            }
+          }, 1000);
+        }
+      } else if (result.type === 'cancel') {
+        console.log('Gmail auth cancelled by user');
+      }
 
       setIsConnecting(false);
 
@@ -105,7 +145,7 @@ export const useGmailIntegration = (enabled: boolean) => {
         [{ text: 'OK' }]
       );
     }
-  }, []);
+  }, [queryClient]);
 
   const handleDisconnect = useCallback(async () => {
     Alert.alert(
