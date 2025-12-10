@@ -99,12 +99,6 @@ export class ChatService {
     }
   }
 
-  /**
-   * Pobiera ostatnie N wiadomości z czatu (dla kontekstu AI)
-   * @param chatId ID czatu
-   * @param userId ID użytkownika
-   * @param limit Liczba ostatnich wiadomości (domyślnie 20)
-   */
   async getRecentMessages(
     chatId: string,
     userId: string,
@@ -125,7 +119,6 @@ export class ChatService {
         throw new NotFoundException('Chat not found');
       }
 
-      // Odwróć kolejność wiadomości, aby były chronologicznie
       const chatWithOrderedMessages = {
         ...chat,
         messages: chat.messages.reverse(),
