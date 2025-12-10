@@ -213,10 +213,10 @@ export async function transcribeAndRespond(
     // Ultra-krótki prompt dla fast path
     const systemPrompt = 'ZUZA - asystent. Odpowiedz krótko na powitanie.';
     
-    console.log(`[PERF] 💬 [ETAP 3/3] START chat completion (fast path) | model: gpt-4o-mini | max_tokens: 40 | temperature: 0.9 | timestamp: ${new Date().toISOString()}`);
+    console.log(`[PERF] 💬 [ETAP 3/3] START chat completion (fast path) | model: gpt-4.1-nano | max_tokens: 40 | temperature: 0.9 | timestamp: ${new Date().toISOString()}`);
     
     const completion = await openAIClient.chatCompletions({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4.1-nano',
       messages: [
         { role: 'system' as const, content: systemPrompt },
         { role: 'user' as const, content: transcript },
@@ -380,17 +380,15 @@ export async function transcribeAndRespond(
   
   console.log(`[PERF] 📊 [ETAP 4/6] Prompt preparation | system: ${systemPromptLength} chars | user: ${userMessageLength} chars | estimated tokens: ~${totalPromptTokens} | needsWebSearch: ${intentClass.needsWebSearch} | timestamp: ${new Date().toISOString()}`);
 
-  // ZOPTYMALIZOWANE - mniejsze max_tokens i wyższa temperature = szybsza odpowiedź
-  // Dla web search dajemy więcej tokenów (300), dla normalnych zapytań 150
   const maxTokens = intentClass.needsWebSearch ? 300 : 150;
-  // Wyższa temperature (0.8) = szybsze generowanie, bardziej kreatywne odpowiedzi
-  const temperature = 0.8;
+  const temperature = 0.8;  
+  const model = intentClass.needsWebSearch ? 'gpt-5' : 'gpt-4.1-nano';
   
   const completionStartTime = performance.now();
-  console.log(`[PERF] 💬 [ETAP 5/6] START chat completion | model: gpt-4o-mini | max_tokens: ${maxTokens} | temperature: ${temperature} | needsWebSearch: ${intentClass.needsWebSearch} | timestamp: ${new Date().toISOString()}`);
+  console.log(`[PERF] 💬 [ETAP 5/6] START chat completion | model: ${model} | max_tokens: ${maxTokens} | temperature: ${temperature} | needsWebSearch: ${intentClass.needsWebSearch} | timestamp: ${new Date().toISOString()}`);
   
   const completion = await openAIClient.chatCompletions({
-    model: 'gpt-4o-mini',
+    model: model,
     messages: allMessages,
     max_tokens: maxTokens,
     temperature: temperature,
@@ -464,7 +462,7 @@ export async function transcribeAndRespond(
 async function detectEmailIntent(transcript: string): Promise<EmailIntent | undefined> {
   try {
     const completion = await openAIClient.chatCompletions({
-      model: 'gpt-4o',
+      model: 'gpt-4.1-nano',
       messages: [
         {
           role: 'system',
@@ -513,7 +511,7 @@ async function detectCalendarIntent(transcript: string): Promise<CalendarIntent 
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const completion = await openAIClient.chatCompletions({
-      model: 'gpt-4o',
+      model: 'gpt-4.1-nano',
       messages: [
         {
           role: 'system',
@@ -566,7 +564,7 @@ Odpowiedz w formacie JSON:
 async function detectSmsIntent(transcript: string): Promise<SmsIntent | undefined> {
   try {
     const completion = await openAIClient.chatCompletions({
-      model: 'gpt-4o',
+      model: 'gpt-4.1-nano',
       messages: [
         {
           role: 'system',
