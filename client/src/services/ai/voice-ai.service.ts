@@ -2,7 +2,7 @@ import { openAIClient } from './openai-client';
 import { geminiClient } from './gemini-client';
 import type { VoiceProcessResult, EmailIntent, CalendarIntent, SmsIntent } from '../../shared/types/ai.types';
 import type { ProcessingStatus } from '../../components/home/types/message.types';
-import { getGmailMessages, getGmailStatus, searchGmailMessages } from '../gmail.service';
+import { getGmailStatus, searchGmailMessages, type GmailMessage } from '../gmail.service';
 import { getEvents, getCalendarStatus } from '../calendar.service';
 import { GmailFormatter } from '../../shared/utils/gmail-formatter.utils';
 import { CalendarFormatter } from '../../shared/utils/calendar-formatter.utils';
@@ -29,13 +29,17 @@ type IntentClassification = {
   confidence: 'high' | 'medium' | 'low';
 };
 
-const buildSystemPrompt = (userName?: string, context?: string, location?: string, needsWebSearch?: boolean): string => {
+const buildSystemPrompt = (userName?: string, context?: string, location?: string, needsWebSearch?: boolean, isGmailConnected?: boolean): string => {
   const nameInstruction = userName ? ` Zwracaj się po imieniu "${userName}".` : '';
   
   let basePrompt = `ZUZA - asystent głosowy. Odpowiadaj krótko (1-2 zdania), po polsku.${nameInstruction}`;
 
   if (needsWebSearch) {
     basePrompt += ' Możesz wyszukiwać informacje w internecie (pogoda, wiadomości, fakty, kursy walut, wyniki sportowe itp.). Odpowiedz na pytanie użytkownika.';
+  }
+
+  if (isGmailConnected) {
+    basePrompt += '\n\nWAŻNE: Masz dostęp do skrzynki mailowej użytkownika (Gmail jest połączony). Możesz odpowiadać na pytania o emaile.';
   }
 
   if (context) {
@@ -74,13 +78,15 @@ Odpowiedz TYLKO JSON w formacie:
 }
 
 Zasady:
-- needsEmailIntent: użytkownik chce wysłać email/mail
-- needsCalendarIntent: użytkownik chce dodać wydarzenie/spotkanie do kalendarza
+- needsEmailIntent: użytkownik chce WYSŁAĆ email/mail LUB SPRAWDZIĆ/CZYTAĆ emaile (np. "pokaż mi maile", "jakie maile przyszły", "jaki mail dostałem", "maile z poniedziałku", "ostatni mail", "wyślij mail", "napisz email")
+- needsCalendarIntent: użytkownik chce dodać wydarzenie/spotkanie do kalendarza LUB sprawdzić wydarzenia (np. "dodaj spotkanie", "co mam w kalendarzu", "wydarzenia")
 - needsSmsIntent: użytkownik chce wysłać SMS/wiadomość tekstową
 - isSimpleGreeting: proste powitanie (cześć, hej, dzień dobry) BEZ innych intencji
-- needsWebSearch: użytkownik pyta o informacje z internetu (pogoda, wiadomości, fakty, kursy, aktualne wydarzenia, "kto jest", "kim jest", "aktualnie", "obecnie", "premier", "prezydent", ceny, wydarzenia)
+- needsWebSearch: użytkownik pyta o informacje z internetu (pogoda, wiadomości, fakty, kursy, aktualne wydarzenia, "kto jest", "kim jest", "aktualnie", "obecnie", "premier", "prezydent", ceny, wydarzenia) - NIE używaj dla zapytań o emaile/kalendarz użytkownika
 - needsPlacesSearch: użytkownik pyta o miejsca w okolicy (restauracje, sklepy, apteki, odległości)
-- confidence: "high" jeśli jesteś pewny, "medium" jeśli prawdopodobny, "low" jeśli niepewny`;
+- confidence: "high" jeśli jesteś pewny, "medium" jeśli prawdopodobny, "low" jeśli niepewny
+
+WAŻNE: Jeśli użytkownik pyta o emaile (np. "pokaż mi maile", "jakie maile", "jaki mail"), ustaw needsEmailIntent: true, NIE needsWebSearch: true.`;
 
     const completion = await openAIClient.chatCompletions({
       model: 'gpt-4.1-nano',
@@ -138,7 +144,18 @@ function localClassifyIntent(transcript: string): IntentClassification {
     lower.includes('napisz email') ||
     lower.includes('napisz do') ||
     lower.includes('email do') ||
-    lower.includes('mail do');
+    lower.includes('mail do') ||
+    lower.includes('pokaż mi maile') ||
+    lower.includes('pokaż maile') ||
+    lower.includes('jakie maile') ||
+    lower.includes('jaki mail') ||
+    lower.includes('maile z') ||
+    lower.includes('mail z') ||
+    lower.includes('ostatni mail') ||
+    lower.includes('ostatnie maile') ||
+    lower.includes('dostałem mail') ||
+    lower.includes('przyszedł mail') ||
+    lower.includes('przyszły maile');
   
   const needsCalendarIntent = 
     lower.includes('dodaj spotkanie') ||
@@ -330,26 +347,47 @@ export async function transcribeAndRespond(
               return { context: null, isConnected: false };
             }
 
+            if (options.onStatusChange) {
+              try {
+                options.onStatusChange('checking_email');
+              } catch (error) {
+                console.error('[voice-ai] Error in onStatusChange callback:', error);
+              }
+            }
+
             console.log(`[PERF] 🔍 START Gmail query generation | timestamp: ${new Date().toISOString()}`);
             const queryStartTime = performance.now();
-            const gmailQuery = await generateGmailQuery(transcript);
+            const gmailQueryResult = await generateGmailQuery(transcript);
             const queryDuration = performance.now() - queryStartTime;
-            console.log(`[PERF] ✅ END Gmail query generation | duration: ${queryDuration.toFixed(2)}ms | query: "${gmailQuery || 'in:inbox'}" | timestamp: ${new Date().toISOString()}`);
+            console.log(`[PERF] ✅ END Gmail query generation | duration: ${queryDuration.toFixed(2)}ms | query: "${gmailQueryResult.query || 'in:inbox'}" | hasSender: ${gmailQueryResult.hasSender} | timestamp: ${new Date().toISOString()}`);
 
-            const messages = await searchGmailMessages(gmailQuery || undefined, 20).catch(() => []);
+            const baseQuery = gmailQueryResult.queryWithoutSender || gmailQueryResult.query || 'in:inbox';
+            const messages = await searchGmailMessages(baseQuery, 50).catch(() => []);
+            
+            console.log(`[PERF] 📧 Fetched ${messages.length} messages from Gmail | timestamp: ${new Date().toISOString()}`);
+
+            let filteredMessages = messages;
+            if (gmailQueryResult.hasSender && messages.length > 0) {
+              console.log(`[PERF] 🔍 START AI sender filtering | sender hint: "${gmailQueryResult.senderHint}" | timestamp: ${new Date().toISOString()}`);
+              const filterStartTime = performance.now();
+              filteredMessages = await filterMessagesBySender(messages, gmailQueryResult.senderHint || '', transcript);
+              const filterDuration = performance.now() - filterStartTime;
+              console.log(`[PERF] ✅ END AI sender filtering | duration: ${filterDuration.toFixed(2)}ms | filtered: ${filteredMessages.length}/${messages.length} | timestamp: ${new Date().toISOString()}`);
+            }
             
             const gmailDuration = performance.now() - gmailStartTime;
-            if (messages.length > 0) {
-              const context = GmailFormatter.formatForAiContext(messages);
-              console.log(`[PERF] ✅ END Gmail context fetch | duration: ${gmailDuration.toFixed(2)}ms | query: "${gmailQuery || 'in:inbox'}" | messages: ${messages.length} | context length: ${context.length} | timestamp: ${new Date().toISOString()}`);
+            if (filteredMessages.length > 0) {
+              const context = GmailFormatter.formatForAiContext(filteredMessages);
+              console.log(`[PERF] ✅ END Gmail context fetch | duration: ${gmailDuration.toFixed(2)}ms | query: "${baseQuery}" | messages: ${filteredMessages.length} | context length: ${context.length} | timestamp: ${new Date().toISOString()}`);
               return {
                 context,
                 isConnected: true,
               };
             }
             
-            console.log(`[PERF] ⚠️ END Gmail context fetch (no messages) | duration: ${gmailDuration.toFixed(2)}ms | query: "${gmailQuery || 'in:inbox'}" | timestamp: ${new Date().toISOString()}`);
-            return { context: null, isConnected: true };
+            const noMessagesContext = `Sprawdziłem skrzynkę mailową użytkownika używając zapytania: "${baseQuery}". Nie znalazłem żadnych wiadomości spełniających te kryteria w skrzynce odbiorczej. Odpowiedz użytkownikowi, że sprawdziłeś jego skrzynkę mailową, ale nie znalazłeś wiadomości spełniających te kryteria. Możesz zaproponować sprawdzenie szerszego zakresu dat lub innych kryteriów.`;
+            console.log(`[PERF] ⚠️ END Gmail context fetch (no messages) | duration: ${gmailDuration.toFixed(2)}ms | query: "${baseQuery}" | timestamp: ${new Date().toISOString()}`);
+            return { context: noMessagesContext, isConnected: true };
           } catch (e: any) {
             console.log(`[PERF] ❌ ERROR Gmail context fetch | error: ${e.message} | timestamp: ${new Date().toISOString()}`);
             return { context: null, isConnected: false };
@@ -358,42 +396,53 @@ export async function transcribeAndRespond(
       : Promise.resolve({ context: null, isConnected: false }),
           
     intentClass.needsCalendarIntent
-      ? (() => {
+      ? (async () => {
           const calendarStartTime = performance.now();
           console.log(`[PERF] 📅 START Calendar context fetch | timestamp: ${new Date().toISOString()}`);
-          return Promise.all([
-            getCalendarStatus().catch(() => ({ isConnected: false })),
-            (() => {
-              const now = new Date();
-              const timeMin = now.toISOString();
-              const timeMax = new Date(
-                now.getTime() + 7 * 24 * 60 * 60 * 1000,
-              ).toISOString();
-              return getEvents({
-                calendarId: 'primary',
-                timeMin,
-                timeMax,
-                maxResults: 20,
-              }).catch(() => []);
-            })(),
-          ])
-            .then(([status, events]) => {
-              const calendarDuration = performance.now() - calendarStartTime;
-              if (status.isConnected && events.length > 0) {
-                const context = CalendarFormatter.formatForAiContext(events, 7);
-                console.log(`[PERF] ✅ END Calendar context fetch | duration: ${calendarDuration.toFixed(2)}ms | events: ${events.length} | context length: ${context.length} | timestamp: ${new Date().toISOString()}`);
-                return {
-                  context,
-                  isConnected: true,
-                };
+          
+          try {
+            const status = await getCalendarStatus().catch(() => ({ isConnected: false }));
+            
+            if (!status.isConnected) {
+              console.log(`[PERF] ⚠️ END Calendar context fetch (not connected) | duration: ${(performance.now() - calendarStartTime).toFixed(2)}ms | timestamp: ${new Date().toISOString()}`);
+              return { context: null, isConnected: false };
+            }
+
+            if (options.onStatusChange) {
+              try {
+                options.onStatusChange('checking_calendar');
+              } catch (error) {
+                console.error('[voice-ai] Error in onStatusChange callback:', error);
               }
-              console.log(`[PERF] ⚠️ END Calendar context fetch (empty) | duration: ${calendarDuration.toFixed(2)}ms | connected: ${status.isConnected} | timestamp: ${new Date().toISOString()}`);
-              return { context: null, isConnected: false };
-            })
-            .catch((e) => {
-              console.log(`[PERF] ❌ ERROR Calendar context fetch | error: ${e.message} | timestamp: ${new Date().toISOString()}`);
-              return { context: null, isConnected: false };
-            });
+            }
+
+            const now = new Date();
+            const timeMin = now.toISOString();
+            const timeMax = new Date(
+              now.getTime() + 7 * 24 * 60 * 60 * 1000,
+            ).toISOString();
+            const events = await getEvents({
+              calendarId: 'primary',
+              timeMin,
+              timeMax,
+              maxResults: 20,
+            }).catch(() => []);
+
+            const calendarDuration = performance.now() - calendarStartTime;
+            if (events.length > 0) {
+              const context = CalendarFormatter.formatForAiContext(events, 7);
+              console.log(`[PERF] ✅ END Calendar context fetch | duration: ${calendarDuration.toFixed(2)}ms | events: ${events.length} | context length: ${context.length} | timestamp: ${new Date().toISOString()}`);
+              return {
+                context,
+                isConnected: true,
+              };
+            }
+            console.log(`[PERF] ⚠️ END Calendar context fetch (empty) | duration: ${calendarDuration.toFixed(2)}ms | connected: ${status.isConnected} | timestamp: ${new Date().toISOString()}`);
+            return { context: null, isConnected: false };
+          } catch (e: any) {
+            console.log(`[PERF] ❌ ERROR Calendar context fetch | error: ${e.message} | timestamp: ${new Date().toISOString()}`);
+            return { context: null, isConnected: false };
+          }
         })()
       : Promise.resolve({ context: null, isConnected: false }),
     
@@ -444,7 +493,7 @@ export async function transcribeAndRespond(
     context = `${context || ''}\n\n${placesContextResult.context}`;
   }
 
-  const systemPrompt = buildSystemPrompt(undefined, context, options.location, intentClass.needsWebSearch);
+  const systemPrompt = buildSystemPrompt(undefined, context, options.location, intentClass.needsWebSearch, isGmailConnected);
   
   const allMessages = [
     { role: 'system' as const, content: systemPrompt },
@@ -540,7 +589,10 @@ export async function transcribeAndRespond(
   if (needsIntentDetection) {
     const intentDetectionDuration = performance.now() - intentDetectionStartTime;
     stageTimings.intentDetection = intentDetectionDuration;
-    console.log(`[PERF] ✅ [ETAP 6/6] END intent detection | ⏱️ CZAS: ${intentDetectionDuration.toFixed(2)}ms (${(intentDetectionDuration/1000).toFixed(2)}s) | email: ${emailIntent ? 'detected' : 'none'} | calendar: ${calendarIntent ? 'detected' : 'none'} | sms: ${smsIntent ? 'detected' : 'none'} | timestamp: ${new Date().toISOString()}`);
+    const emailStatus = emailIntent 
+      ? (emailIntent.shouldSendEmail ? 'send' : 'read') 
+      : 'none';
+    console.log(`[PERF] ✅ [ETAP 6/6] END intent detection | ⏱️ CZAS: ${intentDetectionDuration.toFixed(2)}ms (${(intentDetectionDuration/1000).toFixed(2)}s) | email: ${emailStatus} | calendar: ${calendarIntent ? 'detected' : 'none'} | sms: ${smsIntent ? 'detected' : 'none'} | timestamp: ${new Date().toISOString()}`);
   } else {
     stageTimings.intentDetection = 0;
   }
@@ -582,7 +634,14 @@ export async function transcribeAndRespond(
   return result;
 }
 
-async function generateGmailQuery(transcript: string): Promise<string | null> {
+type GmailQueryResult = {
+  query: string | null;
+  queryWithoutSender?: string | null;
+  hasSender: boolean;
+  senderHint?: string;
+};
+
+async function generateGmailQuery(transcript: string): Promise<GmailQueryResult> {
   try {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
@@ -612,31 +671,39 @@ Wczoraj: ${yesterday.toISOString().split('T')[0]}
 Tydzień temu: ${lastWeek.toISOString().split('T')[0]}
 Miesiąc temu: ${lastMonth.toISOString().split('T')[0]}
 
-Przykłady zapytań Gmail:
-- "maile od Jana" → "from:jan"
-- "maile z zeszłego tygodnia" → "after:${lastWeek.toISOString().split('T')[0]}"
-- "nieprzeczytane maile" → "is:unread"
-- "maile od Roberta z grudnia" → "from:robert after:2025/12/01 before:2025/12/31"
-- "maile z załącznikami" → "has:attachment"
-- "maile o spotkaniu" → "subject:spotkanie OR body:spotkanie"
+WAŻNE: NIE używaj operatora "from:" w zapytaniu Gmail. Zamiast tego:
+1. Wygeneruj zapytanie BEZ "from:" (tylko daty, filtry itp.)
+2. Jeśli użytkownik wspomniał nadawcę, zwróć informację o tym w polu "hasSender" i "senderHint"
 
-Operatory Gmail:
-- from:email - od nadawcy
-- to:email - do odbiorcy
-- subject:tekst - w temacie
-- body:tekst lub tekst - w treści
+Operatory Gmail (BEZ from:):
 - after:YYYY/MM/DD - po dacie
 - before:YYYY/MM/DD - przed datą
+- subject:tekst - w temacie
+- body:tekst - w treści
 - is:unread - nieprzeczytane
-- is:read - przeczytane
-- has:attachment - z załącznikiem
-- OR - lub
-- AND - i
-- - (minus) - wyklucz
+- has:attachment - z załącznikami
+- in:inbox - w skrzynce odbiorczej
+
+Zasady:
+1. ZAWSZE dodawaj "in:inbox" na początku zapytania
+2. NIE używaj "from:" - nadawcę rozpoznamy później na podstawie listy maili
+3. Jeśli użytkownik wspomniał nadawcę (np. "od Roberta", "od oliwiera", "od Jana", "od Oliwier Markiewicz"), ustaw "hasSender": true i "senderHint" na imię/nazwisko
+4. Dla dat używaj formatu YYYY/MM/DD
+5. Unikaj złożonych zapytań z OR/AND jeśli nie jest to konieczne
+
+Przykłady:
+- "jaki mail przyszedł w zeszły poniedziałek" → query: "in:inbox after:2025/12/02 before:2025/12/09", hasSender: false
+- "maile od Roberta w zeszły poniedziałek" → query: "in:inbox after:2025/12/02 before:2025/12/09", hasSender: true, senderHint: "robert"
+- "czy jest mail od oliwiera w zeszły poniedziałek" → query: "in:inbox after:2025/12/02 before:2025/12/09", hasSender: true, senderHint: "oliwier"
+- "jaki mail od Oliwier" → query: "in:inbox", hasSender: true, senderHint: "oliwier"
+- "maile od Oliwier Markiewicz" → query: "in:inbox", hasSender: true, senderHint: "oliwier markiewicz"
+- "ostatni mail" → query: "in:inbox", hasSender: false
 
 Odpowiedz w formacie JSON:
 {
-  "query": "zapytanie Gmail lub null jeśli nie można wygenerować"
+  "query": "zapytanie Gmail BEZ from:",
+  "hasSender": true/false,
+  "senderHint": "imię/nazwisko nadawcy lub null"
 }`,
         },
       ],
@@ -646,13 +713,102 @@ Odpowiedz w formacie JSON:
     });
 
     const responseText = completion.choices[0]?.message?.content?.trim();
-    if (!responseText) return null;
+    if (!responseText) {
+      console.log(`[AI] Gmail query generation: empty response for transcript: "${transcript}"`);
+      return { query: null, hasSender: false };
+    }
 
     const result = JSON.parse(responseText);
-    return result.query || null;
+    const query = result.query || null;
+    const hasSender = Boolean(result.hasSender);
+    const senderHint = result.senderHint || undefined;
+    
+    console.log(`[AI] Gmail query generation: transcript="${transcript}" → query="${query}" | hasSender: ${hasSender} | senderHint: "${senderHint}"`);
+    
+    return {
+      query,
+      queryWithoutSender: query,
+      hasSender,
+      senderHint,
+    };
   } catch (error) {
     console.error('[AI] Failed to generate Gmail query:', error);
-    return null;
+    return { query: null, hasSender: false };
+  }
+}
+
+async function filterMessagesBySender(
+  messages: GmailMessage[],
+  senderHint: string,
+  originalTranscript: string,
+): Promise<GmailMessage[]> {
+  if (messages.length === 0 || !senderHint) {
+    return messages;
+  }
+
+  try { 
+    const uniqueSenders = Array.from(new Set(messages.map(m => m.from)));
+    
+    const completion = await openAIClient.chatCompletions({
+      model: 'gpt-4.1-nano',
+      messages: [
+        {
+          role: 'system',
+          content: 'Jesteś ekspertem w rozpoznawaniu nadawców emaili. Odpowiadaj TYLKO czystym JSON bez markdown.',
+        },
+        {
+          role: 'user',
+          content: `Użytkownik zapytał: "${originalTranscript}"
+Użytkownik wspomniał nadawcę: "${senderHint}"
+
+Lista nadawców z maili:
+${uniqueSenders.map((sender, idx) => `${idx + 1}. ${sender}`).join('\n')}
+
+Które z tych nadawców pasują do "${senderHint}"? 
+- Rozpoznaj na podstawie imienia, nazwiska lub części adresu email
+- Zwróć numery (indeksy) pasujących nadawców (1-based)
+
+Przykłady:
+- senderHint: "oliwier" → pasuje do "Oliwier Markiewicz <oliwier@example.com>"
+- senderHint: "robert" → pasuje do "Robert Kowalski" lub "robert.smith@example.com"
+- senderHint: "jan" → pasuje do "Jan Nowak" lub "jan@example.com"
+
+Odpowiedz w formacie JSON:
+{
+  "matchingIndices": [1, 3, 5] // numery (1-based) pasujących nadawców z listy
+}`,
+        },
+      ],
+      max_tokens: 200,
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
+    });
+
+    const responseText = completion.choices[0]?.message?.content?.trim();
+    if (!responseText) {
+      console.log(`[AI] Sender filtering: empty response, returning all messages`);
+      return messages;
+    }
+
+    const result = JSON.parse(responseText);
+    const matchingIndices = result.matchingIndices || [];
+    
+    if (matchingIndices.length === 0) {
+      console.log(`[AI] Sender filtering: no matches found for "${senderHint}"`);
+      return [];
+    }
+
+    const matchingSenders = matchingIndices
+      .map((idx: number) => uniqueSenders[idx - 1])
+      .filter(Boolean);
+    
+    const filtered = messages.filter(m => matchingSenders.includes(m.from));
+    
+    console.log(`[AI] Sender filtering: "${senderHint}" → matched ${matchingSenders.length} senders, ${filtered.length} messages`);
+    return filtered;
+  } catch (error) {
+    console.error('[AI] Failed to filter messages by sender:', error);
+    return messages;
   }
 }
 
@@ -664,25 +820,30 @@ async function detectEmailIntent(transcript: string): Promise<EmailIntent | unde
         {
           role: 'system',
           content:
-            'Jesteś ekspertem w rozpoznawaniu intencji. Odpowiadaj TYLKO czystym JSON bez markdown.',
+            'Jesteś ekspertem w rozpoznawaniu intencji związanych z emailami. Odpowiadaj TYLKO czystym JSON bez markdown.',
         },
         {
           role: 'user',
           content: `Użytkownik powiedział: "${transcript}"
 
-Czy użytkownik chce wysłać email? Jeśli tak, wyodrębnij:
-- Adres email odbiorcy (to) - jeśli podany wprost
-- Imię/nazwisko odbiorcy (to) - jeśli podane
-- Temat (subject) - jeśli podany
-- Treść (body) - jeśli podana
+Określ intencję użytkownika:
+1. Jeśli użytkownik chce WYSŁAĆ email - ustaw "shouldSendEmail": true i wyodrębnij:
+   - Adres email odbiorcy (to) - jeśli podany wprost
+   - Imię/nazwisko odbiorcy (to) - jeśli podane
+   - Temat (subject) - jeśli podany
+   - Treść (body) - jeśli podana
+
+2. Jeśli użytkownik chce CZYTAĆ/SPRAWDZAĆ emaile (np. "jakie maile przyszły", "był tam mail od X", "pokaż mi maile") - ustaw "shouldSendEmail": false, ale zwróć intencję z pustymi polami, aby system wiedział, że to zapytanie o emaile.
 
 Odpowiedz w formacie JSON:
 {
-  "shouldSendEmail": true,
+  "shouldSendEmail": true/false,
   "to": "adres email lub imię odbiorcy lub null",
   "subject": "temat lub null",
   "body": "treść lub null"
-}`,
+}
+
+WAŻNE: Jeśli użytkownik pyta o czytanie/sprawdzanie emaili, zwróć obiekt z "shouldSendEmail": false, ale z pozostałymi polami (mogą być null).`,
         },
       ],
       max_tokens: 300,
@@ -694,7 +855,19 @@ Odpowiedz w formacie JSON:
     if (!responseText) return undefined;
 
     const intent = JSON.parse(responseText);
-    return intent.shouldSendEmail ? intent : undefined;
+    
+    if (intent.shouldSendEmail === true) {
+      return intent;
+    } else if (intent.shouldSendEmail === false) {
+      return {
+        shouldSendEmail: false,
+        to: intent.to || undefined,
+        subject: intent.subject || undefined,
+        body: intent.body || undefined,
+      };
+    }
+    
+    return undefined;
   } catch (error) {
     console.error('[AI] Failed to detect email intent:', error);
     return undefined;

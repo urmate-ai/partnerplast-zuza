@@ -4,6 +4,12 @@ export type ChatHistoryItem = {
   timestamp: string;
 };
 
+export type AudioFile = {
+  id: string;
+  url: string;
+  createdAt: Date;
+};
+
 export type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
