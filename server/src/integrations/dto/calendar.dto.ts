@@ -56,6 +56,7 @@ export class GetEventsDto {
   timeMax?: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   maxResults?: number;
 }
