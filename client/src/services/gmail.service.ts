@@ -108,6 +108,27 @@ export async function getGmailMessages(
   }
 }
 
+export async function searchGmailMessages(
+  query?: string,
+  maxResults = 10,
+): Promise<GmailMessage[]> {
+  try {
+    const response = await apiClient.get<GmailMessage[]>(
+      '/integrations/gmail/search',
+      {
+        params: { query, maxResults },
+      },
+    );
+    return response.data;
+  } catch (error: unknown) {
+    const errorMessage = getApiErrorMessage(
+      error,
+      'Błąd podczas wyszukiwania wiadomości Gmail',
+    );
+    throw new Error(errorMessage);
+  }
+}
+
 export async function sendEmail(
   emailData: SendEmailRequest,
 ): Promise<SendEmailResponse> {
