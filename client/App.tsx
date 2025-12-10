@@ -6,6 +6,7 @@ import type { AppStateStatus } from 'react-native';
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { requestLocationPermission } from './src/shared/utils/location.utils';
+import { getContactsStatus } from './src/services/contacts.service';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,7 +31,8 @@ export default function App() {
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
-      console.log('[App] 🚀 Aplikacja uruchomiona, proszę o uprawnienia do lokalizacji...');
+      console.log('[App] 🚀 Aplikacja uruchomiona, proszę o uprawnienia...');
+      
       requestLocationPermission()
         .then((granted) => {
           if (granted) {
@@ -40,7 +42,19 @@ export default function App() {
           }
         })
         .catch((error) => {
-          console.error('[App] ❌ Błąd przy prośbie o uprawnienia:', error);
+          console.error('[App] ❌ Błąd przy prośbie o uprawnienia do lokalizacji:', error);
+        });
+        
+      getContactsStatus()
+        .then((status) => {
+          if (status.hasPermission) {
+            console.log('[App] ✅ Uprawnienia do kontaktów przyznane');
+          } else {
+            console.log('[App] ❌ Uprawnienia do kontaktów odrzucone');
+          }
+        })
+        .catch((error) => {
+          console.error('[App] ❌ Błąd przy prośbie o uprawnienia do kontaktów:', error);
         });
     }
   }, []);

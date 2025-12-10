@@ -8,6 +8,8 @@ import { GmailFormatter } from '../../shared/utils/gmail-formatter.utils';
 import { CalendarFormatter } from '../../shared/utils/calendar-formatter.utils';
 import { searchNearbyPlaces } from '../places/google-places.service';
 import { PlacesFormatter } from '../../shared/utils/places-formatter.utils';
+import { getContactsStatus, getAllContacts, findContactByName } from '../contacts.service';
+import { ContactsFormatter } from '../../shared/utils/contacts-formatter.utils';
 
 type VoiceProcessOptions = {
   language?: string;
@@ -23,13 +25,14 @@ type IntentClassification = {
   needsEmailIntent: boolean;
   needsCalendarIntent: boolean;
   needsSmsIntent: boolean;
+  needsContactsIntent: boolean;
   isSimpleGreeting: boolean;
   needsWebSearch: boolean;
   needsPlacesSearch: boolean;
   confidence: 'high' | 'medium' | 'low';
 };
 
-const buildSystemPrompt = (userName?: string, context?: string, location?: string, needsWebSearch?: boolean, isGmailConnected?: boolean): string => {
+const buildSystemPrompt = (userName?: string, context?: string, location?: string, needsWebSearch?: boolean, isGmailConnected?: boolean, isContactsAvailable?: boolean): string => {
   const nameInstruction = userName ? ` Zwracaj się po imieniu "${userName}".` : '';
   
   let basePrompt = `ZUZA - asystent głosowy. Nazywasz się Zuza i jesteś kobietą. Odpowiadaj krótko (1-2 zdania), po polsku, używając form żeńskich (np. "sprawdziłam", "znalazłam", "powiedziałam").${nameInstruction}`;
@@ -40,6 +43,10 @@ const buildSystemPrompt = (userName?: string, context?: string, location?: strin
 
   if (isGmailConnected) {
     basePrompt += '\n\nWAŻNE: Masz dostęp do skrzynki mailowej użytkownika (Gmail jest połączony). Możesz odpowiadać na pytania o emaile.';
+  }
+
+  if (isContactsAvailable) {
+    basePrompt += '\n\nWAŻNE: Masz dostęp do kontaktów użytkownika. Możesz odpowiadać na pytania o kontakty, numery telefonów i adresy email.';
   }
 
   if (context) {
@@ -71,6 +78,7 @@ Odpowiedz TYLKO JSON w formacie:
   "needsEmailIntent": true/false,
   "needsCalendarIntent": true/false,
   "needsSmsIntent": true/false,
+  "needsContactsIntent": true/false,
   "isSimpleGreeting": true/false,
   "needsWebSearch": true/false,
   "needsPlacesSearch": true/false,
@@ -81,8 +89,9 @@ Zasady:
 - needsEmailIntent: użytkownik chce WYSŁAĆ email/mail LUB SPRAWDZIĆ/CZYTAĆ emaile (np. "pokaż mi maile", "jakie maile przyszły", "jaki mail dostałem", "maile z poniedziałku", "ostatni mail", "wyślij mail", "napisz email")
 - needsCalendarIntent: użytkownik chce dodać wydarzenie/spotkanie do kalendarza LUB sprawdzić wydarzenia (np. "dodaj spotkanie", "co mam w kalendarzu", "wydarzenia")
 - needsSmsIntent: użytkownik chce wysłać SMS/wiadomość tekstową
+- needsContactsIntent: użytkownik pyta o kontakty (np. "jaki numer ma Jan", "znajdź kontakt", "pokaż mi kontakty", "jaki telefon ma Robert", "znajdź numer do", "kontakt do")
 - isSimpleGreeting: proste powitanie (cześć, hej, dzień dobry) BEZ innych intencji
-- needsWebSearch: użytkownik pyta o informacje z internetu (pogoda, wiadomości, fakty, kursy, aktualne wydarzenia, "kto jest", "kim jest", "aktualnie", "obecnie", "premier", "prezydent", ceny, wydarzenia) - NIE używaj dla zapytań o emaile/kalendarz użytkownika
+- needsWebSearch: użytkownik pyta o informacje z internetu (pogoda, wiadomości, fakty, kursy, aktualne wydarzenia, "kto jest", "kim jest", "aktualnie", "obecnie", "premier", "prezydent", ceny, wydarzenia) - NIE używaj dla zapytań o emaile/kalendarz/kontakty użytkownika
 - needsPlacesSearch: użytkownik pyta o miejsca w okolicy (restauracje, sklepy, apteki, odległości)
 - confidence: "high" jeśli jesteś pewny, "medium" jeśli prawdopodobny, "low" jeśli niepewny
 
@@ -106,6 +115,7 @@ WAŻNE: Jeśli użytkownik pyta o emaile (np. "pokaż mi maile", "jakie maile", 
       needsEmailIntent: Boolean(parsed.needsEmailIntent),
       needsCalendarIntent: Boolean(parsed.needsCalendarIntent),
       needsSmsIntent: Boolean(parsed.needsSmsIntent),
+      needsContactsIntent: Boolean(parsed.needsContactsIntent),
       isSimpleGreeting: Boolean(parsed.isSimpleGreeting),
       needsWebSearch: Boolean(parsed.needsWebSearch),
       needsPlacesSearch: Boolean(parsed.needsPlacesSearch),
@@ -178,6 +188,19 @@ function localClassifyIntent(transcript: string): IntentClassification {
     lower.includes('esemes') ||
     (lower.includes('wyślij') && (lower.includes('numer') || /\d{3}[-\s]?\d{3}[-\s]?\d{3}/.test(lower)));
   
+  const needsContactsIntent =
+    lower.includes('jaki numer') ||
+    lower.includes('jaki telefon') ||
+    lower.includes('numer do') ||
+    lower.includes('telefon do') ||
+    lower.includes('kontakt do') ||
+    lower.includes('znajdź kontakt') ||
+    lower.includes('znajdź numer') ||
+    lower.includes('pokaż kontakt') ||
+    lower.includes('pokaż kontakty') ||
+    lower.includes('jaki kontakt') ||
+    lower.includes('kontakty');
+  
   const needsPlacesSearch =
     lower.includes('ile metrów') ||
     lower.includes('jak daleko') ||
@@ -234,6 +257,7 @@ function localClassifyIntent(transcript: string): IntentClassification {
     needsEmailIntent,
     needsCalendarIntent,
     needsSmsIntent,
+    needsContactsIntent,
     isSimpleGreeting,
     needsWebSearch,
     needsPlacesSearch,
@@ -330,10 +354,12 @@ export async function transcribeAndRespond(
     return { transcript, reply };
   }
 
-  console.log(`[PERF] 📦 [ETAP 3/6] START context fetching (parallel) | needsEmail: ${intentClass.needsEmailIntent} | needsCalendar: ${intentClass.needsCalendarIntent} | timestamp: ${new Date().toISOString()}`);
+  console.log(`[PERF] 📦 [ETAP 3/6] START context fetching (parallel) | needsEmail: ${intentClass.needsEmailIntent} | needsCalendar: ${intentClass.needsCalendarIntent} | needsContacts: ${intentClass.needsContactsIntent} | needsSms: ${intentClass.needsSmsIntent} | timestamp: ${new Date().toISOString()}`);
   const contextStartTime = performance.now();
   
-  const [gmailContextResult, calendarContextResult, placesContextResult] = await Promise.all([
+  const shouldFetchContacts = intentClass.needsContactsIntent || intentClass.needsSmsIntent;
+  
+  const [gmailContextResult, calendarContextResult, placesContextResult, contactsContextResult] = await Promise.all([
     intentClass.needsEmailIntent
       ? (async () => {
           const gmailStartTime = performance.now();
@@ -473,6 +499,60 @@ export async function transcribeAndRespond(
             });
         })()
       : Promise.resolve({ context: null, places: [] }),
+    
+    shouldFetchContacts
+      ? (async () => {
+          const contactsStartTime = performance.now();
+          console.log(`[PERF] 📇 START Contacts context fetch | timestamp: ${new Date().toISOString()}`);
+          
+          try {
+            const status = await getContactsStatus();
+            
+            if (!status.hasPermission) {
+              console.log(`[PERF] ⚠️ END Contacts context fetch (no permission) | duration: ${(performance.now() - contactsStartTime).toFixed(2)}ms | timestamp: ${new Date().toISOString()}`);
+              return { context: null, isAvailable: false };
+            }
+
+            if (options.onStatusChange) {
+              try {
+                options.onStatusChange('checking_contacts');
+              } catch (error) {
+                console.error('[voice-ai] Error in onStatusChange callback:', error);
+              }
+            }
+
+            const contacts = await getAllContacts();
+            
+            let relevantContacts = contacts;
+            const nameMatch = transcript.match(/(?:jaki|znajdź|pokaż|kontakt|numer|telefon).*?(?:do|ma|ma\s+)?\s*([A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+(?:\s+[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+)?)/i);
+            if (nameMatch && nameMatch[1]) {
+              const searchName = nameMatch[1].trim();
+              const foundContact = await findContactByName(searchName);
+              if (foundContact) {
+                relevantContacts = [foundContact];
+                console.log(`[PERF] 🔍 Found specific contact: ${foundContact.name} | timestamp: ${new Date().toISOString()}`);
+              } else {
+                console.log(`[PERF] ⚠️ Contact "${searchName}" not found, using all contacts | timestamp: ${new Date().toISOString()}`);
+              }
+            }
+
+            const contactsDuration = performance.now() - contactsStartTime;
+            if (relevantContacts.length > 0) {
+              const context = ContactsFormatter.formatForAiContext(relevantContacts);
+              console.log(`[PERF] ✅ END Contacts context fetch | duration: ${contactsDuration.toFixed(2)}ms | contacts: ${relevantContacts.length} | context length: ${context.length} | timestamp: ${new Date().toISOString()}`);
+              return {
+                context,
+                isAvailable: true,
+              };
+            }
+            console.log(`[PERF] ⚠️ END Contacts context fetch (empty) | duration: ${contactsDuration.toFixed(2)}ms | timestamp: ${new Date().toISOString()}`);
+            return { context: null, isAvailable: false };
+          } catch (e: any) {
+            console.log(`[PERF] ❌ ERROR Contacts context fetch | error: ${e.message} | timestamp: ${new Date().toISOString()}`);
+            return { context: null, isAvailable: false };
+          }
+        })()
+      : Promise.resolve({ context: null, isAvailable: false }),
   ]);
   
   const contextDuration = performance.now() - contextStartTime;
@@ -492,8 +572,12 @@ export async function transcribeAndRespond(
   if (placesContextResult?.context) {
     context = `${context || ''}\n\n${placesContextResult.context}`;
   }
+  if (contactsContextResult?.context) {
+    context = `${context || ''}\n\n${contactsContextResult.context}`;
+  }
 
-  const systemPrompt = buildSystemPrompt(undefined, context, options.location, intentClass.needsWebSearch, isGmailConnected);
+  const isContactsAvailable = contactsContextResult?.isAvailable || false;
+  const systemPrompt = buildSystemPrompt(undefined, context, options.location, intentClass.needsWebSearch, isGmailConnected, isContactsAvailable);
   
   const allMessages = [
     { role: 'system' as const, content: systemPrompt },

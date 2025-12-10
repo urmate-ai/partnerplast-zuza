@@ -3,6 +3,7 @@ export type ProcessingStatus =
   | 'classifying'       
   | 'checking_email'    
   | 'checking_calendar' 
+  | 'checking_contacts'
   | 'web_searching'     
   | 'preparing_response' 
   | null;                
