@@ -11,7 +11,11 @@
         "EXPO_PUBLIC_API_URL": "https://partnerplast-zuza.onrender.com",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "136688670188-dfb7lm0qurk79vdg98s4ag6n53a3itur.apps.googleusercontent.com",
         "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "136688670188-6ebd8lmhebejjvetcrus6a0difdper48.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "136688670188-kmlqiqljpje66ththlo26b7vs1ifacgf.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "136688670188-kmlqiqljpje66ththlo26b7vs1ifacgf.apps.googleusercontent.com",
+        "EXPO_PUBLIC_ELEVENLABS_API_KEY": "sk_a4e2b25ab92fd2d27846b4bfe703e3d63adf375d78571721",
+        "EXPO_PUBLIC_ELEVENLABS_VOICE_ID": "0jvpZ98RZwx5FBOSZAc3",
+        "EXPO_PUBLIC_GEMINI_API_KEY": "AIzaSyD-0RJjTpfetPhtB2pn4MvsKa4Hspvtiaw",
+        "EXPO_PUBLIC_GOOGLE_AI_API_KEY": "AIzaSyD-0RJjTpfetPhtB2pn4MvsKa4Hspvtiaw"
       },
       "android": {
         "gradleCommand": ":app:assembleDebug"
