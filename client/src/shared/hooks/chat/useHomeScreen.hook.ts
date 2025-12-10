@@ -89,6 +89,7 @@ export const useHomeScreen = () => {
             'classifying': 'Badam intencję...',
             'checking_email': 'Sprawdzam maila...',
             'checking_calendar': 'Sprawdzam kalendarz...',
+            'checking_contacts': 'Przeszukuję kontakty...',
             'web_searching': 'Szukam w internecie...',
             'preparing_response': 'Szykuję odpowiedź...',
           };
@@ -211,25 +212,49 @@ export const useHomeScreen = () => {
 
           const isProbablyPhoneNumber =
             typeof result.smsIntent.to === 'string' &&
-            /\d/.test(result.smsIntent.to);
+            /\d/.test(result.smsIntent.to) &&
+            !/[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(result.smsIntent.to); 
 
-          const recipients =
-            result.smsIntent.to && isProbablyPhoneNumber
-              ? [result.smsIntent.to]
-              : [];
+          let recipients: string[] = [];
+
+          if (result.smsIntent.to) {
+            if (isProbablyPhoneNumber) {
+              recipients = [result.smsIntent.to];
+            } else {
+              console.log('[useHomeScreen] 📱 Szukam kontaktu dla:', result.smsIntent.to);
+              try {
+                const { findContactByName } = await import('../../../services/contacts.service');
+                const contact = await findContactByName(result.smsIntent.to);
+                
+                if (contact && contact.phoneNumbers && contact.phoneNumbers.length > 0) {
+                  const phoneNumber = contact.phoneNumbers[0].number;
+                  recipients = [phoneNumber];
+                  console.log('[useHomeScreen] ✅ Znaleziono kontakt:', contact.name, 'numer:', phoneNumber);
+                } else {
+                  console.log('[useHomeScreen] ⚠️ Nie znaleziono kontaktu lub brak numeru telefonu dla:', result.smsIntent.to);
+                }
+              } catch (error) {
+                console.error('[useHomeScreen] ❌ Błąd podczas wyszukiwania kontaktu:', error);
+              }
+            }
+          }
 
           console.log('[useHomeScreen] 📱 SMS details - recipients:', recipients, 'body:', smsBody);
 
-          SMS.isAvailableAsync().then((available: boolean) => {
-            console.log('[useHomeScreen] 📱 SMS available:', available);
-            if (available) {
-              SMS.sendSMSAsync(recipients, smsBody)
-                .then(() => console.log('[useHomeScreen] ✅ SMS sent successfully'))
-                .catch((e: unknown) => console.error('[useHomeScreen] ❌ SMS error:', e));
-            } else {
-              console.error('[useHomeScreen] ❌ SMS not available on this device');
-            }
-          }).catch((e: unknown) => console.error('[useHomeScreen] ❌ SMS availability check error:', e));
+          if (recipients.length > 0) {
+            SMS.isAvailableAsync().then((available: boolean) => {
+              console.log('[useHomeScreen] 📱 SMS available:', available);
+              if (available) {
+                SMS.sendSMSAsync(recipients, smsBody)
+                  .then(() => console.log('[useHomeScreen] ✅ SMS sent successfully'))
+                  .catch((e: unknown) => console.error('[useHomeScreen] ❌ SMS error:', e));
+              } else {
+                console.error('[useHomeScreen] ❌ SMS not available on this device');
+              }
+            }).catch((e: unknown) => console.error('[useHomeScreen] ❌ SMS availability check error:', e));
+          } else {
+            console.log('[useHomeScreen] ⚠️ Brak odbiorcy SMS - nie można wysłać');
+          }
         } else {
           console.log('[useHomeScreen] 📱 Brak intencji SMS lub shouldSendSms = false:', result.smsIntent);
         }

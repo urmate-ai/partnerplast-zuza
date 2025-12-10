@@ -26,6 +26,7 @@
           }
         ],
         "NSLocationWhenInUseUsageDescription": "Potrzebujemy Twojej lokalizacji, aby lepiej odpowiadać na pytania o pogodę i lokalne wydarzenia.",
+        "NSContactsUsageDescription": "Potrzebujemy dostępu do Twoich kontaktów, aby Zuza mogła odpowiadać na pytania o kontakty i pomagać w wysyłaniu wiadomości.",
         "LSApplicationQueriesSchemes": [
           "urmate-ai-zuza"
         ]
@@ -41,7 +42,8 @@
       "package": "com.urmate.ai.zuza",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "READ_CONTACTS"
       ],
       "intentFilters": [
         {
