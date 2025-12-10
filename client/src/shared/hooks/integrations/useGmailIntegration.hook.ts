@@ -15,6 +15,7 @@ import {
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Alert } from 'react-native';
+import { getApiErrorMessage } from '../../types/api.types';
 
 export const GMAIL_QUERY_KEYS = {
   status: ['gmail', 'status'] as const,
@@ -96,7 +97,8 @@ export function useGmailSend() {
       Alert.alert('Sukces', 'Email został wysłany pomyślnie!');
     },
     onError: (error) => {
-      Alert.alert('Błąd', error.message || 'Nie udało się wysłać emaila');
+      const errorMessage = getApiErrorMessage(error, 'Nie udało się wysłać emaila');
+      Alert.alert('Błąd', errorMessage);
     },
   });
 }

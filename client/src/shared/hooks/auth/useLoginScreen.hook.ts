@@ -84,13 +84,15 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
       navigation.replace('Home');
     } catch (error: unknown) {
       console.error('Login error:', error);
-      const errorMessage = getApiErrorMessage(error, 'Nieznany błąd');
-      if (errorMessage.includes('Invalid credentials') || errorMessage.includes('401') || errorMessage.includes('Nieprawidłowy email lub hasło')) {
+      const errorMessage = getApiErrorMessage(error, 'Wystąpił błąd podczas logowania');
+      
+      // Jeśli błąd dotyczy hasła (401), ustaw błąd na polu hasła
+      if (errorMessage.includes('Nieprawidłowy email lub hasło') || errorMessage.includes('Invalid credentials')) {
         setError('password', { type: 'manual', message: 'Nieprawidłowy email lub hasło' });
-      } else if (errorMessage.includes('Network Error')) {
+      } else if (errorMessage.includes('Network Error') || errorMessage.includes('ECONNREFUSED')) {
         setError('email', { type: 'manual', message: 'Nie można połączyć się z serwerem. Sprawdź połączenie internetowe.' });
       } else {
-        setError('email', { type: 'manual', message: 'Błąd logowania: ' + errorMessage });
+        setError('email', { type: 'manual', message: errorMessage });
       }
     }
   };
@@ -145,7 +147,7 @@ export const useLoginScreen = ({ navigation }: UseLoginScreenProps) => {
       }
     } catch (error: unknown) {
       console.error('[LoginScreen] Google login exception:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
+      const errorMessage = getApiErrorMessage(error, 'Nieznany błąd');
       setGoogleError('Błąd logowania Google: ' + errorMessage);
     }
   };

@@ -9,6 +9,7 @@ import {
   disconnectGmail,
   type GmailConnectionStatus,
 } from '../../../services/gmail.service';
+import { getApiErrorMessage } from '../../../shared/types/api.types';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -141,7 +142,7 @@ export const useGmailIntegration = (enabled: boolean) => {
     } catch (error) {
       console.error('Gmail connection error:', error);
       setIsConnecting(false);
-      const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
+      const errorMessage = getApiErrorMessage(error, 'Nieznany błąd');
 
       Alert.alert(
         'Błąd połączenia',
@@ -182,7 +183,7 @@ export const useGmailIntegration = (enabled: boolean) => {
             } catch (error) {
               console.error('Gmail disconnection error:', error);
               setIsConnecting(false);
-              const errorMessage = error instanceof Error ? error.message : 'Nieznany błąd';
+              const errorMessage = getApiErrorMessage(error, 'Nieznany błąd');
 
               Alert.alert(
                 'Błąd',

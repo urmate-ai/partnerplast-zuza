@@ -1,4 +1,5 @@
 import { apiClient } from '../shared/utils/api';
+import { getApiErrorMessage } from '../shared/types/api.types';
 
 export type Integration = {
   id: string;
@@ -17,15 +18,7 @@ export async function getIntegrations(search?: string): Promise<Integration[]> {
     const response = await apiClient.get<Integration[]>('/integrations', { params });
     return response.data;
   } catch (error) {
-    let errorMessage = 'Błąd podczas pobierania integracji';
-    
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    } else if (typeof error === 'object' && error !== null) {
-      const errorObj = error as { response?: { data?: { message?: string } }; message?: string };
-      errorMessage = errorObj?.response?.data?.message || errorObj?.message || errorMessage;
-    }
-    
+    const errorMessage = getApiErrorMessage(error, 'Błąd podczas pobierania integracji');
     throw new Error(errorMessage);
   }
 }

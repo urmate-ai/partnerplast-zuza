@@ -17,6 +17,7 @@ import {
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Alert } from 'react-native';
+import { getApiErrorMessage } from '../../types/api.types';
 
 export const CALENDAR_QUERY_KEYS = {
   status: ['calendar', 'status'] as const,
@@ -114,7 +115,8 @@ export function useCreateEvent() {
       Alert.alert('Sukces', 'Wydarzenie zostało dodane do kalendarza!');
     },
     onError: (error) => {
-      Alert.alert('Błąd', error.message || 'Nie udało się dodać wydarzenia');
+      const errorMessage = getApiErrorMessage(error, 'Nie udało się dodać wydarzenia');
+      Alert.alert('Błąd', errorMessage);
     },
   });
 }

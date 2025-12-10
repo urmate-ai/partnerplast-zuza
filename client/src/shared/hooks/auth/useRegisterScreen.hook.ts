@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRegister } from './useAuth.hook';
+import { getApiErrorMessage } from '../../types/api.types';
 import type { RegisterFormData } from '../../types/form.types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../navigation/RootNavigator';
@@ -109,19 +110,9 @@ export const useRegisterScreen = ({ navigation }: UseRegisterScreenProps) => {
   const getErrorMessage = (): string | null => {
     if (!registerMutation.error) return null;
     
-    const error = registerMutation.error;
-    let errorMessage = 'Nieznany błąd';
+    const errorMessage = getApiErrorMessage(registerMutation.error, 'Wystąpił błąd podczas rejestracji');
     
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    } else if (typeof error === 'object' && error !== null) {
-      const errorObj = error as { response?: { data?: { message?: string } }; message?: string };
-      errorMessage = errorObj?.response?.data?.message || errorObj?.message || 'Nieznany błąd';
-    }
-      
-    if (errorMessage.includes('already exists') || errorMessage.includes('już istnieje')) {
-      return 'Użytkownik z tym emailem już istnieje';
-    }
+    // Dodatkowe sprawdzenia dla specyficznych przypadków
     if (errorMessage.includes('Network Error') || errorMessage.includes('ECONNREFUSED')) {
       return 'Nie można połączyć się z serwerem. Sprawdź połączenie internetowe.';
     }

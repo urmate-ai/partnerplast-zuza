@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useLogout, useDeleteAccount } from '../auth/useAuth.hook';
+import { getApiErrorMessage } from '../../types/api.types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../navigation/RootNavigator';
 
@@ -44,12 +45,8 @@ export const useSettingsScreen = ({}: UseSettingsScreenProps = {}) => {
               );
             } catch (error) {
               console.error('Delete account error:', error);
-              Alert.alert(
-                'Błąd',
-                error instanceof Error
-                  ? error.message
-                  : 'Wystąpił błąd podczas usuwania konta. Spróbuj ponownie.',
-              );
+              const errorMessage = getApiErrorMessage(error, 'Wystąpił błąd podczas usuwania konta. Spróbuj ponownie.');
+              Alert.alert('Błąd', errorMessage);
             }
           },
         },
