@@ -20,6 +20,7 @@ export type ChatMessagesProps = {
   messages: Message[];
   isTyping?: boolean;
   onTypingComplete?: () => void;
+  bottomControlsHeight?: number;
 };
 
 export type { Message as ChatMessage };

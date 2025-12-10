@@ -20,6 +20,9 @@ export const HomeScreen: React.FC = () => {
   const { user } = useAuthStore();
   const logoutMutation = useLogout();
   const insets = useSafeAreaInsets();
+  const [voiceControlHeight, setVoiceControlHeight] = React.useState(0);
+  const [ttsButtonHeight, setTtsButtonHeight] = React.useState(0);
+  
   const {
     isDrawerOpen,
     setIsDrawerOpen,
@@ -43,6 +46,13 @@ export const HomeScreen: React.FC = () => {
 
   const gmailSendMutation = useGmailSend();
   const createEventMutation = useCreateEvent();
+
+  React.useEffect(() => {
+    const hasAssistantMessage = messages.length > 0 && messages[messages.length - 1]?.role === 'assistant';
+    if (!hasAssistantMessage) {
+      setTtsButtonHeight(0);
+    }
+  }, [messages]);
 
   const handleLogout = async () => {
     try {
@@ -96,6 +106,7 @@ export const HomeScreen: React.FC = () => {
           messages={messages}
           isTyping={isTyping || isLoading}
           onTypingComplete={handleTypingComplete}
+          bottomControlsHeight={voiceControlHeight + ttsButtonHeight}
         />
       </View>
 
@@ -107,7 +118,14 @@ export const HomeScreen: React.FC = () => {
         </View>
       )}
 
-      <View style={{ paddingBottom: Math.max(insets.bottom, 16) }} className="items-center pt-4">
+      <View 
+        style={{ paddingBottom: Math.max(insets.bottom, 16) }} 
+        className="items-center pt-4"
+        onLayout={(event) => {
+          const { height } = event.nativeEvent.layout;
+          setVoiceControlHeight(height);
+        }}
+      >
         <VoiceControl
           isListening={voiceState.isListening}
           onPress={() =>
@@ -116,8 +134,15 @@ export const HomeScreen: React.FC = () => {
         />
       </View>
 
-      {messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && (
-        <View style={{ paddingBottom: Math.max(insets.bottom, 16) }} className="px-4">
+      {messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' ? (
+        <View 
+          style={{ paddingBottom: Math.max(insets.bottom, 16) }} 
+          className="px-4"
+          onLayout={(event) => {
+            const { height } = event.nativeEvent.layout;
+            setTtsButtonHeight(height);
+          }}
+        >
           <Button
             onPress={() => {
               if (ttsState.isSpeaking) {
@@ -136,7 +161,7 @@ export const HomeScreen: React.FC = () => {
             {ttsState.isSpeaking ? 'Zatrzymaj mówienie' : 'Odtwórz odpowiedź'}
           </Button>
         </View>
-      )}
+      ) : null}
 
       <EmailComposerModal
         visible={!!emailIntent?.shouldSendEmail}
