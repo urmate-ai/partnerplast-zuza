@@ -23,11 +23,14 @@ export class GmailController {
 
   @Get('auth')
   @UseGuards(AuthGuard('jwt'))
-  initiateAuth(
+  async initiateAuth(
     @CurrentUser() user: CurrentUserPayload,
     @Query('expoRedirectUri') expoRedirectUri?: string,
   ) {
-    const result = this.gmailService.generateAuthUrl(user.id, expoRedirectUri);
+    const result = await this.gmailService.generateAuthUrl(
+      user.id,
+      expoRedirectUri,
+    );
     return result;
   }
 
