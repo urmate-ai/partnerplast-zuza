@@ -82,11 +82,13 @@ describe('GoogleOAuthService', () => {
     };
 
     const mockStateService = {
-      generate: jest.fn(() => mockState),
-      validateAndConsume: jest.fn(() => ({
-        userId: mockUserId,
-        redirectUri: undefined,
-      })),
+      generate: jest.fn(() => Promise.resolve(mockState)),
+      validateAndConsume: jest.fn(() =>
+        Promise.resolve({
+          userId: mockUserId,
+          redirectUri: undefined,
+        }),
+      ),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -122,7 +124,7 @@ describe('GoogleOAuthService', () => {
   });
 
   describe('generateAuthUrl', () => {
-    it('should generate auth URL successfully', () => {
+    it('should generate auth URL successfully', async () => {
       const scopes = ['scope1', 'scope2'];
       const redirectPath = '/api/v1/integrations/gmail/callback';
       const mockAuthUrl = 'https://accounts.google.com/o/oauth2/v2/auth?...';
@@ -135,7 +137,11 @@ describe('GoogleOAuthService', () => {
         () => mockOAuth2Client,
       );
 
-      const result = service.generateAuthUrl(mockUserId, scopes, redirectPath);
+      const result = await service.generateAuthUrl(
+        mockUserId,
+        scopes,
+        redirectPath,
+      );
 
       expect(result.authUrl).toBe(mockAuthUrl);
       expect(result.state).toBe(mockState);
