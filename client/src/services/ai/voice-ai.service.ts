@@ -1,6 +1,7 @@
 import { openAIClient } from './openai-client';
 import { geminiClient } from './gemini-client';
 import type { VoiceProcessResult, EmailIntent, CalendarIntent, SmsIntent } from '../../shared/types/ai.types';
+import type { ProcessingStatus } from '../../components/home/types/message.types';
 import { getGmailMessages, getGmailStatus } from '../gmail.service';
 import { getEvents, getCalendarStatus } from '../calendar.service';
 import { GmailFormatter } from '../../shared/utils/gmail-formatter.utils';
@@ -14,7 +15,8 @@ type VoiceProcessOptions = {
   location?: string;
   latitude?: number;
   longitude?: number;
-  onTranscript?: (transcript: string) => void; 
+  onTranscript?: (transcript: string) => void;
+  onStatusChange?: (status: ProcessingStatus) => void; // Callback dla zmian statusu
 };
 
 type IntentClassification = {
@@ -237,6 +239,8 @@ export async function transcribeAndRespond(
   const transcriptionStartTime = performance.now();
   console.log(`[PERF] 📝 [ETAP 1/6] START transcription | timestamp: ${new Date().toISOString()}`);
   
+  // Emit status: transcribing (ale to już jest obsługiwane przez "Przetwarzanie mowy" w useHomeScreen)
+  
   const transcript = await openAIClient.transcribeAudio(
     audioUri,
     options.language,
@@ -256,6 +260,15 @@ export async function transcribeAndRespond(
 
   const classificationStartTime = performance.now();
   console.log(`[PERF] 🔍 [ETAP 2/6] START intent classification (AI) | timestamp: ${new Date().toISOString()}`);
+  
+  // Emit status: classifying
+  if (options.onStatusChange) {
+    try {
+      options.onStatusChange('classifying');
+    } catch (error) {
+      console.error('[voice-ai] Error in onStatusChange callback:', error);
+    }
+  }
   
   const intentClass = await classifyIntent(transcript);
   
@@ -439,6 +452,19 @@ export async function transcribeAndRespond(
   const useGemini = intentClass.needsWebSearch;
   const model = useGemini ? 'gemini-2.0-flash-exp' : 'gpt-4.1-nano';
   
+  // Emit status: web_searching lub preparing_response
+  if (options.onStatusChange) {
+    try {
+      if (intentClass.needsWebSearch) {
+        options.onStatusChange('web_searching');
+      } else {
+        options.onStatusChange('preparing_response');
+      }
+    } catch (error) {
+      console.error('[voice-ai] Error in onStatusChange callback:', error);
+    }
+  }
+  
   const completionStartTime = performance.now();
   console.log(`[PERF] 💬 [ETAP 5/6] START ${useGemini ? 'Gemini (websearch)' : 'chat completion'} | model: ${model} | max_tokens: ${maxTokens} | needsWebSearch: ${intentClass.needsWebSearch} | timestamp: ${new Date().toISOString()}`);
   
@@ -508,6 +534,15 @@ export async function transcribeAndRespond(
     console.log(`[PERF] ✅ [ETAP 6/6] END intent detection | ⏱️ CZAS: ${intentDetectionDuration.toFixed(2)}ms (${(intentDetectionDuration/1000).toFixed(2)}s) | email: ${emailIntent ? 'detected' : 'none'} | calendar: ${calendarIntent ? 'detected' : 'none'} | sms: ${smsIntent ? 'detected' : 'none'} | timestamp: ${new Date().toISOString()}`);
   } else {
     stageTimings.intentDetection = 0;
+  }
+
+  // Emit status: null (zakończono przetwarzanie)
+  if (options.onStatusChange) {
+    try {
+      options.onStatusChange(null);
+    } catch (error) {
+      console.error('[voice-ai] Error in onStatusChange callback:', error);
+    }
   }
 
   const result: VoiceProcessResult = {

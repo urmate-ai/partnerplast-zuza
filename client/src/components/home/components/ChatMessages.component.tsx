@@ -18,12 +18,18 @@ export function ChatMessages({
     [messages],
   );
 
+  // Sprawdź czy ostatnia wiadomość asystenta ma status (zastępuje TypingIndicator)
+  const hasActiveStatus = lastAssistantMessage?.status !== null && lastAssistantMessage?.status !== undefined;
+  
+  // Używaj animacji tylko gdy nie ma aktywnego statusu
+  const shouldShowTypingAnimation = isTyping && !hasActiveStatus;
+
   const {
     displayedText,
     typingMessageId,
   } = useTypingAnimation({
     message: lastAssistantMessage,
-    isTyping,
+    isTyping: shouldShowTypingAnimation,
     onTypingComplete,
   });
 
@@ -36,10 +42,10 @@ export function ChatMessages({
   } = useAutoScroll({
     messagesCount: messages.length,
     displayedText,
-    isTyping,
+    isTyping: shouldShowTypingAnimation,
   });
 
-  if (messages.length === 0 && !isTyping) {
+  if (messages.length === 0 && !isTyping && !hasActiveStatus) {
     return <EmptyState />;
   }
 
@@ -59,13 +65,14 @@ export function ChatMessages({
           <MessageBubble
             key={message.id || index}
             message={message}
-            isTyping={isTyping && index === messages.length - 1}
+            isTyping={shouldShowTypingAnimation && index === messages.length - 1}
             displayedText={displayedText}
             typingMessageId={typingMessageId}
           />
         ))}
 
-        {isTyping && (
+        {/* Pokazuj TypingIndicator tylko gdy nie ma aktywnego statusu */}
+        {isTyping && !hasActiveStatus && (
           <View 
             style={{ 
               flexDirection: 'row', 

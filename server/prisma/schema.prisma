@@ -100,3 +100,16 @@ model Message {
   @@index([createdAt])
   @@map("messages")
 }
+
+model OAuthState {
+  id          String   @id @default(uuid())
+  state       String   @unique
+  userId      String
+  redirectUri String?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([state])
+  @@index([expiresAt])
+  @@map("oauth_states")
+}

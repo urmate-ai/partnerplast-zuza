@@ -26,11 +26,11 @@ export class GmailService {
     private readonly configService: ConfigService,
   ) {}
 
-  generateAuthUrl(
+  async generateAuthUrl(
     userId: string,
     expoRedirectUri?: string,
-  ): GmailAuthUrlResponse {
-    return this.oauthService.generateAuthUrl(
+  ): Promise<GmailAuthUrlResponse> {
+    return await this.oauthService.generateAuthUrl(
       userId,
       GMAIL_SCOPES,
       '/api/v1/integrations/gmail/callback',
