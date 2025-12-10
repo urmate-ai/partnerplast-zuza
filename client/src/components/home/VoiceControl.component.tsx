@@ -15,9 +15,9 @@ export const VoiceControl: React.FC<VoiceControlProps> = ({
 }) => {
   return (
     <Pressable onPress={onPress}>
-      <View className="flex-row items-center rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5">
+      <View className="flex-row items-center rounded-full border border-gray-200 bg-black px-4 py-2.5">
         <ListeningIndicator isListening={isListening} />
-        <Text className="ml-3 text-base text-gray-600">
+        <Text className="ml-3 text-base text-white">
           {isListening
             ? 'Słucham... dotknij, aby zakończyć'
             : 'Dotknij, aby zacząć mówić'}
