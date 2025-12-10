@@ -9,6 +9,7 @@ import {
   disconnectCalendar,
   type CalendarConnectionStatus,
 } from '../../../services/calendar.service';
+import { getApiErrorMessage } from '../../../shared/types/api.types';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -141,8 +142,7 @@ export function useCalendarIntegration(enabled: boolean) {
     } catch (error) {
       console.error('Calendar connection error:', error);
       setIsConnecting(false);
-      const errorMessage =
-        error instanceof Error ? error.message : 'Nieznany błąd';
+      const errorMessage = getApiErrorMessage(error, 'Nieznany błąd');
 
       Alert.alert(
         'Błąd połączenia',
@@ -183,8 +183,7 @@ export function useCalendarIntegration(enabled: boolean) {
             } catch (error) {
               console.error('Calendar disconnection error:', error);
               setIsConnecting(false);
-              const errorMessage =
-                error instanceof Error ? error.message : 'Nieznany błąd';
+              const errorMessage = getApiErrorMessage(error, 'Nieznany błąd');
 
               Alert.alert(
                 'Błąd',

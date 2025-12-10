@@ -42,10 +42,14 @@ export class EmailService {
     const smtpPortRaw =
       this.configService.get<string>('SMTP_PORT') ||
       this.configService.get<number>('SMTP_PORT') ||
-      '465';
+      '587';
     const smtpPort = Number(smtpPortRaw);
     const isSecurePort = smtpPort === 465;
     const smtpFrom = this.configService.get<string>('SMTP_FROM') || smtpUser;
+
+    this.logger.log(
+      `SMTP configuration: host=${smtpHost}, port=${smtpPort}, secure=${isSecurePort}, user=${smtpUser}`,
+    );
 
     return {
       host: smtpHost,
@@ -68,14 +72,16 @@ export class EmailService {
       },
       tls: {
         rejectUnauthorized: false,
+        ciphers: 'SSLv3',
       },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 10000,
+      connectionTimeout: 30000,
+      greetingTimeout: 30000,
+      socketTimeout: 30000,
+      requireTLS: !config.secure,
     });
 
     this.logger.log(
-      `SMTP transporter configured for ${config.host}:${config.port} (secure: ${config.secure})`,
+      `SMTP transporter configured for ${config.host}:${config.port} (secure: ${config.secure}, requireTLS: ${!config.secure})`,
     );
     return transporter;
   }
@@ -143,7 +149,14 @@ export class EmailService {
       await this.transporter.sendMail(mailOptions);
       this.logger.log(`Welcome email sent to: ${email}`);
     } catch (error) {
-      this.logger.error(`Failed to send welcome email to ${email}:`, error);
+      const errorDetails =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `Failed to send welcome email to ${email}: ${errorDetails}`,
+      );
+      this.logger.debug(
+        `SMTP config: host=${this.config?.host}, port=${this.config?.port}, secure=${this.config?.secure}`,
+      );
     }
   }
 }
