@@ -78,13 +78,49 @@ export class GmailController {
         ? `${redirectUri}?gmail=success`
         : 'urmate-ai-zuza://integrations?gmail=success';
 
-      return res.redirect(302, deepLink);
+      return res.status(200).send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Gmail - Przekierowanie</title>
+          </head>
+          <body>
+            <p>Przekierowanie do aplikacji...</p>
+            <script>
+              window.location.replace('${deepLink}');
+            </script>
+            <noscript>
+              <p>Jeśli przekierowanie nie działa, kliknij <a href="${deepLink}">tutaj</a>.</p>
+            </noscript>
+          </body>
+        </html>
+      `);
     } catch (error) {
       console.error('Error in Gmail callback:', error);
 
       const errorDeepLink = 'urmate-ai-zuza://integrations?gmail=error';
 
-      return res.redirect(302, errorDeepLink);
+      return res.status(200).send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Gmail - Błąd</title>
+          </head>
+          <body>
+            <p>Wystąpił błąd podczas łączenia z Gmail. Przekierowanie do aplikacji...</p>
+            <script>
+              window.location.replace('${errorDeepLink}');
+            </script>
+            <noscript>
+              <p>Jeśli przekierowanie nie działa, kliknij <a href="${errorDeepLink}">tutaj</a>.</p>
+            </noscript>
+          </body>
+        </html>
+      `);
     }
   }
 

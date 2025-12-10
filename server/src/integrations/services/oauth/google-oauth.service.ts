@@ -44,13 +44,15 @@ export class GoogleOAuthService {
     redirectPath: string,
     expoRedirectUri?: string,
   ): Promise<{ authUrl: string; state: string; expoRedirectUrl?: string }> {
-    const redirectUri = expoRedirectUri || this.buildRedirectUri(redirectPath);
-    const state = await this.stateService.generate(userId, redirectUri);
+    const serverRedirectUri = this.buildRedirectUri(redirectPath);
+
+    // Deep link przechowujemy w state, aby później przekierować użytkownika
+    const state = await this.stateService.generate(userId, expoRedirectUri);
 
     const tempClient = new google.auth.OAuth2(
       this.config.clientId,
       this.config.clientSecret,
-      redirectUri,
+      serverRedirectUri, // Zawsze URL serwera
     );
 
     const authUrl = tempClient.generateAuthUrl({
@@ -62,6 +64,10 @@ export class GoogleOAuthService {
 
     this.logger.log(`Generated auth URL for user ${userId}`);
     this.logger.debug(`Full auth URL: ${authUrl}`);
+    this.logger.debug(`Server redirect URI: ${serverRedirectUri}`);
+    if (expoRedirectUri) {
+      this.logger.debug(`Expo deep link (stored in state): ${expoRedirectUri}`);
+    }
 
     return {
       authUrl,
@@ -73,18 +79,21 @@ export class GoogleOAuthService {
   async handleCallback(
     code: string,
     state: string,
+    redirectPath: string,
   ): Promise<{ userId: string; tokens: GoogleTokens; redirectUri?: string }> {
     const { userId, redirectUri } =
       await this.stateService.validateAndConsume(state);
 
     try {
-      const client = redirectUri
-        ? new google.auth.OAuth2(
-            this.config.clientId,
-            this.config.clientSecret,
-            redirectUri,
-          )
-        : this.oauth2Client;
+      // Musimy użyć tego samego redirectUri co w generateAuthUrl
+      // Google wymaga, aby redirect_uri był identyczny
+      const serverRedirectUri = this.buildRedirectUri(redirectPath);
+
+      const client = new google.auth.OAuth2(
+        this.config.clientId,
+        this.config.clientSecret,
+        serverRedirectUri,
+      );
 
       const { tokens } = await client.getToken(code);
 
@@ -100,7 +109,7 @@ export class GoogleOAuthService {
           expiry_date: tokens.expiry_date ?? null,
           scope: tokens.scope ?? null,
         },
-        redirectUri,
+        redirectUri, // Deep link do przekierowania użytkownika
       };
     } catch (error) {
       this.logger.error('Failed to handle OAuth callback:', error);
