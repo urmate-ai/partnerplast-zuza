@@ -139,6 +139,17 @@ export class GmailController {
     return this.gmailService.getRecentMessages(user.id, max);
   }
 
+  @Get('search')
+  @UseGuards(AuthGuard('jwt'))
+  async searchMessages(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('query') query?: string,
+    @Query('maxResults') maxResults?: string,
+  ) {
+    const max = maxResults ? parseInt(maxResults, 10) : 10;
+    return this.gmailService.searchMessages(user.id, query, max);
+  }
+
   @Post('send')
   @UseGuards(AuthGuard('jwt'))
   async sendEmail(
