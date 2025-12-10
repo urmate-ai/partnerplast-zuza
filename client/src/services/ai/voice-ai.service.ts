@@ -770,15 +770,14 @@ Wczoraj: ${yesterday.toISOString().split('T')[0]}
 Tydzień temu: ${lastWeek.toISOString().split('T')[0]}
 Miesiąc temu: ${lastMonth.toISOString().split('T')[0]}
 
-WAŻNE: NIE używaj operatora "from:" w zapytaniu Gmail. Zamiast tego:
-1. Wygeneruj zapytanie BEZ "from:" (tylko daty, filtry itp.)
+WAŻNE: NIE używaj operatora "from:" ani "body:" dla nadawców w zapytaniu Gmail. Zamiast tego:
+1. Wygeneruj zapytanie BEZ "from:" i BEZ "body:" dla nadawców (tylko daty, filtry itp.)
 2. Jeśli użytkownik wspomniał nadawcę, zwróć informację o tym w polu "hasSender" i "senderHint"
 
-Operatory Gmail (BEZ from:):
+Operatory Gmail (BEZ from: i body: dla nadawców):
 - after:YYYY/MM/DD - po dacie
 - before:YYYY/MM/DD - przed datą
-- subject:tekst - w temacie
-- body:tekst - w treści
+- subject:tekst - w temacie (TYLKO jeśli użytkownik pyta o temat, NIE dla nadawcy)
 - is:unread - nieprzeczytane
 - has:attachment - z załącznikami
 - in:inbox - w skrzynce odbiorczej
@@ -786,17 +785,24 @@ Operatory Gmail (BEZ from:):
 Zasady:
 1. ZAWSZE dodawaj "in:inbox" na początku zapytania
 2. NIE używaj "from:" - nadawcę rozpoznamy później na podstawie listy maili
-3. Jeśli użytkownik wspomniał nadawcę (np. "od Roberta", "od oliwiera", "od Jana", "od Oliwier Markiewicz"), ustaw "hasSender": true i "senderHint" na imię/nazwisko
-4. Dla dat używaj formatu YYYY/MM/DD
-5. Unikaj złożonych zapytań z OR/AND jeśli nie jest to konieczne
+3. NIE używaj "body:" dla nadawców - imię/nazwisko nadawcy NIE jest treścią wiadomości
+4. Jeśli użytkownik wspomniał nadawcę (np. "od Roberta", "od oliwiera", "od Douglas", "od Jana"), ustaw "hasSender": true i "senderHint" na imię/nazwisko, ale NIE dodawaj go do zapytania
+5. Dla dat używaj formatu YYYY/MM/DD
+6. Unikaj złożonych zapytań z OR/AND jeśli nie jest to konieczne
 
 Przykłady:
 - "jaki mail przyszedł w zeszły poniedziałek" → query: "in:inbox after:2025/12/02 before:2025/12/09", hasSender: false
 - "maile od Roberta w zeszły poniedziałek" → query: "in:inbox after:2025/12/02 before:2025/12/09", hasSender: true, senderHint: "robert"
 - "czy jest mail od oliwiera w zeszły poniedziałek" → query: "in:inbox after:2025/12/02 before:2025/12/09", hasSender: true, senderHint: "oliwier"
+- "czy otrzymałem wiadomość od Douglas 8 grudnia" → query: "in:inbox after:2025/12/08 before:2025/12/09", hasSender: true, senderHint: "douglas"
 - "jaki mail od Oliwier" → query: "in:inbox", hasSender: true, senderHint: "oliwier"
 - "maile od Oliwier Markiewicz" → query: "in:inbox", hasSender: true, senderHint: "oliwier markiewicz"
 - "ostatni mail" → query: "in:inbox", hasSender: false
+
+BŁĘDNE przykłady (NIE ROB TEGO):
+- ❌ "maile od Douglas" → query: "in:inbox body:Douglas" (ZŁE! NIE używaj body: dla nadawcy)
+- ❌ "mail od Robert" → query: "in:inbox from:robert" (ZŁE! NIE używaj from:)
+- ✅ "maile od Douglas" → query: "in:inbox", hasSender: true, senderHint: "douglas" (DOBRZE!)
 
 Odpowiedz w formacie JSON:
 {
