@@ -14,9 +14,11 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   async (config) => {
-    const token = useAuthStore.getState().token;
-    if (token) {
+    const { token, isAuthenticated } = useAuthStore.getState();
+    if (token && isAuthenticated) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.warn('[apiClient] ⚠️ Próba wykonania żądania bez autoryzacji:', config.url);
     }
     return config;
   },
@@ -37,7 +39,26 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      useAuthStore.getState().clearAuth();
+      const requestUrl = error.config?.url || '';
+      
+      // Lista endpointów, które mogą zwrócić 401 bez wylogowywania użytkownika
+      const noLogoutEndpoints = [
+        '/auth/me',              // Weryfikacja tokenu
+        '/integrations/',        // Wszystkie endpointy integracji (Gmail, Calendar, itp.)
+      ];
+      
+      const shouldNotLogout = noLogoutEndpoints.some(endpoint => requestUrl.includes(endpoint));
+      
+      if (shouldNotLogout) {
+        if (requestUrl.includes('/auth/me')) {
+          console.log('[apiClient] ℹ️ Token nieważny podczas weryfikacji');
+        } else {
+          console.log('[apiClient] ℹ️ Błąd autoryzacji dla integracji - integracja nie jest podłączona lub token wygasł');
+        }
+      } else {
+        console.warn('[apiClient] ⚠️ Błąd autoryzacji (401) - wylogowywanie użytkownika');
+        useAuthStore.getState().clearAuth();
+      }
     }
     return Promise.reject(error);
   },

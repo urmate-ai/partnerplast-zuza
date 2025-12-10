@@ -11,7 +11,7 @@ import type { EmailIntent, CalendarIntent, SmsIntent } from '../../types/ai.type
 import type { Message, ProcessingStatus } from '../../../components/home/types/message.types';
 
 export const useHomeScreen = () => {
-  const { user } = useAuthStore();
+  const { user, isAuthenticated, token } = useAuthStore();
   const queryClient = useQueryClient();
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -28,7 +28,10 @@ export const useHomeScreen = () => {
   const [voiceState, startListening, stopListening] = useVoiceListener({
     autoStart: false,
     onStop: async (uri) => {
-      if (!uri || !user?.id) return;
+      if (!uri || !user?.id || !isAuthenticated || !token) {
+        console.warn('[useHomeScreen] ⚠️ Próba użycia bez autoryzacji - brak user, token lub isAuthenticated');
+        return;
+      }
       setError(null);
       
       try {
@@ -210,17 +213,30 @@ export const useHomeScreen = () => {
         }
         
         // Zapisz chat do historii używając aktualnego chatu (nie tworzy nowego za każdym razem)
-        (async () => {
-          try {
-            const { saveChat } = await import('../../../services/chats.service');
-            await saveChat(result.transcript, result.reply);
-            console.log('[useHomeScreen] ✅ Chat zapisany do historii');
-            queryClient.invalidateQueries({ queryKey: ['chats'] });
-          } catch (error) {
-            console.error('[useHomeScreen] ❌ Błąd podczas zapisywania chatu:', error);
-            // Nie pokazujemy błędu użytkownikowi, bo to nie jest krytyczne
-          }
-        })();
+        // Sprawdź autoryzację przed zapisaniem
+        if (isAuthenticated && token && user?.id) {
+          (async () => {
+            try {
+              const { saveChat } = await import('../../../services/chats.service');
+              await saveChat(result.transcript, result.reply);
+              console.log('[useHomeScreen] ✅ Chat zapisany do historii');
+              queryClient.invalidateQueries({ queryKey: ['chats'] });
+            } catch (error: unknown) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              const isAuthError = errorMessage.includes('401') || errorMessage.includes('Unauthorized');
+              
+              if (isAuthError) {
+                console.warn('[useHomeScreen] ⚠️ Błąd autoryzacji podczas zapisywania chatu - użytkownik nie jest zalogowany');
+                // Można tutaj wywołać logout lub odświeżyć token
+              } else {
+                console.error('[useHomeScreen] ❌ Błąd podczas zapisywania chatu:', errorMessage);
+              }
+              // Nie pokazujemy błędu użytkownikowi, bo to nie jest krytyczne
+            }
+          })();
+        } else {
+          console.warn('[useHomeScreen] ⚠️ Pominięto zapis chatu - brak autoryzacji (isAuthenticated:', isAuthenticated, ', token:', !!token, ', user:', !!user?.id, ')');
+        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : 'Coś poszło nie tak po stronie AI.',
@@ -250,18 +266,33 @@ export const useHomeScreen = () => {
       setIsTyping(false);
       stopTTS();
       
+      // Sprawdź autoryzację przed utworzeniem nowego chatu
+      if (!isAuthenticated || !token || !user?.id) {
+        console.warn('[useHomeScreen] ⚠️ Próba utworzenia nowego chatu bez autoryzacji');
+        setError('Musisz być zalogowany, aby utworzyć nowy czat');
+        return;
+      }
+      
       const { createNewChat } = await import('../../../services/chats.service');
       await createNewChat();
       console.log('[useHomeScreen] ✅ Nowy chat utworzony');
 
       queryClient.invalidateQueries({ queryKey: ['chats'] });
     } catch (err) {
-      console.error('[useHomeScreen] ❌ Błąd podczas tworzenia nowego chatu:', err);
-      setError(
-        err instanceof Error ? err.message : 'Nie udało się utworzyć nowego chatu',
-      );
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const isAuthError = errorMessage.includes('401') || errorMessage.includes('Unauthorized');
+      
+      if (isAuthError) {
+        console.warn('[useHomeScreen] ⚠️ Błąd autoryzacji podczas tworzenia nowego chatu');
+        setError('Musisz być zalogowany, aby utworzyć nowy czat');
+      } else {
+        console.error('[useHomeScreen] ❌ Błąd podczas tworzenia nowego chatu:', errorMessage);
+        setError(
+          err instanceof Error ? err.message : 'Nie udało się utworzyć nowego chatu',
+        );
+      }
     }
-  }, [stopTTS, queryClient]);
+  }, [stopTTS, queryClient, isAuthenticated, token, user?.id]);
 
   const clearEmailIntent = useCallback(() => {
     setEmailIntent(null);
