@@ -38,14 +38,14 @@ export class GoogleOAuthService {
     );
   }
 
-  generateAuthUrl(
+  async generateAuthUrl(
     userId: string,
     scopes: readonly string[],
     redirectPath: string,
     expoRedirectUri?: string,
-  ): { authUrl: string; state: string; expoRedirectUrl?: string } {
+  ): Promise<{ authUrl: string; state: string; expoRedirectUrl?: string }> {
     const redirectUri = expoRedirectUri || this.buildRedirectUri(redirectPath);
-    const state = this.stateService.generate(userId, redirectUri);
+    const state = await this.stateService.generate(userId, redirectUri);
 
     const tempClient = new google.auth.OAuth2(
       this.config.clientId,
@@ -74,7 +74,8 @@ export class GoogleOAuthService {
     code: string,
     state: string,
   ): Promise<{ userId: string; tokens: GoogleTokens; redirectUri?: string }> {
-    const { userId, redirectUri } = this.stateService.validateAndConsume(state);
+    const { userId, redirectUri } =
+      await this.stateService.validateAndConsume(state);
 
     try {
       const client = redirectUri

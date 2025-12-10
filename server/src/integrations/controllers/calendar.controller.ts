@@ -30,11 +30,11 @@ export class CalendarController {
 
   @Get('auth')
   @UseGuards(AuthGuard('jwt'))
-  initiateAuth(
+  async initiateAuth(
     @CurrentUser() user: CurrentUserPayload,
     @Query('expoRedirectUri') expoRedirectUri?: string,
   ) {
-    const result = this.calendarService.generateAuthUrl(
+    const result = await this.calendarService.generateAuthUrl(
       user.id,
       expoRedirectUri,
     );

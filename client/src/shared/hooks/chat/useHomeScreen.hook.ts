@@ -8,13 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getApproximateLocation, formatLocationForAi } from '../../utils/location.utils';
 import { apiClient } from '../../utils/api';
 import type { EmailIntent, CalendarIntent, SmsIntent } from '../../types/ai.types';
-
-type Message = {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-};
+import type { Message, ProcessingStatus } from '../../../components/home/types/message.types';
 
 export const useHomeScreen = () => {
   const { user } = useAuthStore();
@@ -75,7 +69,6 @@ export const useHomeScreen = () => {
         const aiStartTime = performance.now();
         console.log(`[PERF] 🤖 [useHomeScreen] START AI processing | location: ${locationData.label ? 'provided' : 'none'} | lat: ${locationData.latitude} | lng: ${locationData.longitude} | timestamp: ${new Date().toISOString()}`);
         
-        // Callback wywoływany zaraz po transkrypcji - użytkownik zobaczy transkrypcję od razu!
         const handleTranscript = (transcript: string) => {
           console.log('[useHomeScreen] 📝 Transkrypcja otrzymana, aktualizuję wiadomość:', transcript);
           setMessages((prev) => 
@@ -87,6 +80,62 @@ export const useHomeScreen = () => {
           );
         };
         
+          let statusMessageId: string | null = null;
+        
+        const handleStatusChange = (status: ProcessingStatus) => {
+          console.log('[useHomeScreen] 🔄 Zmiana statusu:', status);
+          
+          const statusTexts: Record<string, string> = {
+            'classifying': 'Badam intencję',
+            'web_searching': 'Szukam w internecie',
+            'preparing_response': 'Szykuję odpowiedź',
+          };
+          
+          if (status === null) {
+            setMessages((prev) => {
+              const filtered = prev.filter(msg => 
+                !(msg.role === 'assistant' && msg.status !== null && msg.status !== undefined)
+              );
+              if (filtered.length !== prev.length) {
+                console.log('[useHomeScreen] 🗑️ Usunięto wiadomości statusowe przez callback');
+              }
+              return filtered;
+            });
+            statusMessageId = null;
+            return;
+          }
+          
+          const statusText = statusTexts[status];
+          if (!statusText) return;
+          
+          setIsTyping(false);
+          
+          setMessages((prev) => {
+            const existingStatusMessage = prev.find(
+              msg => msg.role === 'assistant' && msg.status !== null && msg.status !== undefined
+            );
+            
+            if (existingStatusMessage) {
+              return prev.map(msg => 
+                msg.id === existingStatusMessage.id
+                  ? { ...msg, content: statusText, status: status }
+                  : msg
+              );
+            } else {
+              const newStatusMessageId = `status-${Date.now()}`;
+              statusMessageId = newStatusMessageId;
+              const statusMessage: Message = {
+                id: newStatusMessageId,
+                role: 'assistant',
+                content: statusText,
+                timestamp: new Date(),
+                status: status,
+              };
+              return [...prev, statusMessage];
+            }
+          });
+        };
+        
         const result = await voiceAiMutation.mutateAsync({
           uri,
           options: { 
@@ -94,7 +143,8 @@ export const useHomeScreen = () => {
             location: locationData.label || undefined,
             latitude: locationData.latitude,
             longitude: locationData.longitude,
-            onTranscript: handleTranscript, // Przekazujemy callback
+            onTranscript: handleTranscript,
+            onStatusChange: handleStatusChange, 
           },
         });
         
@@ -103,7 +153,6 @@ export const useHomeScreen = () => {
         console.log(`[PERF] ✅ [useHomeScreen] END AI processing | AI duration: ${aiDuration.toFixed(2)}ms | total hook duration: ${totalHookDuration.toFixed(2)}ms | timestamp: ${new Date().toISOString()}`);
         console.log('[useHomeScreen] ✅ Odpowiedź z AI:', result);
 
-        // Upewnij się, że transkrypcja jest zaktualizowana (na wypadek gdyby callback nie zadziałał)
         setMessages((prev) => 
           prev.map(msg => 
             msg.id === userMessageId 
@@ -111,6 +160,19 @@ export const useHomeScreen = () => {
               : msg
           )
         );
+
+        setMessages((prev) => {
+          const statusMessageIds = prev
+            .filter(msg => msg.role === 'assistant' && msg.status !== null && msg.status !== undefined)
+            .map(msg => msg.id)
+            .filter((id): id is string => id !== undefined);
+          
+          if (statusMessageIds.length > 0) {
+            console.log('[useHomeScreen] 🗑️ Usuwam wiadomości statusowe:', statusMessageIds);
+            return prev.filter(msg => !statusMessageIds.includes(msg.id as string));
+          }
+          return prev;
+        });
 
         const assistantMessageId = `assistant-${Date.now()}`;
         const assistantMessage: Message = {
@@ -156,7 +218,6 @@ export const useHomeScreen = () => {
 
           console.log('[useHomeScreen] 📱 SMS details - recipients:', recipients, 'body:', smsBody);
 
-          // SMS w tle - nie blokuj UI
           SMS.isAvailableAsync().then((available: boolean) => {
             console.log('[useHomeScreen] 📱 SMS available:', available);
             if (available) {
@@ -171,7 +232,6 @@ export const useHomeScreen = () => {
           console.log('[useHomeScreen] 📱 Brak intencji SMS lub shouldSendSms = false:', result.smsIntent);
         }
         
-        // Zapis czatu w TLE - nie blokuj odpowiedzi!
         (async () => {
           try {
             const { createNewChat } = await import('../../../services/chats.service');
@@ -184,7 +244,6 @@ export const useHomeScreen = () => {
             }
             queryClient.invalidateQueries({ queryKey: ['chats'] });
           } catch {
-            // Ignoruj błędy zapisu - nie blokuj UI
           }
         })();
       } catch (err) {

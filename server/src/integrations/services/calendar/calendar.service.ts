@@ -27,11 +27,11 @@ export class CalendarService {
     private readonly configService: ConfigService,
   ) {}
 
-  generateAuthUrl(
+  async generateAuthUrl(
     userId: string,
     expoRedirectUri?: string,
-  ): CalendarAuthUrlResponse {
-    return this.oauthService.generateAuthUrl(
+  ): Promise<CalendarAuthUrlResponse> {
+    return await this.oauthService.generateAuthUrl(
       userId,
       CALENDAR_SCOPES,
       '/api/v1/integrations/calendar/callback',

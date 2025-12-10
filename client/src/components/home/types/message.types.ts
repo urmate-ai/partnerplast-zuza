@@ -1,8 +1,16 @@
+export type ProcessingStatus = 
+  | 'transcribing'      
+  | 'classifying'       
+  | 'web_searching'     
+  | 'preparing_response' 
+  | null;                
+
 export type Message = {
   id?: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp?: Date;
+  status?: ProcessingStatus;
 };
 
 export type ChatMessagesProps = {

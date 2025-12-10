@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { transcribeAndRespond } from '../../../services/ai/voice-ai.service';
 import type { VoiceProcessResult } from '../../../shared/types/ai.types';
+import type { ProcessingStatus } from '../../../components/home/types/message.types';
 import { useAuthStore } from '../../../stores/authStore';
 
 type SendVoiceToAiOptions = {
@@ -9,7 +10,8 @@ type SendVoiceToAiOptions = {
   location?: string;
   latitude?: number;
   longitude?: number;
-  onTranscript?: (transcript: string) => void; // Callback wywoływany zaraz po transkrypcji
+  onTranscript?: (transcript: string) => void;
+  onStatusChange?: (status: ProcessingStatus) => void;
 };
 
 const sendVoiceToAiRequest = async (

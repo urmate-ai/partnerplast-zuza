@@ -1,7 +1,8 @@
 import { openAIClient } from './openai-client';
 import { geminiClient } from './gemini-client';
 import type { VoiceProcessResult, EmailIntent, CalendarIntent, SmsIntent } from '../../shared/types/ai.types';
-import { getGmailMessages, getGmailStatus } from '../gmail.service';
+import type { ProcessingStatus } from '../../components/home/types/message.types';
+import { getGmailMessages, getGmailStatus, searchGmailMessages } from '../gmail.service';
 import { getEvents, getCalendarStatus } from '../calendar.service';
 import { GmailFormatter } from '../../shared/utils/gmail-formatter.utils';
 import { CalendarFormatter } from '../../shared/utils/calendar-formatter.utils';
@@ -14,7 +15,8 @@ type VoiceProcessOptions = {
   location?: string;
   latitude?: number;
   longitude?: number;
-  onTranscript?: (transcript: string) => void; 
+  onTranscript?: (transcript: string) => void;
+  onStatusChange?: (status: ProcessingStatus) => void;
 };
 
 type IntentClassification = {
@@ -236,7 +238,8 @@ export async function transcribeAndRespond(
   
   const transcriptionStartTime = performance.now();
   console.log(`[PERF] 📝 [ETAP 1/6] START transcription | timestamp: ${new Date().toISOString()}`);
-  
+    
+  console.log(`[PERF] 📝 [ETAP 1/6] START transcription | timestamp: ${new Date().toISOString()}`);
   const transcript = await openAIClient.transcribeAudio(
     audioUri,
     options.language,
@@ -256,6 +259,14 @@ export async function transcribeAndRespond(
 
   const classificationStartTime = performance.now();
   console.log(`[PERF] 🔍 [ETAP 2/6] START intent classification (AI) | timestamp: ${new Date().toISOString()}`);
+  
+  if (options.onStatusChange) {
+    try {
+      options.onStatusChange('classifying');
+    } catch (error) {
+      console.error('[voice-ai] Error in onStatusChange callback:', error);
+    }
+  }
   
   const intentClass = await classifyIntent(transcript);
   
@@ -307,30 +318,42 @@ export async function transcribeAndRespond(
   
   const [gmailContextResult, calendarContextResult, placesContextResult] = await Promise.all([
     intentClass.needsEmailIntent
-      ? (() => {
+      ? (async () => {
           const gmailStartTime = performance.now();
           console.log(`[PERF] 📧 START Gmail context fetch | timestamp: ${new Date().toISOString()}`);
-          return Promise.all([
-            getGmailStatus().catch(() => ({ isConnected: false })),
-            getGmailMessages(20).catch(() => []),
-          ])
-            .then(([status, messages]) => {
-              const gmailDuration = performance.now() - gmailStartTime;
-              if (status.isConnected && messages.length > 0) {
-                const context = GmailFormatter.formatForAiContext(messages);
-                console.log(`[PERF] ✅ END Gmail context fetch | duration: ${gmailDuration.toFixed(2)}ms | messages: ${messages.length} | context length: ${context.length} | timestamp: ${new Date().toISOString()}`);
-                return {
-                  context,
-                  isConnected: true,
-                };
-              }
-              console.log(`[PERF] ⚠️ END Gmail context fetch (empty) | duration: ${gmailDuration.toFixed(2)}ms | connected: ${status.isConnected} | timestamp: ${new Date().toISOString()}`);
+          
+          try {
+            const status = await getGmailStatus().catch(() => ({ isConnected: false }));
+            
+            if (!status.isConnected) {
+              console.log(`[PERF] ⚠️ END Gmail context fetch (not connected) | duration: ${(performance.now() - gmailStartTime).toFixed(2)}ms | timestamp: ${new Date().toISOString()}`);
               return { context: null, isConnected: false };
-            })
-            .catch((e) => {
-              console.log(`[PERF] ❌ ERROR Gmail context fetch | error: ${e.message} | timestamp: ${new Date().toISOString()}`);
-              return { context: null, isConnected: false };
-            });
+            }
+
+            console.log(`[PERF] 🔍 START Gmail query generation | timestamp: ${new Date().toISOString()}`);
+            const queryStartTime = performance.now();
+            const gmailQuery = await generateGmailQuery(transcript);
+            const queryDuration = performance.now() - queryStartTime;
+            console.log(`[PERF] ✅ END Gmail query generation | duration: ${queryDuration.toFixed(2)}ms | query: "${gmailQuery || 'in:inbox'}" | timestamp: ${new Date().toISOString()}`);
+
+            const messages = await searchGmailMessages(gmailQuery || undefined, 20).catch(() => []);
+            
+            const gmailDuration = performance.now() - gmailStartTime;
+            if (messages.length > 0) {
+              const context = GmailFormatter.formatForAiContext(messages);
+              console.log(`[PERF] ✅ END Gmail context fetch | duration: ${gmailDuration.toFixed(2)}ms | query: "${gmailQuery || 'in:inbox'}" | messages: ${messages.length} | context length: ${context.length} | timestamp: ${new Date().toISOString()}`);
+              return {
+                context,
+                isConnected: true,
+              };
+            }
+            
+            console.log(`[PERF] ⚠️ END Gmail context fetch (no messages) | duration: ${gmailDuration.toFixed(2)}ms | query: "${gmailQuery || 'in:inbox'}" | timestamp: ${new Date().toISOString()}`);
+            return { context: null, isConnected: true };
+          } catch (e: any) {
+            console.log(`[PERF] ❌ ERROR Gmail context fetch | error: ${e.message} | timestamp: ${new Date().toISOString()}`);
+            return { context: null, isConnected: false };
+          }
         })()
       : Promise.resolve({ context: null, isConnected: false }),
           
@@ -438,6 +461,18 @@ export async function transcribeAndRespond(
   
   const useGemini = intentClass.needsWebSearch;
   const model = useGemini ? 'gemini-2.0-flash-exp' : 'gpt-4.1-nano';
+
+  if (options.onStatusChange) {
+    try {
+      if (intentClass.needsWebSearch) {
+        options.onStatusChange('web_searching');
+      } else {
+        options.onStatusChange('preparing_response');
+      }
+    } catch (error) {
+      console.error('[voice-ai] Error in onStatusChange callback:', error);
+    }
+  }
   
   const completionStartTime = performance.now();
   console.log(`[PERF] 💬 [ETAP 5/6] START ${useGemini ? 'Gemini (websearch)' : 'chat completion'} | model: ${model} | max_tokens: ${maxTokens} | needsWebSearch: ${intentClass.needsWebSearch} | timestamp: ${new Date().toISOString()}`);
@@ -509,6 +544,14 @@ export async function transcribeAndRespond(
   } else {
     stageTimings.intentDetection = 0;
   }
+  
+  if (options.onStatusChange) {
+    try {
+      options.onStatusChange(null);
+    } catch (error) {
+      console.error('[voice-ai] Error in onStatusChange callback:', error);
+    }
+  }
 
   const result: VoiceProcessResult = {
     transcript,
@@ -537,6 +580,80 @@ export async function transcribeAndRespond(
   console.log(`[PERF] 🎯 ========================================`);
 
   return result;
+}
+
+async function generateGmailQuery(transcript: string): Promise<string | null> {
+  try {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const lastWeek = new Date(now);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    const lastMonth = new Date(now);
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+
+    const completion = await openAIClient.chatCompletions({
+      model: 'gpt-4.1-nano',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Jesteś ekspertem w tworzeniu zapytań Gmail. Odpowiadaj TYLKO czystym JSON bez markdown.',
+        },
+        {
+          role: 'user',
+          content: `Użytkownik powiedział: "${transcript}"
+
+Wygeneruj zapytanie Gmail (Gmail search query) na podstawie tego co użytkownik powiedział.
+
+Dzisiejsza data: ${today}
+Wczoraj: ${yesterday.toISOString().split('T')[0]}
+Tydzień temu: ${lastWeek.toISOString().split('T')[0]}
+Miesiąc temu: ${lastMonth.toISOString().split('T')[0]}
+
+Przykłady zapytań Gmail:
+- "maile od Jana" → "from:jan"
+- "maile z zeszłego tygodnia" → "after:${lastWeek.toISOString().split('T')[0]}"
+- "nieprzeczytane maile" → "is:unread"
+- "maile od Roberta z grudnia" → "from:robert after:2025/12/01 before:2025/12/31"
+- "maile z załącznikami" → "has:attachment"
+- "maile o spotkaniu" → "subject:spotkanie OR body:spotkanie"
+
+Operatory Gmail:
+- from:email - od nadawcy
+- to:email - do odbiorcy
+- subject:tekst - w temacie
+- body:tekst lub tekst - w treści
+- after:YYYY/MM/DD - po dacie
+- before:YYYY/MM/DD - przed datą
+- is:unread - nieprzeczytane
+- is:read - przeczytane
+- has:attachment - z załącznikiem
+- OR - lub
+- AND - i
+- - (minus) - wyklucz
+
+Odpowiedz w formacie JSON:
+{
+  "query": "zapytanie Gmail lub null jeśli nie można wygenerować"
+}`,
+        },
+      ],
+      max_tokens: 200,
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
+    });
+
+    const responseText = completion.choices[0]?.message?.content?.trim();
+    if (!responseText) return null;
+
+    const result = JSON.parse(responseText);
+    return result.query || null;
+  } catch (error) {
+    console.error('[AI] Failed to generate Gmail query:', error);
+    return null;
+  }
 }
 
 async function detectEmailIntent(transcript: string): Promise<EmailIntent | undefined> {
