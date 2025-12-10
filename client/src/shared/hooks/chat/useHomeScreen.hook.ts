@@ -209,18 +209,16 @@ export const useHomeScreen = () => {
           console.log('[useHomeScreen] 📱 Brak intencji SMS lub shouldSendSms = false:', result.smsIntent);
         }
         
+        // Zapisz chat do historii używając aktualnego chatu (nie tworzy nowego za każdym razem)
         (async () => {
           try {
-            const { createNewChat } = await import('../../../services/chats.service');
-            const chatId = await createNewChat().then((res) => res.chatId).catch(() => null);
-            if (chatId) {
-              await Promise.all([
-                apiClient.post(`/ai/chats/${chatId}/messages`, { role: 'user', content: result.transcript }),
-                apiClient.post(`/ai/chats/${chatId}/messages`, { role: 'assistant', content: result.reply }),
-              ]).catch(() => {});
-            }
+            const { saveChat } = await import('../../../services/chats.service');
+            await saveChat(result.transcript, result.reply);
+            console.log('[useHomeScreen] ✅ Chat zapisany do historii');
             queryClient.invalidateQueries({ queryKey: ['chats'] });
-          } catch {
+          } catch (error) {
+            console.error('[useHomeScreen] ❌ Błąd podczas zapisywania chatu:', error);
+            // Nie pokazujemy błędu użytkownikowi, bo to nie jest krytyczne
           }
         })();
       } catch (err) {
@@ -247,16 +245,18 @@ export const useHomeScreen = () => {
   const handleNewChat = useCallback(async () => {
     try {
       setMessages([]);
+      setCurrentStatus(null);
       setError(null);
       setIsTyping(false);
       stopTTS();
       
       const { createNewChat } = await import('../../../services/chats.service');
       await createNewChat();
+      console.log('[useHomeScreen] ✅ Nowy chat utworzony');
 
       queryClient.invalidateQueries({ queryKey: ['chats'] });
     } catch (err) {
-      console.error('Error creating new chat:', err);
+      console.error('[useHomeScreen] ❌ Błąd podczas tworzenia nowego chatu:', err);
       setError(
         err instanceof Error ? err.message : 'Nie udało się utworzyć nowego chatu',
       );

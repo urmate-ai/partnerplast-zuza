@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Query,
   Param,
@@ -20,8 +21,12 @@ export class AiController {
 
   @Get('chat-history')
   @UseGuards(AuthGuard('jwt'))
-  async getChatHistory(@CurrentUser() user: CurrentUserPayload) {
-    return this.chatService.getChatHistory(user.id);
+  async getChatHistory(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('limit') limit?: string,
+  ) {
+    const limitNumber = limit ? parseInt(limit, 10) : undefined;
+    return this.chatService.getChatHistory(user.id, limitNumber);
   }
 
   @Get('chats')
@@ -61,6 +66,33 @@ export class AiController {
   ) {
     await this.chatService.getChatById(chatId, user.id);
     await this.chatService.addMessage(chatId, body.role, body.content);
+    return { success: true };
+  }
+
+  @Post('chats/save')
+  @UseGuards(AuthGuard('jwt'))
+  async saveChat(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() body: { transcript: string; reply: string },
+  ) {
+    await this.chatService.saveChat(user.id, body.transcript, body.reply);
+    return { success: true };
+  }
+
+  @Get('chats/current')
+  @UseGuards(AuthGuard('jwt'))
+  async getOrCreateCurrentChat(@CurrentUser() user: CurrentUserPayload) {
+    const chatId = await this.chatService.getOrCreateCurrentChat(user.id);
+    return { chatId };
+  }
+
+  @Delete('chats/:id')
+  @UseGuards(AuthGuard('jwt'))
+  async deleteChat(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') chatId: string,
+  ) {
+    await this.chatService.deleteChat(chatId, user.id);
     return { success: true };
   }
 }
