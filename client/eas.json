@@ -8,14 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://partnerplast-zuza.onrender.com",
-        "[REDACTED]": "[REDACTED]",
-        "[REDACTED]": "[REDACTED]",
-        "[REDACTED]": "[REDACTED]",
-        "sk_[REDACTED]": "[REDACTED]",
-        "[REDACTED]": "[REDACTED]",
-        "[REDACTED]": "[REDACTED]",
-        "[REDACTED]": "[REDACTED]"
+
       },
       "android": {
         "gradleCommand": ":app:assembleDebug"
@@ -30,10 +23,6 @@
         "disabled": true
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://partnerplast-zuza.onrender.com",
-        "[REDACTED]": "[REDACTED]",
-        "[REDACTED]": "[REDACTED]",
-        "[REDACTED]": "[REDACTED]"
       },
       "android": {
         "buildType": "apk",
