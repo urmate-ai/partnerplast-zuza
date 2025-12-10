@@ -179,7 +179,12 @@ describe('GoogleOAuthService', () => {
         () => mockOAuth2Client,
       );
 
-      const result = await service.handleCallback(code, mockState);
+      const redirectPath = '/api/v1/integrations/gmail/callback';
+      const result = await service.handleCallback(
+        code,
+        mockState,
+        redirectPath,
+      );
 
       expect(result.userId).toBe(mockUserId);
       expect(result.tokens.access_token).toBe(mockTokens.access_token);
@@ -187,7 +192,7 @@ describe('GoogleOAuthService', () => {
       expect(google.auth.OAuth2).toHaveBeenCalledWith(
         mockClientId,
         mockClientSecret,
-        mockRedirectUri,
+        expect.stringContaining(redirectPath),
       );
     });
 
@@ -214,9 +219,10 @@ describe('GoogleOAuthService', () => {
         () => mockOAuth2Client,
       );
 
-      await expect(service.handleCallback(code, mockState)).rejects.toThrow(
-        BadRequestException,
-      );
+      const redirectPath = '/api/v1/integrations/gmail/callback';
+      await expect(
+        service.handleCallback(code, mockState, redirectPath),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
