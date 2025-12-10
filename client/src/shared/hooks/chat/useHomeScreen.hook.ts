@@ -15,6 +15,7 @@ export const useHomeScreen = () => {
   const queryClient = useQueryClient();
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [currentStatus, setCurrentStatus] = useState<ProcessingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const [emailIntent, setEmailIntent] = useState<EmailIntent | null>(null);
@@ -37,8 +38,9 @@ export const useHomeScreen = () => {
           role: 'user',
           content: 'Przetwarzanie mowy...',
           timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, userMessage]);
+        };  
+        setMessages([userMessage]);
+        setCurrentStatus('transcribing');
 
         setIsTyping(true);
         const hookStartTime = performance.now();
@@ -78,65 +80,21 @@ export const useHomeScreen = () => {
                 : msg
             )
           );
+          if (currentStatus === 'transcribing') {
+            setCurrentStatus(null);
+          }
         };
         
-          let statusMessageId: string | null = null;
         
         const handleStatusChange = (status: ProcessingStatus) => {
           console.log('[useHomeScreen] 🔄 Zmiana statusu:', status);
-          
-          const statusTexts: Record<string, string> = {
-            'classifying': 'Badam intencję...',
-            'checking_email': 'Sprawdzam maila...',
-            'checking_calendar': 'Sprawdzam kalendarz...',
-            'checking_contacts': 'Przeszukuję kontakty...',
-            'web_searching': 'Szukam w internecie...',
-            'preparing_response': 'Szykuję odpowiedź...',
-          };
+          setCurrentStatus(status);
           
           if (status === null) {
-            setMessages((prev) => {
-              const filtered = prev.filter(msg => 
-                !(msg.role === 'assistant' && msg.status !== null && msg.status !== undefined)
-              );
-              if (filtered.length !== prev.length) {
-                console.log('[useHomeScreen] 🗑️ Usunięto wiadomości statusowe przez callback');
-              }
-              return filtered;
-            });
-            statusMessageId = null;
             return;
           }
           
-          const statusText = statusTexts[status];
-          if (!statusText) return;
-          
           setIsTyping(false);
-          
-          setMessages((prev) => {
-            const existingStatusMessage = prev.find(
-              msg => msg.role === 'assistant' && msg.status !== null && msg.status !== undefined
-            );
-            
-            if (existingStatusMessage) {
-              return prev.map(msg => 
-                msg.id === existingStatusMessage.id
-                  ? { ...msg, content: statusText, status: status }
-                  : msg
-              );
-            } else {
-              const newStatusMessageId = `status-${Date.now()}`;
-              statusMessageId = newStatusMessageId;
-              const statusMessage: Message = {
-                id: newStatusMessageId,
-                role: 'assistant',
-                content: statusText,
-                timestamp: new Date(),
-                status: status,
-              };
-              return [...prev, statusMessage];
-            }
-          });
         };
         
         const result = await voiceAiMutation.mutateAsync({
@@ -164,19 +122,8 @@ export const useHomeScreen = () => {
           )
         );
 
-        setMessages((prev) => {
-          const statusMessageIds = prev
-            .filter(msg => msg.role === 'assistant' && msg.status !== null && msg.status !== undefined)
-            .map(msg => msg.id)
-            .filter((id): id is string => id !== undefined);
-          
-          if (statusMessageIds.length > 0) {
-            console.log('[useHomeScreen] 🗑️ Usuwam wiadomości statusowe:', statusMessageIds);
-            return prev.filter(msg => !statusMessageIds.includes(msg.id as string));
-          }
-          return prev;
-        });
-
+        setCurrentStatus(null);
+        
         const assistantMessageId = `assistant-${Date.now()}`;
         const assistantMessage: Message = {
           id: assistantMessageId,
@@ -184,7 +131,10 @@ export const useHomeScreen = () => {
           content: result.reply, 
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, assistantMessage]);
+        setMessages((prev) => {
+          const userMsg = prev.find(msg => msg.role === 'user');
+          return userMsg ? [userMsg, assistantMessage] : [assistantMessage];
+        });
 
         setIsTyping(false);
         speak(result.reply);
@@ -325,6 +275,9 @@ export const useHomeScreen = () => {
     setSmsIntent(null);
   }, []);
 
+  const lastUserMessage = messages.find(msg => msg.role === 'user') || null;
+  const lastAssistantMessage = messages.find(msg => msg.role === 'assistant' && !msg.status) || null;
+
   return {
     user,
     isDrawerOpen,
@@ -333,6 +286,9 @@ export const useHomeScreen = () => {
     startListening,
     stopListening,
     messages,
+    lastUserMessage,
+    lastAssistantMessage,
+    currentStatus,
     isLoading: voiceAiMutation.isPending,
     isTyping,
     error,
