@@ -85,18 +85,38 @@ const buildSystemPrompt = (userName?: string, context?: string, location?: strin
   return basePrompt;
 };
 
-async function classifyIntent(transcript: string): Promise<IntentClassification> {
+async function classifyIntent(transcript: string, chatHistory?: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<IntentClassification> {
   const localResult = localClassifyIntent(transcript);
   
   if (localResult.isSimpleGreeting && localResult.confidence === 'high') {
     return localResult;
   }
 
-  return await aiClassifyIntent(transcript);
+  return await aiClassifyIntent(transcript, chatHistory);
 }
 
-async function aiClassifyIntent(transcript: string): Promise<IntentClassification> {
-  try {
+async function aiClassifyIntent(transcript: string, chatHistory?: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<IntentClassification> {
+  try { 
+    const hasEmailContext = chatHistory && chatHistory.some(msg => 
+      (msg.role === 'assistant' && (
+        msg.content.toLowerCase().includes('mail') || 
+        msg.content.toLowerCase().includes('email') ||
+        msg.content.toLowerCase().includes('znalazłam') ||
+        msg.content.toLowerCase().includes('znalazłem') ||
+        msg.content.toLowerCase().includes('inpost') ||
+        msg.content.toLowerCase().includes('przesyłk')
+      )) ||
+      (msg.role === 'user' && (
+        msg.content.toLowerCase().includes('mail') ||
+        msg.content.toLowerCase().includes('email') ||
+        msg.content.toLowerCase().includes('inpost')
+      ))
+    );
+
+    const historyContext = hasEmailContext 
+      ? `\n\nWAŻNE: W historii rozmowy wcześniej była mowa o mailach. Jeśli użytkownik teraz pyta o szczegóły (np. "możesz mi podać", "jaki numer", "pokaż mi", "numer nadania", "numer przesyłki", "numer śledzenia"), to prawdopodobnie chodzi o informacje z wcześniej wspomnianego maila. Ustaw needsEmailIntent: true, NIE needsWebSearch: true.`
+      : '';
+
     const systemPrompt = `Jesteś klasyfikatorem intencji. Przeanalizuj wiadomość użytkownika i zwróć JSON z intencjami.
 Odpowiedz TYLKO JSON w formacie:
 {
@@ -109,9 +129,10 @@ Odpowiedz TYLKO JSON w formacie:
   "needsPlacesSearch": true/false,
   "confidence": "high"/"medium"/"low"
 }
+${historyContext}
 
 Zasady:
-- needsEmailIntent: użytkownik chce WYSŁAĆ email/mail LUB SPRAWDZIĆ/CZYTAĆ emaile LUB znaleźć informacje w mailach (np. "pokaż mi maile", "jakie maile przyszły", "jaki mail dostałem", "maile z poniedziałku", "ostatni mail", "wyślij mail", "napisz email", "numer śledzenia", "kod weryfikacyjny", "hasło", "link", "coś w mailu", "w mailu od X", "w wiadomości"). Jeśli użytkownik pyta o coś, co może być w mailu (numer, kod, hasło, link, informacja), ustaw needsEmailIntent: true, NIE needsWebSearch: true
+- needsEmailIntent: użytkownik chce WYSŁAĆ email/mail LUB SPRAWDZIĆ/CZYTAĆ emaile LUB znaleźć informacje w mailach (np. "pokaż mi maile", "jakie maile przyszły", "jaki mail dostałem", "maile z poniedziałku", "ostatni mail", "wyślij mail", "napisz email", "numer śledzenia", "numer nadania", "numer przesyłki", "kod weryfikacyjny", "hasło", "link", "coś w mailu", "w mailu od X", "w wiadomości", "podać numer", "jaki numer", "możesz mi podać"). Jeśli użytkownik pyta o coś, co może być w mailu (numer, kod, hasło, link, informacja), LUB jeśli w historii rozmowy wcześniej mówiłeś o mailu, ustaw needsEmailIntent: true, NIE needsWebSearch: true. Jeśli użytkownik pyta "możesz mi podać X" i wcześniej mówiłeś o mailu, to needsEmailIntent: true.
 - needsCalendarIntent: użytkownik chce dodać wydarzenie/spotkanie do kalendarza LUB sprawdzić wydarzenia (np. "dodaj spotkanie", "co mam w kalendarzu", "wydarzenia")
 - needsSmsIntent: użytkownik chce wysłać SMS/wiadomość tekstową
 - needsContactsIntent: użytkownik pyta o kontakty (np. "jaki numer ma Jan", "znajdź kontakt", "pokaż mi kontakty", "jaki telefon ma Robert", "znajdź numer do", "kontakt do")
@@ -122,12 +143,25 @@ Zasady:
 
 WAŻNE: Jeśli użytkownik pyta o emaile (np. "pokaż mi maile", "jakie maile", "jaki mail"), ustaw needsEmailIntent: true, NIE needsWebSearch: true.`;
 
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: systemPrompt },
+    ];
+
+    if (chatHistory && chatHistory.length > 0) {
+      const recentHistory = chatHistory.slice(-3);
+      for (const msg of recentHistory) {
+        messages.push({
+          role: msg.role === 'assistant' ? 'assistant' : 'user',
+          content: msg.content,
+        });
+      }
+    }
+
+    messages.push({ role: 'user', content: transcript });
+
     const completion = await openAIClient.chatCompletions({
       model: 'gpt-4.1-nano',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: transcript },
-      ],
+      messages,
       max_tokens: 150,
       temperature: 0.3, 
       response_format: { type: 'json_object' },
@@ -334,7 +368,7 @@ export async function transcribeAndRespond(
     }
   }
   
-  const intentClass = await classifyIntent(transcript);
+  const intentClass = await classifyIntent(transcript, options.chatHistory);
   
   const classificationDuration = performance.now() - classificationStartTime;
   stageTimings.classification = classificationDuration;
