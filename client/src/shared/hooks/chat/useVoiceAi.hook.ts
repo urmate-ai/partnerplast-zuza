@@ -12,6 +12,7 @@ type SendVoiceToAiOptions = {
   longitude?: number;
   onTranscript?: (transcript: string) => void;
   onStatusChange?: (status: ProcessingStatus) => void;
+  chatHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
 };
 
 const sendVoiceToAiRequest = async (

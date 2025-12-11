@@ -6,7 +6,6 @@ import { useVoiceAi } from './useVoiceAi.hook';
 import { useAuthStore } from '../../../stores/authStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { getApproximateLocation, formatLocationForAi } from '../../utils/location.utils';
-import { apiClient } from '../../utils/api';
 import type { EmailIntent, CalendarIntent, SmsIntent } from '../../types/ai.types';
 import type { Message, ProcessingStatus } from '../../../components/home/types/message.types';
 
@@ -41,8 +40,8 @@ export const useHomeScreen = () => {
           role: 'user',
           content: 'Przetwarzanie mowy...',
           timestamp: new Date(),
-        };  
-        setMessages([userMessage]);
+        };    
+        setMessages((prev) => [...prev, userMessage]);
         setCurrentStatus('transcribing');
 
         setIsTyping(true);
@@ -100,6 +99,13 @@ export const useHomeScreen = () => {
           setIsTyping(false);
         };
         
+        const chatHistory = messages
+          .slice(-10)
+          .map(msg => ({
+            role: msg.role,
+            content: msg.content,
+          }));
+
         const result = await voiceAiMutation.mutateAsync({
           uri,
           options: { 
@@ -108,7 +114,8 @@ export const useHomeScreen = () => {
             latitude: locationData.latitude,
             longitude: locationData.longitude,
             onTranscript: handleTranscript,
-            onStatusChange: handleStatusChange, 
+            onStatusChange: handleStatusChange,
+            chatHistory: chatHistory.length > 0 ? chatHistory : undefined,
           },
         });
         
@@ -118,11 +125,16 @@ export const useHomeScreen = () => {
         console.log('[useHomeScreen] ✅ Odpowiedź z AI:', result);
 
         setMessages((prev) => 
-          prev.map(msg => 
-            msg.id === userMessageId 
-              ? { ...msg, content: result.transcript }
-              : msg
-          )
+          prev.map(msg => {
+            if (msg.id === userMessageId) { 
+              const finalTranscript = result.transcript?.trim() || '';
+              if (finalTranscript && msg.content !== finalTranscript) {
+                console.log(`[useHomeScreen] 🔄 Aktualizuję wiadomość użytkownika z finalną transkrypcją: "${finalTranscript}"`);
+                return { ...msg, content: finalTranscript };
+              }
+            }
+            return msg;
+          })
         );
 
         setCurrentStatus(null);
@@ -135,8 +147,7 @@ export const useHomeScreen = () => {
           timestamp: new Date(),
         };
         setMessages((prev) => {
-          const userMsg = prev.find(msg => msg.role === 'user');
-          return userMsg ? [userMsg, assistantMessage] : [assistantMessage];
+          return [...prev, assistantMessage];
         });
 
         setIsTyping(false);
@@ -212,8 +223,6 @@ export const useHomeScreen = () => {
           console.log('[useHomeScreen] 📱 Brak intencji SMS lub shouldSendSms = false:', result.smsIntent);
         }
         
-        // Zapisz chat do historii używając aktualnego chatu (nie tworzy nowego za każdym razem)
-        // Sprawdź autoryzację przed zapisaniem
         if (isAuthenticated && token && user?.id) {
           (async () => {
             try {
@@ -227,11 +236,9 @@ export const useHomeScreen = () => {
               
               if (isAuthError) {
                 console.warn('[useHomeScreen] ⚠️ Błąd autoryzacji podczas zapisywania chatu - użytkownik nie jest zalogowany');
-                // Można tutaj wywołać logout lub odświeżyć token
               } else {
                 console.error('[useHomeScreen] ❌ Błąd podczas zapisywania chatu:', errorMessage);
               }
-              // Nie pokazujemy błędu użytkownikowi, bo to nie jest krytyczne
             }
           })();
         } else {
@@ -266,7 +273,6 @@ export const useHomeScreen = () => {
       setIsTyping(false);
       stopTTS();
       
-      // Sprawdź autoryzację przed utworzeniem nowego chatu
       if (!isAuthenticated || !token || !user?.id) {
         console.warn('[useHomeScreen] ⚠️ Próba utworzenia nowego chatu bez autoryzacji');
         setError('Musisz być zalogowany, aby utworzyć nowy czat');
@@ -306,8 +312,8 @@ export const useHomeScreen = () => {
     setSmsIntent(null);
   }, []);
 
-  const lastUserMessage = messages.find(msg => msg.role === 'user') || null;
-  const lastAssistantMessage = messages.find(msg => msg.role === 'assistant' && !msg.status) || null;
+  const lastUserMessage = messages.filter(msg => msg.role === 'user').slice(-1)[0] || null;
+  const lastAssistantMessage = messages.filter(msg => msg.role === 'assistant' && !msg.status).slice(-1)[0] || null;
 
   return {
     user,
