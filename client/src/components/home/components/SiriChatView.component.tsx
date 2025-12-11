@@ -60,7 +60,7 @@ export const SiriChatView: React.FC<SiriChatViewProps> = ({
         useNativeDriver: true,
       }).start();
     }
-  }, [userMessage?.id, assistantMessage?.id, fadeAnim]);
+  }, [userMessage?.id, userMessage?.content, assistantMessage?.id, fadeAnim]);
 
   useEffect(() => {
     if (assistantMessage && !currentStatus) {

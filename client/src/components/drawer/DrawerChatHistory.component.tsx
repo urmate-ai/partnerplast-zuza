@@ -94,7 +94,7 @@ export const DrawerChatHistory: React.FC<DrawerChatHistoryProps> = ({
                 onPress={(e) => handleDeletePress(chat, e)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="ellipsis-horizontal" size={20} color="#9CA3AF" />
+              <Ionicons name="ellipsis-horizontal" size={20} color="#9CA3AF" />
               </Pressable>
             </View>
           </Pressable>

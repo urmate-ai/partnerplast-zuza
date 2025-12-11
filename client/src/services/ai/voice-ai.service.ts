@@ -19,6 +19,7 @@ type VoiceProcessOptions = {
   longitude?: number;
   onTranscript?: (transcript: string) => void;
   onStatusChange?: (status: ProcessingStatus) => void;
+  chatHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
 };
 
 type IntentClassification = {
@@ -43,6 +44,9 @@ const buildSystemPrompt = (userName?: string, context?: string, location?: strin
 
   if (isGmailConnected) {
     basePrompt += '\n\nWAŻNE: Masz dostęp do skrzynki mailowej użytkownika (Gmail jest połączony). Możesz odpowiadać na pytania o emaile.';
+    basePrompt += '\n\nUWAGA: Jeśli użytkownik pyta o emaile z konkretnej godziny (np. "wczoraj o 22:00", "w godzinach 22:00-23:00"), sprawdź dokładnie godzinę każdego maila w kontekście. Każdy mail ma informację o godzinie w formacie "godzina: HH:MM". Porównaj godzinę maila z godziną, o którą pyta użytkownik. Jeśli mail jest z wczoraj o 22:30, a użytkownik pyta o "wczoraj w godzinach 22:00-23:00", to ten mail PASUJE.';
+    basePrompt += '\n\nUWAGA: Jeśli użytkownik pyta o emaile z konkretnego dnia tygodnia (np. "w poniedziałek", "wczoraj", "8 grudnia"), sprawdź dokładnie datę każdego maila w kontekście. Każdy mail ma datę w formacie "dzień_tygodnia, DD.MM.YYYY, HH:MM:SS". Jeśli użytkownik pyta o "w poniedziałek", sprawdź czy data maila zawiera "poniedziałek". Jeśli pyta o "8 grudnia", sprawdź czy data maila to "08.12.2025" lub podobna.';
+    basePrompt += '\n\nUWAGA: Jeśli użytkownik pyta o konkretny typ maila (np. "potwierdzenie zamówienia", "faktura", "zamówienie"), sprawdź TEMAT i PODGLĄD każdego maila w kontekście. Jeśli temat lub podgląd zawiera słowa kluczowe z pytania użytkownika (np. "potwierdzenie", "zamówienie"), to ten mail PASUJE.';
   } else if (needsGmailButNotConnected) {
     basePrompt += '\n\nWAŻNE: NIE MASZ dostępu do skrzynki mailowej użytkownika. Gmail nie jest podłączony. Poinformuj użytkownika, że aby sprawdzić emaile, musi najpierw połączyć swoje konto Gmail w ustawieniach aplikacji (Ustawienia → Integracje → Gmail).';
   }
@@ -55,13 +59,24 @@ const buildSystemPrompt = (userName?: string, context?: string, location?: strin
     basePrompt += '\n\nWAŻNE: Masz dostęp do kontaktów użytkownika. Możesz odpowiadać na pytania o kontakty, numery telefonów i adresy email.';
   }
 
-  if (context) {
-    basePrompt = `${basePrompt}\n\nKontekst: ${context}`;
-    
-    if (hasCalendarContext && context.includes('wydarzenia w kalendarzu')) {
-      basePrompt += '\n\nWAŻNE: Jeśli użytkownik pyta o konkretny dzień (np. "jutro", "dzisiaj", "w poniedziałek"), filtruj wydarzenia tylko z tego dnia. Sprawdź datę każdego wydarzenia i odpowiadaj tylko o wydarzenia z dnia, o który pyta użytkownik. Jeśli użytkownik pyta o "jutro", pokaż tylko wydarzenia z jutra. Jeśli pyta o "dzisiaj", pokaż tylko wydarzenia z dzisiaj.';
+    if (context) {
+      basePrompt = `${basePrompt}\n\nKontekst: ${context}`;
+      
+      if (hasCalendarContext && context.includes('wydarzenia w kalendarzu')) {
+        basePrompt += '\n\nWAŻNE: Jeśli użytkownik pyta o konkretny dzień (np. "jutro", "dzisiaj", "w poniedziałek"), filtruj wydarzenia tylko z tego dnia. Sprawdź datę każdego wydarzenia i odpowiadaj tylko o wydarzenia z dnia, o który pyta użytkownik. Jeśli użytkownik pyta o "jutro", pokaż tylko wydarzenia z jutra. Jeśli pyta o "dzisiaj", pokaż tylko wydarzenia z dzisiaj.';
+      }
+      
+      if (context.includes('Ostatnie wiadomości email')) {
+        basePrompt += '\n\nWAŻNE: Masz dostęp do listy maili użytkownika. Przeanalizuj każdy mail dokładnie:';
+        basePrompt += '\n- Sprawdź datę maila (dzień tygodnia i datę) - jeśli użytkownik pyta o "w poniedziałek", znajdź maile z datą zawierającą "poniedziałek"';
+        basePrompt += '\n- Sprawdź nadawcę (pole "Od:") - jeśli użytkownik pyta o maila "od Douglas", znajdź maile gdzie nadawca zawiera "Douglas" lub "douglas"';
+        basePrompt += '\n- Sprawdź temat i podgląd (pole "Temat:" i "Podgląd:") - jeśli użytkownik pyta o "potwierdzenie zamówienia", znajdź maile gdzie temat lub podgląd zawiera słowa "potwierdzenie", "zamówienie" lub podobne';
+        basePrompt += '\n- Sprawdź treść maila (pole "Treść:") - jeśli użytkownik pyta o coś, co może być w treści (np. "numer śledzenia", "kod weryfikacyjny", "hasło", "link"), przeszukaj treść każdego maila. Jeśli treść zawiera szukane słowa, ten mail PASUJE';
+        basePrompt += '\n- Jeśli znajdziesz mail, który pasuje do WSZYSTKICH kryteriów (data, nadawca, temat, treść), powiedz że TAK, znalazłaś taki mail i podaj szczegóły (nadawca, temat, data, oraz szukaną informację z treści jeśli dotyczy)';
+        basePrompt += '\n- Jeśli nie znajdziesz maila pasującego do WSZYSTKICH kryteriów, powiedz że NIE znalazłaś takiego maila';
+        basePrompt += '\n\nBARDZO WAŻNE: Jeśli w historii rozmowy wcześniej mówiłaś, że znalazłaś mail (np. "Tak, znalazłam mail od InPost z poniedziałku"), a teraz użytkownik pyta o szczegóły z tego maila (np. "Możesz mi go podać?", "Jaki numer śledzenia?"), MUSISZ użyć kontekstu z obecnej listy maili. Jeśli w kontekście jest mail pasujący do wcześniejszej odpowiedzi (ta sama data, ten sam nadawca), przeszukaj jego treść i podaj szukaną informację. NIE mów, że nie możesz znaleźć, jeśli wcześniej mówiłaś, że znalazłaś ten mail.';
+      }
     }
-  }
 
   if (location) {
     basePrompt = `${basePrompt}\n\nLokalizacja: ${location}`;
@@ -96,7 +111,7 @@ Odpowiedz TYLKO JSON w formacie:
 }
 
 Zasady:
-- needsEmailIntent: użytkownik chce WYSŁAĆ email/mail LUB SPRAWDZIĆ/CZYTAĆ emaile (np. "pokaż mi maile", "jakie maile przyszły", "jaki mail dostałem", "maile z poniedziałku", "ostatni mail", "wyślij mail", "napisz email")
+- needsEmailIntent: użytkownik chce WYSŁAĆ email/mail LUB SPRAWDZIĆ/CZYTAĆ emaile LUB znaleźć informacje w mailach (np. "pokaż mi maile", "jakie maile przyszły", "jaki mail dostałem", "maile z poniedziałku", "ostatni mail", "wyślij mail", "napisz email", "numer śledzenia", "kod weryfikacyjny", "hasło", "link", "coś w mailu", "w mailu od X", "w wiadomości"). Jeśli użytkownik pyta o coś, co może być w mailu (numer, kod, hasło, link, informacja), ustaw needsEmailIntent: true, NIE needsWebSearch: true
 - needsCalendarIntent: użytkownik chce dodać wydarzenie/spotkanie do kalendarza LUB sprawdzić wydarzenia (np. "dodaj spotkanie", "co mam w kalendarzu", "wydarzenia")
 - needsSmsIntent: użytkownik chce wysłać SMS/wiadomość tekstową
 - needsContactsIntent: użytkownik pyta o kontakty (np. "jaki numer ma Jan", "znajdź kontakt", "pokaż mi kontakty", "jaki telefon ma Robert", "znajdź numer do", "kontakt do")
@@ -331,14 +346,22 @@ export async function transcribeAndRespond(
     const fastPathStartTime = performance.now();  
     const systemPrompt = 'ZUZA - asystent głosowy. Nazywasz się Zuza i jesteś kobietą. Odpowiedz krótko na powitanie, używając form żeńskich (np. "cześć", "witam").';
     
-    console.log(`[PERF] 💬 [ETAP 3/3] START chat completion (fast path) | model: gpt-4.1-nano | max_tokens: 40 | temperature: 0.9 | timestamp: ${new Date().toISOString()}`);
+    const fastPathMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system' as const, content: systemPrompt },
+    ];
+    
+    if (options.chatHistory && options.chatHistory.length > 0) {
+      const historyToAdd = options.chatHistory.slice(-5);
+      fastPathMessages.push(...historyToAdd);
+    }
+    
+    fastPathMessages.push({ role: 'user' as const, content: transcript });
+    
+    console.log(`[PERF] 💬 [ETAP 3/3] START chat completion (fast path) | model: gpt-4.1-nano | max_tokens: 40 | temperature: 0.9 | history: ${fastPathMessages.length - 2} messages | timestamp: ${new Date().toISOString()}`);
     
     const completion = await openAIClient.chatCompletions({
       model: 'gpt-4.1-nano',
-      messages: [
-        { role: 'system' as const, content: systemPrompt },
-        { role: 'user' as const, content: transcript },
-      ],
+      messages: fastPathMessages,
       max_tokens: 40, 
       temperature: 0.9, 
     });
@@ -397,8 +420,47 @@ export async function transcribeAndRespond(
             const queryDuration = performance.now() - queryStartTime;
             console.log(`[PERF] ✅ END Gmail query generation | duration: ${queryDuration.toFixed(2)}ms | query: "${gmailQueryResult.query || 'in:inbox'}" | hasSender: ${gmailQueryResult.hasSender} | timestamp: ${new Date().toISOString()}`);
 
-            const baseQuery = gmailQueryResult.queryWithoutSender || gmailQueryResult.query || 'in:inbox';
-            const messages = await searchGmailMessages(baseQuery, 50).catch(() => []);
+            let baseQuery = gmailQueryResult.queryWithoutSender || gmailQueryResult.query || 'in:inbox';
+            const hasBodyQuery = baseQuery.includes('body:');
+            let messages = await searchGmailMessages(baseQuery, 50).catch(() => []);
+            
+            if (hasBodyQuery && messages.length === 0) {
+              console.log(`[PERF] ⚠️ Query with body: returned 0 results, trying without body: | timestamp: ${new Date().toISOString()}`);
+              const queryWithoutBody = baseQuery.replace(/\s*body:[^\s]+/g, '').trim();
+              if (queryWithoutBody) {
+                messages = await searchGmailMessages(queryWithoutBody, 50).catch(() => []);
+                console.log(`[PERF] 📧 Fetched ${messages.length} messages without body: filter | timestamp: ${new Date().toISOString()}`);
+                
+                const bodyMatch = baseQuery.match(/body:([^\s]+)/);
+                if (bodyMatch && bodyMatch[1] && messages.length > 0) {
+                  const bodyKeyword = bodyMatch[1].toLowerCase();
+                  
+                  const keywords = [bodyKeyword];
+                  if (bodyKeyword.includes('śledzen')) {
+                    keywords.push('śledzen', 'paczk', 'numer', 'tracking', 'track', 'parcel', 'przesyłk');
+                  } else if (bodyKeyword.includes('paczk')) {
+                    keywords.push('paczk', 'śledzen', 'numer', 'tracking', 'track', 'parcel', 'przesyłk');
+                  } else if (bodyKeyword.includes('numer')) {
+                    keywords.push('numer', 'śledzen', 'paczk', 'tracking', 'track', 'parcel');
+                  }
+                  
+                  console.log(`[PERF] 🔍 Filtering messages by body content: "${keywords.join(', ')}" | timestamp: ${new Date().toISOString()}`);
+                  
+                  const messagesWithBody = messages.filter(msg => msg.body && msg.body.length > 0);
+                  console.log(`[PERF] 📊 Messages with body: ${messagesWithBody.length}/${messages.length} | timestamp: ${new Date().toISOString()}`);
+                  
+                  messages = messages.filter(msg => {
+                    const bodyText = (msg.body || '').toLowerCase();
+                    const snippetText = (msg.snippet || '').toLowerCase();
+                    const subjectText = (msg.subject || '').toLowerCase();
+                    const fullText = `${bodyText} ${snippetText} ${subjectText}`;
+                    
+                    return keywords.some(keyword => fullText.includes(keyword));
+                  });
+                  console.log(`[PERF] ✅ Filtered to ${messages.length} messages with body content | timestamp: ${new Date().toISOString()}`);
+                }
+              }
+            }
             
             console.log(`[PERF] 📧 Fetched ${messages.length} messages from Gmail | timestamp: ${new Date().toISOString()}`);
 
@@ -613,16 +675,24 @@ export async function transcribeAndRespond(
   const hasCalendarContext = !!calendarContextResult?.context && calendarContextResult.isConnected;
   const systemPrompt = buildSystemPrompt(undefined, context, options.location, intentClass.needsWebSearch, isGmailConnected, isContactsAvailable, needsGmailButNotConnected, hasCalendarContext, needsCalendarButNotConnected);
   
-  const allMessages = [
+  const allMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
     { role: 'system' as const, content: systemPrompt },
-    { role: 'user' as const, content: transcript },
   ];
+
+  if (options.chatHistory && options.chatHistory.length > 0) {
+    const historyToAdd = options.chatHistory.slice(-10);
+    allMessages.push(...historyToAdd);
+    console.log(`[voice-ai] 📜 Added ${historyToAdd.length} messages from chat history`);
+  }
+
+  allMessages.push({ role: 'user' as const, content: transcript });
 
   const systemPromptLength = systemPrompt.length;
   const userMessageLength = transcript.length;
-  const totalPromptTokens = Math.ceil((systemPromptLength + userMessageLength) / 4);  
+  const historyLength = allMessages.length > 2 ? allMessages.slice(1, -1).reduce((sum, msg) => sum + msg.content.length, 0) : 0;
+  const totalPromptTokens = Math.ceil((systemPromptLength + userMessageLength + historyLength) / 4);  
   
-  console.log(`[PERF] 📊 [ETAP 4/6] Prompt preparation | system: ${systemPromptLength} chars | user: ${userMessageLength} chars | estimated tokens: ~${totalPromptTokens} | needsWebSearch: ${intentClass.needsWebSearch} | timestamp: ${new Date().toISOString()}`);
+  console.log(`[PERF] 📊 [ETAP 4/6] Prompt preparation | system: ${systemPromptLength} chars | user: ${userMessageLength} chars | history: ${historyLength} chars (${allMessages.length - 2} messages) | estimated tokens: ~${totalPromptTokens} | needsWebSearch: ${intentClass.needsWebSearch} | timestamp: ${new Date().toISOString()}`);
 
   const maxTokens = intentClass.needsWebSearch ? 1000 : 150;
   
@@ -647,18 +717,18 @@ export async function transcribeAndRespond(
   let reply: string;
   
   if (useGemini) {
-    const systemMessage = allMessages.find(m => m.role === 'system');
-    const userMessage = allMessages.find(m => m.role === 'user');
+    const systemMessage = allMessages.find(m => m.role === 'system');   
+    const historyMessages = allMessages
+      .filter(m => m.role !== 'system')
+      .map(msg => ({
+        role: msg.role === 'assistant' ? 'model' as const : 'user' as const,
+        parts: [{ text: msg.content }],
+      }));
     
     const response = await geminiClient.generateContent({
       model: 'gemini-2.0-flash-exp',
       systemInstruction: systemMessage?.content,
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userMessage?.content || '' }],
-        },
-      ],
+      contents: historyMessages,
       generationConfig: {
         maxOutputTokens: maxTokens,
         temperature: 0.8,
@@ -795,14 +865,16 @@ Wczoraj: ${yesterday.toISOString().split('T')[0]}
 Tydzień temu: ${lastWeek.toISOString().split('T')[0]}
 Miesiąc temu: ${lastMonth.toISOString().split('T')[0]}
 
-WAŻNE: NIE używaj operatora "from:" ani "body:" dla nadawców w zapytaniu Gmail. Zamiast tego:
-1. Wygeneruj zapytanie BEZ "from:" i BEZ "body:" dla nadawców (tylko daty, filtry itp.)
+WAŻNE: NIE używaj operatora "from:" dla nadawców w zapytaniu Gmail. Zamiast tego:
+1. Wygeneruj zapytanie BEZ "from:" dla nadawców (tylko daty, filtry itp.)
 2. Jeśli użytkownik wspomniał nadawcę, zwróć informację o tym w polu "hasSender" i "senderHint"
+3. MOŻESZ używać "body:" do wyszukiwania w treści maila (np. "body:numer śledzenia", "body:kod weryfikacyjny")
 
-Operatory Gmail (BEZ from: i body: dla nadawców):
+Operatory Gmail:
 - after:YYYY/MM/DD - po dacie
 - before:YYYY/MM/DD - przed datą
-- subject:tekst - w temacie (TYLKO jeśli użytkownik pyta o temat, NIE dla nadawcy)
+- subject:tekst - w temacie
+- body:tekst - w treści maila (używaj gdy użytkownik pyta o coś, co może być w treści, np. "numer śledzenia", "kod", "hasło")
 - is:unread - nieprzeczytane
 - has:attachment - z załącznikami
 - in:inbox - w skrzynce odbiorczej
@@ -810,7 +882,7 @@ Operatory Gmail (BEZ from: i body: dla nadawców):
 Zasady:
 1. ZAWSZE dodawaj "in:inbox" na początku zapytania
 2. NIE używaj "from:" - nadawcę rozpoznamy później na podstawie listy maili
-3. NIE używaj "body:" dla nadawców - imię/nazwisko nadawcy NIE jest treścią wiadomości
+3. MOŻESZ używać "body:" do wyszukiwania w treści (np. "body:numer śledzenia", "body:kod")
 4. Jeśli użytkownik wspomniał nadawcę (np. "od Roberta", "od oliwiera", "od Douglas", "od Jana"), ustaw "hasSender": true i "senderHint" na imię/nazwisko, ale NIE dodawaj go do zapytania
 5. Dla dat używaj formatu YYYY/MM/DD
 6. Unikaj złożonych zapytań z OR/AND jeśli nie jest to konieczne
@@ -823,11 +895,15 @@ Przykłady:
 - "jaki mail od Oliwier" → query: "in:inbox", hasSender: true, senderHint: "oliwier"
 - "maile od Oliwier Markiewicz" → query: "in:inbox", hasSender: true, senderHint: "oliwier markiewicz"
 - "ostatni mail" → query: "in:inbox", hasSender: false
+- "numer śledzenia paczki" → query: "in:inbox body:numer", hasSender: false
+- "kod weryfikacyjny" → query: "in:inbox body:weryfikacyjny", hasSender: false
+- "numer śledzenia paczki Inpost" → query: "in:inbox body:śledzenia", hasSender: false
 
 BŁĘDNE przykłady (NIE ROB TEGO):
 - ❌ "maile od Douglas" → query: "in:inbox body:Douglas" (ZŁE! NIE używaj body: dla nadawcy)
 - ❌ "mail od Robert" → query: "in:inbox from:robert" (ZŁE! NIE używaj from:)
 - ✅ "maile od Douglas" → query: "in:inbox", hasSender: true, senderHint: "douglas" (DOBRZE!)
+- ✅ "numer śledzenia" → query: "in:inbox body:śledzenia" (DOBRZE! body: jest OK dla treści)
 
 Odpowiedz w formacie JSON:
 {
