@@ -59,7 +59,7 @@ export class OpenAIClient {
       name: 'audio.m4a',
     } as any);
     
-    formData.append('model', 'whisper-1');
+    formData.append('model', 'gpt-4o-mini-transcribe');
     if (language) {
       formData.append('language', language);
     }
@@ -86,7 +86,7 @@ export class OpenAIClient {
       } catch {
       }
       const apiDuration = performance.now() - apiStartTime;
-      console.log(`[PERF] ❌ [OpenAI] Whisper API ERROR | duration: ${apiDuration.toFixed(2)}ms | error: ${errorMessage} | timestamp: ${new Date().toISOString()}`);
+      console.log(`[PERF] ❌ [OpenAI] GPT-4o-mini-transcribe API ERROR | duration: ${apiDuration.toFixed(2)}ms | error: ${errorMessage} | timestamp: ${new Date().toISOString()}`);
       throw new Error(errorMessage || `Transcription error: ${result.status}`);
     }
 
